@@ -1,6 +1,8 @@
 import * as fs from "node:fs";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { Button } from "~/components/ui/button";
+import { ModeToggle } from "~/components/mode-toggle";
 
 const filePath = "count.txt";
 
@@ -34,8 +36,8 @@ function Home() {
 
   return (
     <>
-      <button
-        type="button"
+      <ModeToggle />
+      <Button
         onClick={() => {
           updateCount({ data: 1 }).then(() => {
             router.invalidate();
@@ -43,10 +45,11 @@ function Home() {
         }}
       >
         Add 1 to {state}?
-      </button>
+      </Button>
       <Link className="block text-blue-500" to="/chat">
         Chat
       </Link>
+      <Button className="cursor-pointer">yeah</Button>
     </>
   );
 }

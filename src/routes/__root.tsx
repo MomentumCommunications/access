@@ -7,6 +7,9 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { ThemeProvider } from "~/components/theme-provider";
+import { SidebarProvider } from "~/components/ui/sidebar";
+import { AppSidebar } from "~/components/app-sidebar";
+import { Header } from "~/components/header";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -47,9 +50,31 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
     <html>
       <head>
         <HeadContent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const theme = localStorage.getItem('vite-ui-theme');
+                  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
       </head>
       <body>
-        {children}
+        <SidebarProvider>
+          <AppSidebar />
+          <div className="flex flex-1 flex-col">
+            <Header currentPage="home" breadcrumbs={[]} />
+            {children}
+          </div>
+        </SidebarProvider>
         <Scripts />
       </body>
     </html>

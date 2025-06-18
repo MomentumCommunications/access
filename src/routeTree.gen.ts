@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
+import { Route as ChatGeneralIndexRouteImport } from './routes/chat/general/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,40 @@ const ChatIndexRoute = ChatIndexRouteImport.update({
   path: '/chat/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatGeneralIndexRoute = ChatGeneralIndexRouteImport.update({
+  id: '/chat/general/',
+  path: '/chat/general/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/chat': typeof ChatIndexRoute
+  '/chat/general': typeof ChatGeneralIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/chat': typeof ChatIndexRoute
+  '/chat/general': typeof ChatGeneralIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/chat/': typeof ChatIndexRoute
+  '/chat/general/': typeof ChatGeneralIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chat'
+  fullPaths: '/' | '/chat' | '/chat/general'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chat'
-  id: '__root__' | '/' | '/chat/'
+  to: '/' | '/chat' | '/chat/general'
+  id: '__root__' | '/' | '/chat/' | '/chat/general/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChatIndexRoute: typeof ChatIndexRoute
+  ChatGeneralIndexRoute: typeof ChatGeneralIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chat/general/': {
+      id: '/chat/general/'
+      path: '/chat/general'
+      fullPath: '/chat/general'
+      preLoaderRoute: typeof ChatGeneralIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChatIndexRoute: ChatIndexRoute,
+  ChatGeneralIndexRoute: ChatGeneralIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,17 +1,27 @@
 import type { ReactNode } from "react";
 import appCss from "~/styles/app.css?url";
+import { QueryClient } from "@tanstack/react-query";
 import {
   Outlet,
-  createRootRoute,
   HeadContent,
   Scripts,
+  createRootRouteWithContext,
 } from "@tanstack/react-router";
 import { ThemeProvider } from "~/components/theme-provider";
 import { SidebarProvider } from "~/components/ui/sidebar";
 import { AppSidebar } from "~/components/app-sidebar";
 import { Header } from "~/components/header";
+import { ClerkProvider } from "@clerk/tanstack-react-start";
 
-export const Route = createRootRoute({
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+if (!PUBLISHABLE_KEY) {
+  throw new Error("Add your Clerk Publishable Key to the .env file");
+}
+
+export const Route = createRootRouteWithContext<{
+  queryClient: QueryClient;
+}>()({
   head: () => ({
     meta: [
       {
@@ -38,9 +48,11 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <ThemeProvider>
-      <RootDocument>
-        <Outlet />
-      </RootDocument>
+      <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
+        <RootDocument>
+          <Outlet />
+        </RootDocument>
+      </ClerkProvider>
     </ThemeProvider>
   );
 }
@@ -70,10 +82,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       <body>
         <SidebarProvider>
           <AppSidebar />
-          <div className="flex flex-1 flex-col">
-            <Header currentPage="home" breadcrumbs={[]} />
-            {children}
-          </div>
+          <div className="flex flex-1 flex-col">{children}</div>
         </SidebarProvider>
         <Scripts />
       </body>

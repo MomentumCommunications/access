@@ -1,3 +1,4 @@
+import { UserButton } from "@clerk/tanstack-react-start";
 import { ModeToggle } from "./mode-toggle";
 import {
   Breadcrumb,
@@ -47,7 +48,10 @@ export function Header({
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <ModeToggle />
+        <div className="px-2 flex items-center space-x-2">
+          <ModeToggle />
+          <UserButton />
+        </div>
       </div>
       <Separator />
     </header>

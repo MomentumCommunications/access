@@ -14,7 +14,9 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as bulletins from "../bulletins.js";
+import type * as etcFunctions from "../etcFunctions.js";
 import type * as http from "../http.js";
+import type * as messages from "../messages.js";
 import type * as tasks from "../tasks.js";
 import type * as users from "../users.js";
 
@@ -28,7 +30,9 @@ import type * as users from "../users.js";
  */
 declare const fullApi: ApiFromModules<{
   bulletins: typeof bulletins;
+  etcFunctions: typeof etcFunctions;
   http: typeof http;
+  messages: typeof messages;
   tasks: typeof tasks;
   users: typeof users;
 }>;

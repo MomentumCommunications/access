@@ -14,9 +14,29 @@ export const createBulletin = mutation({
   },
 });
 
-export const getBulletins = query({
+export const getAllBulletins = query({
   handler: async (ctx) => {
     return await ctx.db.query("bulletin").collect();
+  },
+});
+
+// TODO: make a query that can take a group argument for filtering
+// dynamically pulling groups from the database
+export const getMdpBulletins = query({
+  handler: async (ctx) => {
+    // Filter for bulletins containing group "MDP"
+    const bulletins = await ctx.db.query("bulletin").collect();
+
+    return bulletins.filter((b) => b.group?.includes("mdp"));
+  },
+});
+
+export const getMdp2Bulletins = query({
+  handler: async (ctx) => {
+    // Filter for bulletins containing group "MDP"
+    const bulletins = await ctx.db.query("bulletin").collect();
+
+    return bulletins.filter((b) => b.group?.includes("mdp2"));
   },
 });
 

@@ -10,8 +10,7 @@ import {
 import { ThemeProvider } from "~/components/theme-provider";
 import { SidebarProvider } from "~/components/ui/sidebar";
 import { AppSidebar } from "~/components/app-sidebar";
-import { Header } from "~/components/header";
-import { ClerkProvider } from "@clerk/tanstack-react-start";
+import { ClerkProvider, SignedIn } from "@clerk/tanstack-react-start";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -81,7 +80,9 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       </head>
       <body>
         <SidebarProvider>
-          <AppSidebar />
+          <SignedIn>
+            <AppSidebar />
+          </SignedIn>
           <div className="flex flex-1 flex-col">{children}</div>
         </SidebarProvider>
         <Scripts />

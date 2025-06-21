@@ -1,4 +1,4 @@
-import { UserButton } from "@clerk/tanstack-react-start";
+import { SignedIn, UserButton } from "@clerk/tanstack-react-start";
 import { ModeToggle } from "./mode-toggle";
 import {
   Breadcrumb,
@@ -25,7 +25,9 @@ export function Header({
     <header className="mb-4 sticky top-0 z-50 bg-background">
       <div className="flex items-center justify-between p-2">
         <div className="flex items-center space-x-2">
-          <SidebarTrigger />
+          <SignedIn>
+            <SidebarTrigger />
+          </SignedIn>
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
             <BreadcrumbList>

@@ -23,8 +23,10 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { useIsMobile } from "~/hooks/use-mobile";
-import { useConvexMutation } from "@convex-dev/react-query";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { api } from "convex/_generated/api";
+import { Textarea } from "./ui/textarea";
+import { useQuery } from "@tanstack/react-query";
 
 export function AddBulletin() {
   const [open, setOpen] = React.useState(false);
@@ -100,8 +102,9 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
       </div>
       <div className="grid gap-3">
         <Label htmlFor="body">Body</Label>
-        <Input id="body" name="body" />
+        <Textarea id="body" name="body" />
       </div>
+
       <Button type="submit">Save changes</Button>
     </form>
   );

@@ -9,7 +9,7 @@ export default defineSchema({
   users: defineTable({
     name: v.string(),
     displayName: v.optional(v.string()),
-    role: v.union(v.literal("admin"), v.literal("user")),
+    role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
     group: v.optional(v.id("groups")),
     // this the Clerk ID, stored in the subject JWT field
     externalId: v.string(),
@@ -17,6 +17,7 @@ export default defineSchema({
   groups: defineTable({
     name: v.string(),
     description: v.string(),
+    password: v.string(),
   }),
   groupMembers: defineTable({
     group: v.id("groups"),
@@ -29,8 +30,9 @@ export default defineSchema({
     image: v.optional(v.string()),
     date: v.optional(v.string()),
     author: v.optional(v.string()),
+    group: v.optional(v.array(v.string())),
     reactions: v.optional(v.id("reactions")),
-  }),
+  }).index("byGroup", ["group"]),
   messages: defineTable({
     body: v.string(),
     date: v.optional(v.string()),

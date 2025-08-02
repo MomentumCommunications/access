@@ -15,7 +15,30 @@ export const createGeneralMessage = mutation({
     const newMessageId = await ctx.db.insert("messages", {
       author: args.author,
       body: args.message,
+      channel: "k1752qd293trjfmpsns6rjvzgn7j8fe8",
     });
     return newMessageId;
+  },
+});
+
+export const generateUploadUrl = mutation({
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const sendImage = mutation({
+  args: {
+    storageId: v.id("_storage"),
+    author: v.id("users"),
+    channel: v.id("channels"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("messages", {
+      body: args.storageId,
+      author: args.author,
+      format: "image",
+      channel: args.channel,
+    });
   },
 });

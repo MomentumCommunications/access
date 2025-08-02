@@ -11,6 +11,7 @@ export default defineSchema({
     displayName: v.optional(v.string()),
     role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
     group: v.optional(v.id("groups")),
+    image: v.optional(v.string()),
     // this the Clerk ID, stored in the subject JWT field
     externalId: v.string(),
   }).index("byExternalId", ["externalId"]),
@@ -18,7 +19,8 @@ export default defineSchema({
     name: v.string(),
     description: v.string(),
     password: v.string(),
-  }),
+    info: v.optional(v.string()),
+  }).index("byPassword", ["password"]),
   groupMembers: defineTable({
     group: v.id("groups"),
     user: v.id("users"),
@@ -32,11 +34,15 @@ export default defineSchema({
     author: v.optional(v.string()),
     group: v.optional(v.array(v.string())),
     reactions: v.optional(v.id("reactions")),
+    hidden: v.optional(v.boolean()),
   }).index("byGroup", ["group"]),
   messages: defineTable({
     body: v.string(),
     date: v.optional(v.string()),
     author: v.id("users"),
+    image: v.optional(v.string()),
+    format: v.optional(v.string()),
+    channel: v.id("channels"),
     reactions: v.optional(v.id("reactions")),
   }),
   channels: defineTable({
@@ -46,7 +52,7 @@ export default defineSchema({
     isDM: v.boolean(),
     messages: v.optional(v.id("messages")),
     users: v.optional(v.id("groupMembers")),
-  }),
+  }).index("byName", ["name"]),
   reactions: defineTable({
     thumbsUp: v.optional(v.id("users")),
     thumbsDown: v.optional(v.id("users")),

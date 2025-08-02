@@ -1,3 +1,4 @@
+import { useUser } from "@clerk/tanstack-react-start";
 import { ChevronsRight, Hash, Home } from "lucide-react";
 import {
   Sidebar,
@@ -12,6 +13,18 @@ import {
 } from "~/components/ui/sidebar";
 
 export function AppSidebar() {
+  const user = useUser();
+
+  if (!user) {
+    return null;
+  }
+
+  // const { data: userData, isLoading } = useQuery(
+  //   convexQuery(api.users.getUserById, {
+  //     id: user.user?.publicMetadata.convexId as Id<"users">,
+  //   }),
+  // );
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>

@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChatIndexRouteImport } from './routes/chat/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ChatGeneralIndexRouteImport } from './routes/chat/general/index'
+import { Route as AdminDispatchIndexRouteImport } from './routes/admin/dispatch/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -23,39 +25,63 @@ const ChatIndexRoute = ChatIndexRouteImport.update({
   path: '/chat/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatGeneralIndexRoute = ChatGeneralIndexRouteImport.update({
   id: '/chat/general/',
   path: '/chat/general/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminDispatchIndexRoute = AdminDispatchIndexRouteImport.update({
+  id: '/admin/dispatch/',
+  path: '/admin/dispatch/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminIndexRoute
   '/chat': typeof ChatIndexRoute
+  '/admin/dispatch': typeof AdminDispatchIndexRoute
   '/chat/general': typeof ChatGeneralIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminIndexRoute
   '/chat': typeof ChatIndexRoute
+  '/admin/dispatch': typeof AdminDispatchIndexRoute
   '/chat/general': typeof ChatGeneralIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin/': typeof AdminIndexRoute
   '/chat/': typeof ChatIndexRoute
+  '/admin/dispatch/': typeof AdminDispatchIndexRoute
   '/chat/general/': typeof ChatGeneralIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chat' | '/chat/general'
+  fullPaths: '/' | '/admin' | '/chat' | '/admin/dispatch' | '/chat/general'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chat' | '/chat/general'
-  id: '__root__' | '/' | '/chat/' | '/chat/general/'
+  to: '/' | '/admin' | '/chat' | '/admin/dispatch' | '/chat/general'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin/'
+    | '/chat/'
+    | '/admin/dispatch/'
+    | '/chat/general/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   ChatIndexRoute: typeof ChatIndexRoute
+  AdminDispatchIndexRoute: typeof AdminDispatchIndexRoute
   ChatGeneralIndexRoute: typeof ChatGeneralIndexRoute
 }
 
@@ -75,6 +101,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat/general/': {
       id: '/chat/general/'
       path: '/chat/general'
@@ -82,12 +115,21 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatGeneralIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/dispatch/': {
+      id: '/admin/dispatch/'
+      path: '/admin/dispatch'
+      fullPath: '/admin/dispatch'
+      preLoaderRoute: typeof AdminDispatchIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminIndexRoute: AdminIndexRoute,
   ChatIndexRoute: ChatIndexRoute,
+  AdminDispatchIndexRoute: AdminDispatchIndexRoute,
   ChatGeneralIndexRoute: ChatGeneralIndexRoute,
 }
 export const routeTree = rootRouteImport

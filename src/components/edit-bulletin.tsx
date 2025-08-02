@@ -14,14 +14,12 @@ import {
   Drawer,
   DrawerClose,
   DrawerContent,
-  DrawerDescription,
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
 } from "~/components/ui/drawer";
 import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "convex/_generated/api";
@@ -41,16 +39,25 @@ import {
   FormMessage,
 } from "./ui/form";
 import { ScrollArea } from "./ui/scroll-area";
+import { PencilLine, Plus } from "lucide-react";
 
-export function AddBulletin() {
+export function EditBulletin({ bulletin }: { bulletin: any }) {
   const [open, setOpen] = React.useState(false);
   const isMobile = useIsMobile();
+
+  console.log(bulletin);
 
   if (!isMobile) {
     return (
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline">Add Bulletin</Button>
+          <Button
+            variant="ghost"
+            className="px-0 size-8 has-[>svg]:px-2 mx-0 w-full justify-start"
+          >
+            <PencilLine />
+            Edit
+          </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -59,7 +66,7 @@ export function AddBulletin() {
               What would you like everyone to know?
             </DialogDescription>
           </DialogHeader>
-          <BulletinForm />
+          <EditBulletinForm bulletin={bulletin} />
         </DialogContent>
       </Dialog>
     );
@@ -74,7 +81,7 @@ export function AddBulletin() {
         <DrawerHeader className="text-left">
           <DrawerTitle>New Bulletin</DrawerTitle>
         </DrawerHeader>
-        <BulletinForm className="px-4" />
+        <EditBulletinForm bulletin={bulletin} />
         <DrawerFooter className="pt-2">
           <DrawerClose asChild>
             <Button variant="outline">Cancel</Button>
@@ -92,24 +99,18 @@ const formSchema = z.object({
   date: z.string(),
 });
 
-function BulletinForm({ className }: React.ComponentProps<"form">) {
+function EditBulletinForm({ bulletin }: { bulletin: any }) {
   const groups = useQuery(api.etcFunctions.getGroups, {});
   // Get mutation function from Convex
-  const mutationFn = useConvexMutation(api.bulletins.createBulletin);
-
-  const generateUploadUrl = useMutation(api.messages.generateUploadUrl);
-  const attachImage = useMutation(api.bulletins.attachImage);
-
-  const imageInput = useRef<HTMLInputElement>(null);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const mutationFn = useConvexMutation(api.bulletins.editBulletin);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      post: "",
-      body: "",
+      post: bulletin.title,
+      body: bulletin.body,
       group: [],
-      date: "",
+      date: bulletin.date,
     },
   });
 
@@ -119,31 +120,17 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
 
     const title = values.post;
     const body = values.body;
-    const team = values.group;
+    const group = values.group;
     const date = values.date;
 
-    const newBulletinId = await mutationFn({ title, body, team, date });
+    mutationFn({
+      id: bulletin._id,
+      title,
+      body,
+      group,
+      date,
+    });
 
-    {
-      if (selectedImage) {
-        const postUrl = await generateUploadUrl();
-        // Step 1: POST the file to the URL
-        const result = await fetch(postUrl, {
-          method: "POST",
-          headers: { "Content-Type": selectedImage!.type },
-          body: selectedImage,
-        });
-        const { storageId } = await result.json();
-        // Step 2: Save the newly allocated storage id to the database
-        await attachImage({
-          storageId,
-          bulletin: newBulletinId,
-        });
-
-        setSelectedImage(null);
-        imageInput.current!.value = "";
-      }
-    }
     form.reset();
   }
 
@@ -151,7 +138,7 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
     <ScrollArea>
       <Form {...form}>
         <form
-          className={cn("grid items-start gap-6", className)}
+          className={cn("grid items-start gap-6")}
           onSubmit={form.handleSubmit(onSubmit)}
         >
           <FormField
@@ -234,13 +221,6 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
                 ))}
               </FormItem>
             )}
-          />
-          <input
-            type="file"
-            accept="image/*"
-            ref={imageInput}
-            onChange={(event) => setSelectedImage(event.target.files![0])}
-            disabled={selectedImage !== null}
           />
           <Button type="submit">Save changes</Button>
         </form>

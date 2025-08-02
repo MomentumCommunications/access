@@ -9,7 +9,8 @@ export function SignInPrompt() {
       <ShieldOff />
       <AlertTitle>Heads up!</AlertTitle>
       <AlertDescription>
-        More features available if you sign in
+        More features available if you sign in, if it&apos;s your first time
+        click on the join waitlist button.
         <Button asChild className="w-min cursor-pointer">
           <SignInButton />
         </Button>

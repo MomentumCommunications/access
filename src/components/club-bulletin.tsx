@@ -10,16 +10,15 @@ import {
 } from "./ui/card";
 import { Skeleton } from "./ui/skeleton";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import styles from "~/styles/markdown.txt?raw";
 
-export default function MdpBulletin() {
+export default function ClubBulletin() {
   const { data, isPending, error } = useQuery(
-    convexQuery(api.bulletins.getMdpBulletins, {}),
+    convexQuery(api.bulletins.getMdp2Bulletins, {}),
   );
 
   return (
     <div className="flex flex-col gap-4 py-4">
+      <p>clubTime</p>
       {isPending && (
         <div className="flex gap-4 flex-col">
           <Skeleton className="h-[125px] w-full rounded-xl" />
@@ -35,19 +34,8 @@ export default function MdpBulletin() {
               <CardTitle>{bulletin.title}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={styles}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {bulletin.body}
-                </ReactMarkdown>
-              </div>
-              <div className="pt-4">
-                {bulletin.image && (
-                  <img
-                    src={bulletin.image}
-                    alt={bulletin.title}
-                    className="w-full rounded-xl"
-                  />
-                )}
+              <div className="prose prose-ul:list-disc prose-slate prose-li:list-disc">
+                <ReactMarkdown>{bulletin.body}</ReactMarkdown>
               </div>
             </CardContent>
             <CardFooter>

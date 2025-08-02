@@ -1,20 +1,14 @@
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  useUser,
-} from "@clerk/tanstack-react-start";
+import { SignedIn, SignedOut, useUser } from "@clerk/tanstack-react-start";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { useEffect, useState } from "react";
 import { AddBulletin } from "~/components/add-bulletin";
+import { AdminBulletin } from "~/components/admin-bulletin";
 import { Header } from "~/components/header";
-import MdpBulletin from "~/components/mdp-bulletin";
-import Mdp2Bulletin from "~/components/mdp2-bulletin";
+import { ProtectedContent } from "~/components/protected-content";
 import { SignInPrompt } from "~/components/sign-in-prompt";
-import { Alert } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { Card, CardDescription, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -28,7 +22,15 @@ function Home() {
   // TODO: change array indexed passkeys to be more dynamic
   const { user } = useUser();
 
-  const { data: groups } = useQuery(
+  const { data: userData } = useQuery(
+    convexQuery(api.users.getUserById, {
+      id: user?.publicMetadata.convexId as Id<"users">,
+    }),
+  );
+
+  const role = userData?.role;
+
+  const { data: groups, isLoading: groupsLoading } = useQuery(
     convexQuery(api.etcFunctions.getGroups, {}),
   );
 
@@ -36,11 +38,13 @@ function Home() {
 
   const [commonPassword, setCommonPassword] = useState<string | null>(null);
   const [inputPassword, setInputPassword] = useState("");
+  const [checkingStorage, setCheckingStorage] = useState(true);
 
   // On mount, read stored password
   useEffect(() => {
     const stored = localStorage.getItem("commonPassword");
     if (stored) setCommonPassword(stored);
+    setCheckingStorage(false);
   }, []);
 
   // Validate password (example)
@@ -58,11 +62,31 @@ function Home() {
     }
   };
 
+  // Show loading spinner while checking localStorage or loading groups
+  if (checkingStorage || groupsLoading) {
+    return (
+      <div className="flex h-screen flex-col gap-12 justify-center items-center">
+        <div className="animate-pulse text-center">loading...</div>
+      </div>
+    ); // Replace with your spinner component
+  }
+
   if (!commonPassword) {
     // Show password input form
     return (
       <div className="flex h-screen flex-col gap-12 justify-center items-center">
-        <h1 className="text-4xl font-bold text-center">ACCESS MOMENTUM</h1>
+        <div className="fixed top-12 lg:top-32 flex flex-col gap-4 items-center">
+          <img
+            src="https://original-orca-979.convex.cloud/api/storage/b2424ab8-8361-4320-a463-9b96668dbeaf"
+            alt="Access Momentum Logo"
+            height={150}
+            width={150}
+            className="rounded-full"
+          />
+          <h1 className="lg:text-4xl text-2xl font-bold text-center">
+            ACCESS MOMENTUM
+          </h1>
+        </div>
         <Card className="p-4 h-min">
           <CardTitle>Enter Password</CardTitle>
           <CardDescription>
@@ -90,7 +114,6 @@ function Home() {
           <div className="flex flex-col gap-4 py-4 justify-start">
             <SignedIn>
               <p>Hello {user?.firstName}!</p>
-              <p>You are signed in</p>
             </SignedIn>
             <SignedOut>
               <div className="py-4">
@@ -103,11 +126,11 @@ function Home() {
           </div>
           <div className="flex align-middle justify-between">
             <h1 className="text-4xl font-bold">Bulletin</h1>
-            <AddBulletin />
+            {role === "admin" && <AddBulletin />}
           </div>
           <Separator className="my-4 w-full" />
-          {commonPassword === groups?.[0]?.password && <MdpBulletin />}
-          {commonPassword === groups?.[1]?.password && <Mdp2Bulletin />}
+          {role !== "admin" && <ProtectedContent password={commonPassword} />}
+          {role === "admin" && <AdminBulletin />}
         </main>
       </div>
     </>

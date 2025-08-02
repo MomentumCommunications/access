@@ -31,13 +31,17 @@ export const Route = createRootRouteWithContext<{
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "TanStack Start Starter",
+        title: "Access Momentum",
       },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
+      },
+      {
+        rel: "icon",
+        href: "/favicon.png",
       },
     ],
   }),
@@ -78,7 +82,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
           }}
         />
       </head>
-      <body>
+      <body className="md:overscroll-none">
         <SidebarProvider>
           <SignedIn>
             <AppSidebar />

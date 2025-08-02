@@ -27,6 +27,7 @@ import { Id } from "convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { cn } from "~/lib/utils";
 import { EditBulletin } from "./edit-bulletin";
+import { Badge } from "./ui/badge";
 
 export function AdminBulletin() {
   const {
@@ -141,9 +142,11 @@ export function AdminBulletin() {
                   >
                     {bulletin.title}
                   </p>
-                  {bulletin.group && (
-                    <p className="text-muted-foreground">{bulletin.group}</p>
-                  )}
+                  {bulletin.group?.map((group) => (
+                    <Badge key={group} className="font-bold">
+                      {group.toUpperCase()}
+                    </Badge>
+                  ))}
                 </div>
               </div>
               <AccordionItem value={bulletin._id}>

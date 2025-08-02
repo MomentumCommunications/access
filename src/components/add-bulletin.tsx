@@ -14,14 +14,12 @@ import {
   Drawer,
   DrawerClose,
   DrawerContent,
-  DrawerDescription,
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
 } from "~/components/ui/drawer";
 import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "convex/_generated/api";
@@ -144,7 +142,15 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
         imageInput.current!.value = "";
       }
     }
-    form.reset();
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        keyCode: 27,
+        code: "Escape",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
   }
 
   return (
@@ -161,7 +167,7 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
               <FormItem>
                 <FormLabel>Title</FormLabel>
                 <FormControl>
-                  <Input placeholder="What's on your mind?" {...field} />
+                  <Input {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -187,7 +193,7 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
               <FormItem>
                 <FormLabel>Body</FormLabel>
                 <FormControl>
-                  <Textarea placeholder="What's on your mind?" {...field} />
+                  <Textarea {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

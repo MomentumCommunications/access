@@ -25,7 +25,26 @@ export const createBulletin = mutation({
 
 export const getAllBulletins = query({
   handler: async (ctx) => {
-    return await ctx.db.query("bulletin").collect();
+    const bulletins = await ctx.db.query("bulletin").collect();
+
+    // sort by date
+    const sortedBulletins = bulletins.sort((a, b) => {
+      const aDate = a.date ? new Date(a.date) : new Date();
+      const bDate = b.date ? new Date(b.date) : new Date();
+      return aDate.getTime() - bDate.getTime();
+    });
+
+    return sortedBulletins.map((b) => {
+      return {
+        _id: b._id,
+        title: b.title,
+        body: b.body,
+        pinned: b.pinned,
+        group: b.group,
+        date: b.date,
+        image: b.image,
+      };
+    });
   },
 });
 

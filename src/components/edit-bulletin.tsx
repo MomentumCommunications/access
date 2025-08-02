@@ -24,8 +24,7 @@ import { useIsMobile } from "~/hooks/use-mobile";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "convex/_generated/api";
 import { Textarea } from "./ui/textarea";
-import { useMutation, useQuery } from "convex/react";
-import { useRef, useState } from "react";
+import { useQuery } from "convex/react";
 import { Checkbox } from "./ui/checkbox";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,13 +32,14 @@ import { useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "./ui/form";
 import { ScrollArea } from "./ui/scroll-area";
-import { PencilLine, Plus } from "lucide-react";
+import { PencilLine } from "lucide-react";
 
 export function EditBulletin({ bulletin }: { bulletin: any }) {
   const [open, setOpen] = React.useState(false);
@@ -61,9 +61,9 @@ export function EditBulletin({ bulletin }: { bulletin: any }) {
         </DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>New Bulletin</DialogTitle>
+            <DialogTitle>Edit Bulletin</DialogTitle>
             <DialogDescription>
-              What would you like everyone to know?
+              Make changes to &quot;{bulletin.title}&quot;
             </DialogDescription>
           </DialogHeader>
           <EditBulletinForm bulletin={bulletin} />
@@ -75,18 +75,26 @@ export function EditBulletin({ bulletin }: { bulletin: any }) {
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button variant="outline">Add Bulletin</Button>
+        <Button
+          variant="ghost"
+          className="px-0 size-8 has-[>svg]:px-2 mx-0 w-full justify-start"
+        >
+          <PencilLine />
+          Edit Bulletin
+        </Button>
       </DrawerTrigger>
       <DrawerContent>
-        <DrawerHeader className="text-left">
-          <DrawerTitle>New Bulletin</DrawerTitle>
-        </DrawerHeader>
-        <EditBulletinForm bulletin={bulletin} />
-        <DrawerFooter className="pt-2">
-          <DrawerClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DrawerClose>
-        </DrawerFooter>
+        <ScrollArea className="px-2">
+          <DrawerHeader className="text-left">
+            <DrawerTitle>Edit Bulletin</DrawerTitle>
+          </DrawerHeader>
+          <EditBulletinForm bulletin={bulletin} />
+          <DrawerFooter className="pt-2">
+            <DrawerClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </ScrollArea>
       </DrawerContent>
     </Drawer>
   );
@@ -116,8 +124,6 @@ function EditBulletinForm({ bulletin }: { bulletin: any }) {
 
   // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-
     const title = values.post;
     const body = values.body;
     const group = values.group;
@@ -131,7 +137,16 @@ function EditBulletinForm({ bulletin }: { bulletin: any }) {
       date,
     });
 
-    form.reset();
+    // send escape key
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        keyCode: 27,
+        code: "Escape",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
   }
 
   return (
@@ -160,6 +175,9 @@ function EditBulletinForm({ bulletin }: { bulletin: any }) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Date</FormLabel>
+                <FormDescription>
+                  Date is set to {bulletin.date}
+                </FormDescription>
                 <FormControl>
                   <Input type="date" {...field} />
                 </FormControl>

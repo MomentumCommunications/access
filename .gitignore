@@ -24,3 +24,4 @@ npm-debug.log*
 *.tsbuildinfo
 
 node_modules/
+.tanstack/

@@ -43,6 +43,7 @@ export const getAllBulletins = query({
         group: b.group,
         date: b.date,
         image: b.image,
+        hidden: b.hidden,
       };
     });
   },

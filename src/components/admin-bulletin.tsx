@@ -22,12 +22,65 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { Eye, EyeOff, MoreHorizontal } from "lucide-react";
+import { Eye, EyeOff, MoreHorizontal, Trash2 } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { cn } from "~/lib/utils";
 import { EditBulletin } from "./edit-bulletin";
 import { Badge } from "./ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
+
+function DeleteButton({
+  id,
+  postTitle,
+}: {
+  id: Id<"bulletin">;
+  postTitle: string;
+}) {
+  const deleteFunction = useMutation(api.bulletins.deleteBulletin);
+
+  const deleteBulletin = () => {
+    deleteFunction({ id });
+  };
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          className="px-0 size-8 has-[>svg]:px-2 mx-0 w-full justify-start"
+        >
+          <Trash2 color="red" />
+          <span className="text-red-500">Delete</span>
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            Are you sure you want to delete &quot;{postTitle}&quot;?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={deleteBulletin}>Delete</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
 export function AdminBulletin() {
   const {
@@ -122,9 +175,11 @@ export function AdminBulletin() {
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>View customer</DropdownMenuItem>
-                        <DropdownMenuItem>
-                          View payment details
+                        <DropdownMenuItem asChild>
+                          <DeleteButton
+                            id={bulletin._id}
+                            postTitle={bulletin.title}
+                          />
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

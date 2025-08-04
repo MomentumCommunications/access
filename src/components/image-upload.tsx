@@ -56,25 +56,21 @@ export function ImageUpload({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Are you absolutely sure?</DialogTitle>
-          <DialogDescription>
-            This action cannot be undone. This will permanently delete your
-            account and remove your data from our servers.
-          </DialogDescription>
+          <DialogTitle>Upload Image</DialogTitle>
+          <DialogDescription>Choose an image file to send.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSendImage}>
+        <form onSubmit={handleSendImage} className="flex justify-between">
           <input
             type="file"
             accept="image/*"
             ref={imageInput}
             onChange={(event) => setSelectedImage(event.target.files![0])}
             disabled={selectedImage !== null}
+            className="cursor-pointer"
           />
-          <input
-            type="submit"
-            value="Send Image"
-            disabled={selectedImage === null}
-          />
+          <Button type="submit" disabled={selectedImage === null}>
+            Send
+          </Button>
         </form>
       </DialogContent>
     </Dialog>

@@ -45,8 +45,6 @@ export function EditBulletin({ bulletin }: { bulletin: any }) {
   const [open, setOpen] = React.useState(false);
   const isMobile = useIsMobile();
 
-  console.log(bulletin);
-
   if (!isMobile) {
     return (
       <Dialog open={open} onOpenChange={setOpen}>

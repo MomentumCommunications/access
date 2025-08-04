@@ -1,18 +1,15 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
-// TODO: fix this style import jankyness
-import styles from "~/styles/markdown.txt?raw";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "~/components/ui/accordion";
+import { Markdown } from "./markdown-wrapper";
 
 export function ProtectedContent({ password }: { password: string }) {
   const {
@@ -58,11 +55,7 @@ export function ProtectedContent({ password }: { password: string }) {
               <AccordionItem value={bulletin._id}>
                 <AccordionTrigger className="text-sm">Details</AccordionTrigger>
                 <AccordionContent className="bg-muted p-4 rounded">
-                  <div className={styles}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {bulletin.body}
-                    </ReactMarkdown>
-                  </div>
+                  <Markdown content={bulletin.body} />
                 </AccordionContent>
               </AccordionItem>
             </div>

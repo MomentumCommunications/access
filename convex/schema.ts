@@ -44,6 +44,7 @@ export default defineSchema({
     format: v.optional(v.string()),
     channel: v.id("channels"),
     reactions: v.optional(v.id("reactions")),
+    edited: v.optional(v.boolean()),
   }),
   channels: defineTable({
     name: v.string(),

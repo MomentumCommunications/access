@@ -1,12 +1,8 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
-// TODO: fix this style import jankyness
-import styles from "~/styles/markdown.txt?raw";
 import {
   Accordion,
   AccordionContent,
@@ -39,6 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
+import { Markdown } from "./markdown-wrapper";
 
 function DeleteButton({
   id,
@@ -207,11 +204,7 @@ export function AdminBulletin() {
               <AccordionItem value={bulletin._id}>
                 <AccordionTrigger className="text-sm">Details</AccordionTrigger>
                 <AccordionContent className="bg-muted p-4 rounded">
-                  <div className={styles}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {bulletin.body}
-                    </ReactMarkdown>
-                  </div>
+                  <Markdown content={bulletin.body} />
                 </AccordionContent>
               </AccordionItem>
             </div>

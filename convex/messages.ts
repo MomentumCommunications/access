@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 export const getGeneralMessages = query({
   args: {},
@@ -15,7 +16,7 @@ export const createGeneralMessage = mutation({
     const newMessageId = await ctx.db.insert("messages", {
       author: args.author,
       body: args.message,
-      channel: "k1752qd293trjfmpsns6rjvzgn7j8fe8",
+      channel: "k1752qd293trjfmpsns6rjvzgn7j8fe8" as Id<"channels">,
     });
     return newMessageId;
   },
@@ -40,5 +41,19 @@ export const sendImage = mutation({
       format: "image",
       channel: args.channel,
     });
+  },
+});
+
+export const editMessage = mutation({
+  args: { id: v.id("messages"), body: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { body: args.body, edited: true });
+  },
+});
+
+export const deleteMessage = mutation({
+  args: { id: v.id("messages") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
   },
 });

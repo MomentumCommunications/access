@@ -19,12 +19,6 @@ export function AppSidebar() {
     return null;
   }
 
-  // const { data: userData, isLoading } = useQuery(
-  //   convexQuery(api.users.getUserById, {
-  //     id: user.user?.publicMetadata.convexId as Id<"users">,
-  //   }),
-  // );
-
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -51,7 +45,13 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Chat</SidebarGroupLabel>
           <SidebarMenuButton asChild>
-            <a href="/chat/general">
+            <a href="/chat/">
+              <Hash />
+              <span>All</span>
+            </a>
+          </SidebarMenuButton>
+          <SidebarMenuButton asChild>
+            <a href="/chat/general/">
               <Hash />
               <span>General</span>
             </a>

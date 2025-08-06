@@ -22,6 +22,33 @@ export const createGeneralMessage = mutation({
   },
 });
 
+export const createMessage = mutation({
+  args: {
+    message: v.string(),
+    author: v.id("users"),
+    channel: v.union(v.id("channels"), v.string()),
+  },
+  handler: async (ctx, args) => {
+    const newMessageId = await ctx.db.insert("messages", {
+      author: args.author,
+      body: args.message,
+      channel: args.channel,
+    });
+    return newMessageId;
+  },
+});
+
+export const getMessagesByChannel = query({
+  args: { channel: v.union(v.id("channels"), v.string()) },
+  handler: async (ctx, args) => {
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("byChannel", (q) => q.eq("channel", args.channel))
+      .collect();
+    return messages;
+  },
+});
+
 export const generateUploadUrl = mutation({
   handler: async (ctx) => {
     return await ctx.storage.generateUploadUrl();
@@ -32,7 +59,7 @@ export const sendImage = mutation({
   args: {
     storageId: v.id("_storage"),
     author: v.id("users"),
-    channel: v.id("channels"),
+    channel: v.union(v.id("channels"), v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("messages", {

@@ -9,15 +9,15 @@ import { ImageUpload } from "./image-upload";
 
 export function MessageInput({
   userId,
-  channelId,
+  channel,
 }: {
   userId: Id<"users">;
-  channelId: Id<"channels">;
+  channel: Id<"channels"> | string;
 }) {
-  const mutate = useConvexMutation(api.messages.createGeneralMessage);
+  const mutate = useConvexMutation(api.messages.createMessage);
 
   const sendData = {
-    channelId: channelId as Id<"channels">,
+    channel: channel as Id<"channels"> | string,
     authorId: userId as Id<"users">,
   };
 
@@ -35,7 +35,7 @@ export function MessageInput({
 
     if (!author) return alert("Error");
 
-    mutate({ message: trimmedMessage, author });
+    mutate({ message: trimmedMessage, author, channel: channel });
 
     setMessage("");
   };

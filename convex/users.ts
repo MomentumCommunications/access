@@ -9,6 +9,38 @@ export const getUserById = query({
   },
 });
 
+export const getUserByClerkId = query({
+  args: { ClerkId: v.optional(v.string()) },
+  handler: async (ctx, { ClerkId }) => {
+    if (ClerkId === undefined) {
+      return null;
+    }
+    return await userByExternalId(ctx, ClerkId);
+  },
+});
+
+export const getUsersByChannel = query({
+  args: { channel: v.optional(v.id("channels")) },
+  handler: async (ctx, { channel }) => {
+    if (channel === undefined) {
+      return [];
+    }
+    const userIds = await ctx.db
+      .query("channelMembers")
+      .withIndex("byChannel", (q) => q.eq("channel", channel))
+      .collect();
+
+    const users = await Promise.all(
+      userIds.map(async (userId) => {
+        const user = await ctx.db.get(userId.user);
+        return user;
+      }),
+    );
+
+    return users;
+  },
+});
+
 export const current = query({
   args: {},
   handler: async (ctx) => {
@@ -26,6 +58,7 @@ export const upsertFromClerk = internalMutation({
     const userAttributes = {
       name: `${data.first_name} ${data.last_name}`,
       externalId: data.id,
+      // email: data.email_addresses as EmailAddressJSON[],
       image: data.image_url,
       displayName: data.username,
     };

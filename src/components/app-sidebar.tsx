@@ -1,5 +1,8 @@
 import { useUser } from "@clerk/tanstack-react-start";
-import { ChevronsRight, Hash, Home } from "lucide-react";
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "convex/_generated/api";
+import { ChevronsRight, ChevronUp, Hash, Home, Lock } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -10,14 +13,30 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSkeleton,
 } from "~/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "./ui/collapsible";
+import { NewChannel } from "./new-channel";
 
 export function AppSidebar() {
   const user = useUser();
 
-  if (!user) {
-    return null;
-  }
+  const { data: convexUser } = useQuery(
+    convexQuery(api.users.getUserByClerkId, { ClerkId: user.user?.id }),
+  );
+
+  const { data: publicChannels, isLoading: isPublicChannelsLoading } = useQuery(
+    convexQuery(api.channels.getPublicChannels, {}),
+  );
+
+  const { data: privateChannels, isLoading: isPrivateChannelsLoading } =
+    useQuery(
+      convexQuery(api.channels.getChannelsByUser, { user: convexUser?._id }),
+    );
 
   return (
     <Sidebar collapsible="icon">
@@ -42,21 +61,49 @@ export function AppSidebar() {
             </a>
           </SidebarMenuButton>
         </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Chat</SidebarGroupLabel>
-          <SidebarMenuButton asChild>
-            <a href="/chat/">
-              <Hash />
-              <span>All</span>
-            </a>
-          </SidebarMenuButton>
-          <SidebarMenuButton asChild>
-            <a href="/chat/general/">
-              <Hash />
-              <span>General</span>
-            </a>
-          </SidebarMenuButton>
-        </SidebarGroup>
+        <Collapsible defaultOpen className="group/collapsible">
+          <SidebarGroup>
+            <SidebarGroupLabel asChild>
+              <CollapsibleTrigger>
+                Chat
+                <ChevronUp className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              {convexUser?.role === "admin" && (
+                <NewChannel userId={convexUser._id} />
+              )}
+              {isPublicChannelsLoading ? (
+                <SidebarMenuSkeleton />
+              ) : (
+                publicChannels?.map((channel) => (
+                  <SidebarMenuButton asChild key={channel?._id}>
+                    <a href={`/channel/${channel?._id}`}>
+                      <Hash />
+                      <span>{channel?.name}</span>
+                    </a>
+                  </SidebarMenuButton>
+                ))
+              )}
+              {isPrivateChannelsLoading ? (
+                <>
+                  <SidebarMenuSkeleton />
+                  <SidebarMenuSkeleton />
+                  <SidebarMenuSkeleton />
+                </>
+              ) : (
+                privateChannels?.map((channel) => (
+                  <SidebarMenuButton asChild key={channel?._id}>
+                    <a href={`/channel/${channel?._id}`}>
+                      <Lock />
+                      <span>{channel?.name}</span>
+                    </a>
+                  </SidebarMenuButton>
+                ))
+              )}
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
       </SidebarContent>
       <SidebarFooter />
     </Sidebar>

@@ -7,6 +7,7 @@ export function Markdown({ content }: { content: string }) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          p: ({ ...props }) => <p {...props} className="whitespace-pre-wrap" />,
           a: ({ ...props }) => (
             <a
               {...props}
@@ -22,10 +23,16 @@ export function Markdown({ content }: { content: string }) {
             <h2 {...props} className="text-xl font-semibold" />
           ),
           ul: ({ ...props }) => (
-            <ul {...props} className="list-disc list-inside" />
+            <ul
+              {...props}
+              className="list-disc ml-2 list-inside whitespace-normal"
+            />
           ),
           ol: ({ ...props }) => (
-            <ol {...props} className="list-decimal list-inside" />
+            <ol
+              {...props}
+              className="list-decimal ml-2 list-inside whitespace-normal"
+            />
           ),
           li: ({ ...props }) => <li {...props} className="my-0 py-0" />,
           code: ({ ...props }) => (
@@ -38,7 +45,28 @@ export function Markdown({ content }: { content: string }) {
           blockquote: ({ ...props }) => (
             <blockquote
               {...props}
-              className="border-l-2 border-muted-foreground max-w-6xl pl-2"
+              className="border-l-2 border-muted-foreground whitespace-normal max-w-6xl pl-2"
+            />
+          ),
+          hr: ({ ...props }) => (
+            <hr {...props} className="my-4 border-muted-foreground" />
+          ),
+          table: ({ ...props }) => (
+            <table
+              {...props}
+              className="border-collapse border border-muted-foreground"
+            />
+          ),
+          th: ({ ...props }) => (
+            <th
+              {...props}
+              className="border border-muted-foreground p-2 text-left"
+            />
+          ),
+          td: ({ ...props }) => (
+            <td
+              {...props}
+              className="border border-muted-foreground p-2 text-left"
             />
           ),
         }}

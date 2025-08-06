@@ -22,9 +22,9 @@ function Home() {
   // TODO: change array indexed passkeys to be more dynamic
   const { user } = useUser();
 
-  const { data: userData } = useQuery(
-    convexQuery(api.users.getUserById, {
-      id: user?.publicMetadata.convexId as Id<"users">,
+  const { data: userData, isLoading } = useQuery(
+    convexQuery(api.users.getUserByClerkId, {
+      ClerkId: user?.id as string,
     }),
   );
 
@@ -69,6 +69,10 @@ function Home() {
         <div className="animate-pulse text-center">loading...</div>
       </div>
     ); // Replace with your spinner component
+  }
+
+  if (isLoading) {
+    return null;
   }
 
   if (!commonPassword) {

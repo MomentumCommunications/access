@@ -50,7 +50,7 @@ export function AddBulletin() {
         <DialogTrigger asChild>
           <Button variant="outline">Add Bulletin</Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>New Bulletin</DialogTitle>
             <DialogDescription>

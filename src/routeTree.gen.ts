@@ -10,79 +10,63 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ChatIndexRouteImport } from './routes/chat/index'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as ChatGeneralIndexRouteImport } from './routes/chat/general/index'
-import { Route as AdminDispatchIndexRouteImport } from './routes/admin/dispatch/index'
+import { Route as ChannelIndexRouteImport } from './routes/channel/index'
+import { Route as ChannelChannelRouteImport } from './routes/channel/$channel'
+import { Route as ChannelGeneralIndexRouteImport } from './routes/channel/general/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ChatIndexRoute = ChatIndexRouteImport.update({
-  id: '/chat/',
-  path: '/chat/',
+const ChannelIndexRoute = ChannelIndexRouteImport.update({
+  id: '/channel/',
+  path: '/channel/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/admin/',
-  path: '/admin/',
+const ChannelChannelRoute = ChannelChannelRouteImport.update({
+  id: '/channel/$channel',
+  path: '/channel/$channel',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ChatGeneralIndexRoute = ChatGeneralIndexRouteImport.update({
-  id: '/chat/general/',
-  path: '/chat/general/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminDispatchIndexRoute = AdminDispatchIndexRouteImport.update({
-  id: '/admin/dispatch/',
-  path: '/admin/dispatch/',
+const ChannelGeneralIndexRoute = ChannelGeneralIndexRouteImport.update({
+  id: '/channel/general/',
+  path: '/channel/general/',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminIndexRoute
-  '/chat': typeof ChatIndexRoute
-  '/admin/dispatch': typeof AdminDispatchIndexRoute
-  '/chat/general': typeof ChatGeneralIndexRoute
+  '/channel/$channel': typeof ChannelChannelRoute
+  '/channel': typeof ChannelIndexRoute
+  '/channel/general': typeof ChannelGeneralIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminIndexRoute
-  '/chat': typeof ChatIndexRoute
-  '/admin/dispatch': typeof AdminDispatchIndexRoute
-  '/chat/general': typeof ChatGeneralIndexRoute
+  '/channel/$channel': typeof ChannelChannelRoute
+  '/channel': typeof ChannelIndexRoute
+  '/channel/general': typeof ChannelGeneralIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin/': typeof AdminIndexRoute
-  '/chat/': typeof ChatIndexRoute
-  '/admin/dispatch/': typeof AdminDispatchIndexRoute
-  '/chat/general/': typeof ChatGeneralIndexRoute
+  '/channel/$channel': typeof ChannelChannelRoute
+  '/channel/': typeof ChannelIndexRoute
+  '/channel/general/': typeof ChannelGeneralIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/chat' | '/admin/dispatch' | '/chat/general'
+  fullPaths: '/' | '/channel/$channel' | '/channel' | '/channel/general'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/chat' | '/admin/dispatch' | '/chat/general'
-  id:
-    | '__root__'
-    | '/'
-    | '/admin/'
-    | '/chat/'
-    | '/admin/dispatch/'
-    | '/chat/general/'
+  to: '/' | '/channel/$channel' | '/channel' | '/channel/general'
+  id: '__root__' | '/' | '/channel/$channel' | '/channel/' | '/channel/general/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminIndexRoute: typeof AdminIndexRoute
-  ChatIndexRoute: typeof ChatIndexRoute
-  AdminDispatchIndexRoute: typeof AdminDispatchIndexRoute
-  ChatGeneralIndexRoute: typeof ChatGeneralIndexRoute
+  ChannelChannelRoute: typeof ChannelChannelRoute
+  ChannelIndexRoute: typeof ChannelIndexRoute
+  ChannelGeneralIndexRoute: typeof ChannelGeneralIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -94,32 +78,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/chat/': {
-      id: '/chat/'
-      path: '/chat'
-      fullPath: '/chat'
-      preLoaderRoute: typeof ChatIndexRouteImport
+    '/channel/': {
+      id: '/channel/'
+      path: '/channel'
+      fullPath: '/channel'
+      preLoaderRoute: typeof ChannelIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminIndexRouteImport
+    '/channel/$channel': {
+      id: '/channel/$channel'
+      path: '/channel/$channel'
+      fullPath: '/channel/$channel'
+      preLoaderRoute: typeof ChannelChannelRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/chat/general/': {
-      id: '/chat/general/'
-      path: '/chat/general'
-      fullPath: '/chat/general'
-      preLoaderRoute: typeof ChatGeneralIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/dispatch/': {
-      id: '/admin/dispatch/'
-      path: '/admin/dispatch'
-      fullPath: '/admin/dispatch'
-      preLoaderRoute: typeof AdminDispatchIndexRouteImport
+    '/channel/general/': {
+      id: '/channel/general/'
+      path: '/channel/general'
+      fullPath: '/channel/general'
+      preLoaderRoute: typeof ChannelGeneralIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -127,10 +104,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminIndexRoute: AdminIndexRoute,
-  ChatIndexRoute: ChatIndexRoute,
-  AdminDispatchIndexRoute: AdminDispatchIndexRoute,
-  ChatGeneralIndexRoute: ChatGeneralIndexRoute,
+  ChannelChannelRoute: ChannelChannelRoute,
+  ChannelIndexRoute: ChannelIndexRoute,
+  ChannelGeneralIndexRoute: ChannelGeneralIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

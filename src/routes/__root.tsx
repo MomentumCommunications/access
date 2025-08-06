@@ -11,6 +11,7 @@ import { ThemeProvider } from "~/components/theme-provider";
 import { SidebarProvider } from "~/components/ui/sidebar";
 import { AppSidebar } from "~/components/app-sidebar";
 import { ClerkProvider, SignedIn } from "@clerk/tanstack-react-start";
+import { shadcn } from "@clerk/themes";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -51,7 +52,13 @@ export const Route = createRootRouteWithContext<{
 function RootComponent() {
   return (
     <ThemeProvider>
-      <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
+      <ClerkProvider
+        publishableKey={PUBLISHABLE_KEY}
+        afterSignOutUrl="/"
+        appearance={{
+          baseTheme: shadcn,
+        }}
+      >
         <RootDocument>
           <Outlet />
         </RootDocument>
@@ -84,9 +91,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       </head>
       <body className="md:overscroll-none">
         <SidebarProvider>
-          <SignedIn>
-            <AppSidebar />
-          </SignedIn>
+          <AppSidebar />
           <div className="flex flex-1 flex-col">{children}</div>
         </SidebarProvider>
         <Scripts />

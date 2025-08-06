@@ -9,6 +9,7 @@ export default defineSchema({
   users: defineTable({
     name: v.string(),
     displayName: v.optional(v.string()),
+    email: v.optional(v.array(v.string())),
     role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
     group: v.optional(v.id("groups")),
     image: v.optional(v.string()),
@@ -42,18 +43,27 @@ export default defineSchema({
     author: v.id("users"),
     image: v.optional(v.string()),
     format: v.optional(v.string()),
-    channel: v.id("channels"),
+    channel: v.union(v.id("channels"), v.string()),
     reactions: v.optional(v.id("reactions")),
     edited: v.optional(v.boolean()),
-  }),
+  }).index("byChannel", ["channel"]),
   channels: defineTable({
     name: v.string(),
     description: v.string(),
     group: v.optional(v.id("groups")),
     isDM: v.boolean(),
+    isPrivate: v.optional(v.boolean()),
     messages: v.optional(v.id("messages")),
     users: v.optional(v.id("groupMembers")),
-  }).index("byName", ["name"]),
+  })
+    .index("byName", ["name"])
+    .index("byIsPrivate", ["isPrivate"]),
+  channelMembers: defineTable({
+    channel: v.id("channels"),
+    user: v.id("users"),
+  })
+    .index("byChannel", ["channel"])
+    .index("byUser", ["user"]),
   reactions: defineTable({
     thumbsUp: v.optional(v.id("users")),
     thumbsDown: v.optional(v.id("users")),

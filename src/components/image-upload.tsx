@@ -16,7 +16,7 @@ import { Id } from "convex/_generated/dataModel";
 export function ImageUpload({
   senderData,
 }: {
-  senderData: { authorId: Id<"users">; channelId: Id<"channels"> };
+  senderData: { authorId: Id<"users">; channel: Id<"channels"> | string };
 }) {
   const generateUploadUrl = useMutation(api.messages.generateUploadUrl);
   const sendImage = useMutation(api.messages.sendImage);
@@ -40,11 +40,22 @@ export function ImageUpload({
     await sendImage({
       storageId,
       author: senderData.authorId,
-      channel: senderData.channelId,
+      channel: senderData.channel,
     });
 
     setSelectedImage(null);
     imageInput.current!.value = "";
+
+    // send escape key
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        keyCode: 27,
+        code: "Escape",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
   }
 
   return (

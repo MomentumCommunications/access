@@ -3,15 +3,16 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
-import { Id } from "convex/_generated/dataModel";
 import { useEffect, useRef } from "react";
 import { Header } from "~/components/header";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { BottomScroll } from "~/components/bottom-scroll";
 import { MessageComponent } from "~/components/message-component";
 import { MessageInput } from "~/components/message-input";
+import { Skeleton } from "~/components/ui/skeleton";
+import { Alert, AlertDescription } from "~/components/ui/alert";
 
-export const Route = createFileRoute("/chat/general/")({
+export const Route = createFileRoute("/channel/general/")({
   component: RouteComponent,
 });
 
@@ -22,9 +23,11 @@ function RouteComponent() {
     convexQuery(api.etcFunctions.getChannelIdByName, { name: "general" }),
   );
 
-  const userId = user?.publicMetadata.convexId as Id<"users">;
+  const { data: convexUser } = useQuery(
+    convexQuery(api.users.getUserByClerkId, { ClerkId: user?.id as string }),
+  );
 
-  const { data: messages } = useQuery(
+  const { data: messages, isLoading } = useQuery(
     convexQuery(api.messages.getGeneralMessages, {}),
   );
 
@@ -35,7 +38,7 @@ function RouteComponent() {
   }, [messages]);
 
   // Early return after hooks
-  if (!userId) return null;
+  if (!convexUser) return null;
 
   return (
     <>
@@ -43,7 +46,7 @@ function RouteComponent() {
         currentPage="General"
         breadcrumbs={[
           { title: "Home", url: "/" },
-          { title: "Chat", url: "/chat/" },
+          { title: "Channel", url: "/channel/" },
         ]}
       />
       <SignedOut>
@@ -54,13 +57,34 @@ function RouteComponent() {
       <SignedIn>
         <div className="flex h-[calc(100vh+148px)] sm:h-[calc(100vh-48px)] md:h-[calc(100vh-64px)] md:pt-4 px-4 justify-end flex-col relative">
           <ScrollArea className="flex-grow overflow-auto px-4 overscroll-none">
-            {messages?.map((m) => (
-              <MessageComponent key={m._id} message={m} userId={userId} />
-            ))}
+            {messages?.length === 0 && (
+              <div className="w-full h-full flex items-center justify-center">
+                <Alert className="max-w-sm">
+                  <AlertDescription>No messages yet...</AlertDescription>
+                </Alert>
+              </div>
+            )}
+            {isLoading ? (
+              <div className="flex flex-col gap-2">
+                <Skeleton className="w-full h-24" />
+                <Skeleton className="w-full h-24" />
+                <Skeleton className="w-full h-24" />
+              </div>
+            ) : (
+              messages?.map((m) => (
+                <MessageComponent
+                  key={m._id}
+                  message={m}
+                  userId={convexUser._id}
+                />
+              ))
+            )}
             <div id="bottom" ref={bottomRef}></div>
             <BottomScroll bottomRef={bottomRef} />
           </ScrollArea>
-          {channelId && <MessageInput userId={userId} channelId={channelId} />}
+          {channelId && (
+            <MessageInput userId={convexUser._id} channel={channelId} />
+          )}
         </div>
       </SignedIn>
     </>

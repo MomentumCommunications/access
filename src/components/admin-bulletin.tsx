@@ -121,65 +121,74 @@ export function AdminBulletin() {
               className="p-4 mb-4 border border-muted rounded"
             >
               <div className="flex flex-col gap-2">
-                <div className="flex justify-between">
-                  {bulletin.date && (
-                    <p
-                      className={cn(
-                        "align-baseline",
-                        bulletin.hidden && "text-muted-foreground",
-                      )}
-                    >
-                      {format(
-                        toZonedTime(new Date(bulletin.date), "utc"),
-                        "iii ⋅ MMMM d, yyyy",
-                      )}
-                    </p>
+                <div className="flex flex-col gap-2">
+                  {bulletin.image && (
+                    <img
+                      src={bulletin.image}
+                      alt={bulletin.title}
+                      className="w-full md:w-1/3 rounded"
+                    />
                   )}
-                  <div className="z-10 ml-auto">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0 cursor-pointer"
-                        >
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                          <EditBulletin bulletin={bulletin} />
-                        </DropdownMenuItem>
-                        {!bulletin.hidden && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              hideBulletin(bulletin._id);
-                            }}
-                          >
-                            <EyeOff />
-                            <span>Hide</span>
-                          </DropdownMenuItem>
+                  <div className="flex justify-between">
+                    {bulletin.date && (
+                      <p
+                        className={cn(
+                          "align-baseline",
+                          bulletin.hidden && "text-muted-foreground",
                         )}
-                        {bulletin.hidden && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              unhideBulletin(bulletin._id);
-                            }}
-                          >
-                            <Eye />
-                            <span>Unhide</span>
-                          </DropdownMenuItem>
+                      >
+                        {format(
+                          toZonedTime(new Date(bulletin.date), "utc"),
+                          "iii ⋅ MMMM d, yyyy",
                         )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <DeleteButton
-                            id={bulletin._id}
-                            postTitle={bulletin.title}
-                          />
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      </p>
+                    )}
+                    <div className="z-10 ml-auto">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            className="h-8 w-8 p-0 cursor-pointer"
+                          >
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem asChild>
+                            <EditBulletin bulletin={bulletin} />
+                          </DropdownMenuItem>
+                          {!bulletin.hidden && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                hideBulletin(bulletin._id);
+                              }}
+                            >
+                              <EyeOff />
+                              <span>Hide</span>
+                            </DropdownMenuItem>
+                          )}
+                          {bulletin.hidden && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                unhideBulletin(bulletin._id);
+                              }}
+                            >
+                              <Eye />
+                              <span>Unhide</span>
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild>
+                            <DeleteButton
+                              id={bulletin._id}
+                              postTitle={bulletin.title}
+                            />
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-2 items-center">

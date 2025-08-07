@@ -24,14 +24,12 @@ import {
 import { Skeleton } from "~/components/ui/skeleton";
 import { SignInPrompt } from "~/components/sign-in-prompt";
 import { channelNameOrFallback } from "~/lib/utils";
-import { DeleteChannelButton } from "~/components/channel-delete-button";
-import { ManageMembers } from "~/components/manage-members";
 
 const fetchMessages = (channel: string) => {
   return convexQuery(api.messages.getMessagesByChannel, { channel });
 };
 
-export const Route = createFileRoute("/channel/$channel")({
+export const Route = createFileRoute("/dm/$dm")({
   component: RouteComponent,
 });
 
@@ -45,7 +43,7 @@ function RouteComponent() {
     convexQuery(api.users.getUserByClerkId, { ClerkId: user.user?.id }),
   );
 
-  const channelId = params.channel as Id<"channels">;
+  const channelId = params.dm as Id<"channels">;
 
   const { data: channel } = useQuery(
     convexQuery(api.channels.getChannel, { id: channelId }),
@@ -54,6 +52,12 @@ function RouteComponent() {
   const { data: channelMembers } = useQuery(
     convexQuery(api.users.getUsersByChannel, { channel: channel?._id }),
   );
+
+  const dmName = channelMembers
+    ?.filter((m) => m?._id !== convexUser?._id)
+    .map((m) => m?.displayName)
+    .filter(Boolean)
+    .join(", ");
 
   const { data: messages, isLoading } = useQuery(fetchMessages(channelId));
 
@@ -74,7 +78,7 @@ function RouteComponent() {
     return (
       <>
         <Header
-          currentPage={channelNameOrFallback(channel.name)}
+          currentPage={channelNameOrFallback(dmName)}
           breadcrumbs={[
             { title: "Home", url: "/" },
             { title: "Channel", url: "/Channel" },
@@ -96,63 +100,45 @@ function RouteComponent() {
   return (
     <>
       <Header
-        currentPage={channelNameOrFallback(channel.name)}
+        currentPage={channelNameOrFallback(dmName)}
         breadcrumbs={[
           { title: "Home", url: "/" },
-          { title: "channel", url: "/channel" },
+          { title: "Direct Message", url: "/channel" },
         ]}
       />
-      <div className="flex relative h-[calc(100vh+130px)] sm:h-[calc(100vh-46px)] md:h-[calc(100vh-64px)] overflow-visible md:pt-4 px-4 justify-end flex-col relative">
-        <SignedIn>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="absolute -top-4 right-4 z-10">
-                <Cog />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuLabel>Channel Settings</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>Edit</DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <ManageMembers channelId={channel._id} />
-              </DropdownMenuItem>
-              <DeleteChannelButton channelId={channel._id} />
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <ScrollArea className="flex-grow flex flex-col items-end overflow-auto px-4 overscroll-none">
-            {messages?.length === 0 && (
-              <div className="w-full h-full flex items-center justify-center">
-                <Alert className="max-w-sm">
-                  <AlertDescription>No messages yet...</AlertDescription>
-                </Alert>
-              </div>
-            )}
-            {isLoading ? (
-              <div className="flex flex-col gap-2">
-                <Skeleton className="w-full h-24" />
-                <Skeleton className="w-full h-24" />
-                <Skeleton className="w-full h-24" />
-              </div>
-            ) : (
-              messages?.map((m) => (
-                <MessageComponent
-                  key={m._id}
-                  message={m}
-                  userId={convexUser._id}
-                />
-              ))
-            )}
-            <div className="h-22"></div>
-            <div id="bottom" ref={bottomRef}></div>
-          </ScrollArea>
-          {channel && (
-            <div className="absolute inset-x-0 bottom-0 bg-background z-20 px-4 pb-4">
-              <BottomScroll bottomRef={bottomRef} />
-              <MessageInput userId={convexUser._id} channel={channel._id} />
+      <div className="flex relative h-[calc(100vh+130px)] sm:h-[calc(100vh-46px)] md:h-[calc(100vh-72px)] overflow-visible md:pt-4 px-4 justify-end flex-col relative">
+        <ScrollArea className="flex-grow flex flex-col items-end overflow-auto px-4 overscroll-none">
+          {messages?.length === 0 && (
+            <div className="w-full h-full flex items-center justify-center">
+              <Alert className="max-w-sm">
+                <AlertDescription>No messages yet...</AlertDescription>
+              </Alert>
             </div>
           )}
-        </SignedIn>
+          {isLoading ? (
+            <div className="flex flex-col gap-2">
+              <Skeleton className="w-full h-24" />
+              <Skeleton className="w-full h-24" />
+              <Skeleton className="w-full h-24" />
+            </div>
+          ) : (
+            messages?.map((m) => (
+              <MessageComponent
+                key={m._id}
+                message={m}
+                userId={convexUser._id}
+              />
+            ))
+          )}
+          <div className="h-22"></div>
+          <div id="bottom" ref={bottomRef}></div>
+        </ScrollArea>
+        {channel && (
+          <div className="absolute inset-x-0 bottom-0 bg-background z-20 px-4 pb-4">
+            <BottomScroll bottomRef={bottomRef} />
+            <MessageInput userId={convexUser._id} channel={channel._id} />
+          </div>
+        )}
         <SignedOut>
           <Alert className="max-w-sm">
             <OctagonMinus color="red" />

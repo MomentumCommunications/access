@@ -1,6 +1,5 @@
 import { ShieldOff } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { SignInButton } from "@clerk/tanstack-react-start";
 import { Button } from "./ui/button";
 
 export function SignInPrompt() {
@@ -9,10 +8,9 @@ export function SignInPrompt() {
       <ShieldOff />
       <AlertTitle>Heads up!</AlertTitle>
       <AlertDescription>
-        More features available if you sign in, if it&apos;s your first time
-        click on the join waitlist button.
+        More features available if you sign up.
         <Button asChild className="w-min cursor-pointer">
-          <SignInButton />
+          <a href="/sign-up">Sign up</a>
         </Button>
       </AlertDescription>
     </Alert>

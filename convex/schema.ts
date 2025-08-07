@@ -48,7 +48,7 @@ export default defineSchema({
     edited: v.optional(v.boolean()),
   }).index("byChannel", ["channel"]),
   channels: defineTable({
-    name: v.string(),
+    name: v.optional(v.string()),
     description: v.string(),
     group: v.optional(v.id("groups")),
     isDM: v.boolean(),
@@ -57,13 +57,16 @@ export default defineSchema({
     users: v.optional(v.id("groupMembers")),
   })
     .index("byName", ["name"])
-    .index("byIsPrivate", ["isPrivate"]),
+    .index("byIsPrivate", ["isPrivate"])
+    .index("byIsPrivateNotDM", ["isPrivate", "isDM"])
+    .index("byIsDM", ["isDM"]),
   channelMembers: defineTable({
     channel: v.id("channels"),
     user: v.id("users"),
   })
     .index("byChannel", ["channel"])
-    .index("byUser", ["user"]),
+    .index("byUser", ["user"])
+    .index("byChannelUser", ["channel", "user"]),
   reactions: defineTable({
     thumbsUp: v.optional(v.id("users")),
     thumbsDown: v.optional(v.id("users")),

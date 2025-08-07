@@ -89,14 +89,12 @@ export function AdminBulletin() {
   const hideFunction = useMutation(api.bulletins.hideBulletin);
 
   const hideBulletin = (id: Id<"bulletin">) => {
-    console.log(id);
     hideFunction({ id });
   };
 
   const unhideFunction = useMutation(api.bulletins.unhideBulletin);
 
   const unhideBulletin = (id: Id<"bulletin">) => {
-    console.log(id);
     unhideFunction({ id });
   };
 

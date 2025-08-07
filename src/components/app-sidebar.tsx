@@ -1,8 +1,20 @@
-import { useUser } from "@clerk/tanstack-react-start";
+import {
+  SignedIn,
+  SignedOut,
+  SignIn,
+  useUser,
+} from "@clerk/tanstack-react-start";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
-import { ChevronsRight, ChevronUp, Hash, Home, Lock } from "lucide-react";
+import {
+  ChevronsRight,
+  ChevronUp,
+  Hash,
+  Home,
+  Lock,
+  MessageSquare,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +33,8 @@ import {
   CollapsibleTrigger,
 } from "./ui/collapsible";
 import { NewChannel } from "./new-channel";
+import { NewDm } from "./new-dm";
+import { channelNameOrFallback } from "~/lib/utils";
 
 export function AppSidebar() {
   const user = useUser();
@@ -37,6 +51,10 @@ export function AppSidebar() {
     useQuery(
       convexQuery(api.channels.getChannelsByUser, { user: convexUser?._id }),
     );
+
+  const { data: dms, isLoading: isDMsLoading } = useQuery(
+    convexQuery(api.channels.getDMsByUser, { user: convexUser?._id }),
+  );
 
   return (
     <Sidebar collapsible="icon">
@@ -61,49 +79,84 @@ export function AppSidebar() {
             </a>
           </SidebarMenuButton>
         </SidebarGroup>
-        <Collapsible defaultOpen className="group/collapsible">
+        <SignedIn>
+          <Collapsible defaultOpen className="group/collapsible">
+            <SidebarGroup>
+              <SidebarGroupLabel asChild>
+                <CollapsibleTrigger>
+                  Chat
+                  <ChevronUp className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                </CollapsibleTrigger>
+              </SidebarGroupLabel>
+              <CollapsibleContent>
+                {convexUser?.role === "admin" && (
+                  <NewChannel userId={convexUser._id} />
+                )}
+                {isPublicChannelsLoading ? (
+                  <SidebarMenuSkeleton />
+                ) : (
+                  publicChannels?.map((channel) => (
+                    <SidebarMenuButton asChild key={channel?._id}>
+                      <a href={`/channel/${channel?._id}`}>
+                        <Hash />
+                        <span>{channelNameOrFallback(channel?.name)}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  ))
+                )}
+                {isPrivateChannelsLoading ? (
+                  <>
+                    <SidebarMenuSkeleton />
+                    <SidebarMenuSkeleton />
+                    <SidebarMenuSkeleton />
+                  </>
+                ) : (
+                  privateChannels?.map((channel) => (
+                    <SidebarMenuButton asChild key={channel?._id}>
+                      <a href={`/channel/${channel?._id}`}>
+                        <Lock />
+                        <span>{channelNameOrFallback(channel?.name)}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  ))
+                )}
+              </CollapsibleContent>
+            </SidebarGroup>
+          </Collapsible>
+          <Collapsible defaultOpen className="group/collapsible">
+            <SidebarGroup>
+              <SidebarGroupLabel asChild>
+                <CollapsibleTrigger>
+                  Direct Messages
+                  <ChevronUp className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                </CollapsibleTrigger>
+              </SidebarGroupLabel>
+              <CollapsibleContent>
+                <NewDm userId={convexUser?._id} />
+                {isDMsLoading ? (
+                  <SidebarMenuSkeleton />
+                ) : (
+                  dms?.map((channel) => (
+                    <SidebarMenuButton asChild key={channel?._id}>
+                      <a href={`/dm/${channel?._id}`}>
+                        <MessageSquare />
+                        <span>{channel.otherMembers}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  ))
+                )}
+              </CollapsibleContent>
+            </SidebarGroup>
+          </Collapsible>
+        </SignedIn>
+        <SignedOut>
           <SidebarGroup>
-            <SidebarGroupLabel asChild>
-              <CollapsibleTrigger>
-                Chat
-                <ChevronUp className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-              </CollapsibleTrigger>
-            </SidebarGroupLabel>
-            <CollapsibleContent>
-              {convexUser?.role === "admin" && (
-                <NewChannel userId={convexUser._id} />
-              )}
-              {isPublicChannelsLoading ? (
-                <SidebarMenuSkeleton />
-              ) : (
-                publicChannels?.map((channel) => (
-                  <SidebarMenuButton asChild key={channel?._id}>
-                    <a href={`/channel/${channel?._id}`}>
-                      <Hash />
-                      <span>{channel?.name}</span>
-                    </a>
-                  </SidebarMenuButton>
-                ))
-              )}
-              {isPrivateChannelsLoading ? (
-                <>
-                  <SidebarMenuSkeleton />
-                  <SidebarMenuSkeleton />
-                  <SidebarMenuSkeleton />
-                </>
-              ) : (
-                privateChannels?.map((channel) => (
-                  <SidebarMenuButton asChild key={channel?._id}>
-                    <a href={`/channel/${channel?._id}`}>
-                      <Lock />
-                      <span>{channel?.name}</span>
-                    </a>
-                  </SidebarMenuButton>
-                ))
-              )}
-            </CollapsibleContent>
+            <SidebarGroupLabel>Chat</SidebarGroupLabel>
+            <SidebarMenuButton asChild>
+              <a href="/sign-in">Must be signed in to chat</a>
+            </SidebarMenuButton>
           </SidebarGroup>
-        </Collapsible>
+        </SignedOut>
       </SidebarContent>
       <SidebarFooter />
     </Sidebar>

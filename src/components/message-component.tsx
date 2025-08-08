@@ -9,7 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { ClipboardIcon, LinkIcon, MoreHorizontal, Trash2 } from "lucide-react";
+import { ClipboardIcon, LinkIcon, MoreHorizontal, Trash2, Check } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import { Separator } from "./ui/separator";
 import { EditMessage } from "./edit-message";
@@ -28,6 +28,8 @@ import {
 } from "./ui/alert-dialog";
 import { format } from "date-fns";
 import { Markdown } from "./markdown-wrapper";
+import { generateShareableMessageLink } from "~/lib/message-utils";
+import { useState, useCallback } from "react";
 
 type Message = {
   _id: Id<"messages">;
@@ -95,6 +97,18 @@ export function MessageComponent({
   channelId: Id<"channels">;
 }) {
   const isImage = message.format === "image";
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const handleCopyMessageLink = useCallback(async () => {
+    try {
+      const messageLink = generateShareableMessageLink(channelId, message._id);
+      await navigator.clipboard.writeText(messageLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000); // Reset after 2 seconds
+    } catch (error) {
+      console.error("Failed to copy message link:", error);
+    }
+  }, [channelId, message._id]);
 
   return (
     <div id={message._id} className="flex flex-col gap-2 align-bottom">
@@ -121,25 +135,15 @@ export function MessageComponent({
                       }
                     >
                       <ClipboardIcon />
-                      Copy
+                      Copy Text
                     </DropdownMenuItem>
                     <EditMessage message={message} userId={userId} />
                   </>
                 )}
-                {/* <DropdownMenuItem */}
-                {/*   onClick={() => */}
-                {/*     navigator.clipboard.writeText( */}
-                {/*       window.location.origin + */}
-                {/*         "/channel/" + */}
-                {/*         channelId + */}
-                {/*         "#" + */}
-                {/*         message._id, */}
-                {/*     ) */}
-                {/*   } */}
-                {/* > */}
-                {/*   <LinkIcon /> */}
-                {/*   <span>Copy Link</span> */}
-                {/* </DropdownMenuItem> */}
+                <DropdownMenuItem onClick={handleCopyMessageLink}>
+                  {linkCopied ? <Check className="w-4 h-4" /> : <LinkIcon />}
+                  <span>{linkCopied ? "Link Copied!" : "Copy Message Link"}</span>
+                </DropdownMenuItem>
                 <DeleteMessage message={message} userId={userId} />
               </DropdownMenuGroup>
             </DropdownMenuContent>

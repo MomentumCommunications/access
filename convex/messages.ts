@@ -44,8 +44,30 @@ export const getMessagesByChannel = query({
     const messages = await ctx.db
       .query("messages")
       .withIndex("byChannel", (q) => q.eq("channel", args.channel))
-      .collect();
-    return messages;
+      .order("desc")
+      .take(20);
+    return messages.reverse();
+  },
+});
+
+export const getOlderMessages = query({
+  args: {
+    channelId: v.id("channels"),
+    beforeId: v.optional(v.id("messages")),
+    limit: v.number(),
+  },
+  handler: async (ctx, args) => {
+    let q = ctx.db
+      .query("messages")
+      .withIndex("byChannel", (q) => q.eq("channel", args.channelId))
+      .order("desc");
+
+    if (args.beforeId) {
+      q = q.lt(q.field("_id"), args.beforeId);
+    }
+
+    const messages = await q.take(args.limit);
+    return messages.reverse(); // return oldest first
   },
 });
 

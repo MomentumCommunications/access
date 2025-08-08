@@ -12,6 +12,7 @@ import { api } from "convex/_generated/api";
 import { useMutation } from "convex/react";
 import { FormEvent, useRef, useState } from "react";
 import { Id } from "convex/_generated/dataModel";
+import { Input } from "./ui/input";
 
 export function ImageUpload({
   senderData,
@@ -70,8 +71,8 @@ export function ImageUpload({
           <DialogTitle>Upload Image</DialogTitle>
           <DialogDescription>Choose an image file to send.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSendImage} className="flex justify-between">
-          <input
+        <form onSubmit={handleSendImage} className="flex gap-2 justify-between">
+          <Input
             type="file"
             accept="image/*"
             ref={imageInput}

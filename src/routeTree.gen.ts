@@ -13,8 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChannelIndexRouteImport } from './routes/channel/index'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
-import { Route as DmDmRouteImport } from './routes/dm/$dm'
-import { Route as ChannelChannelRouteImport } from './routes/channel/$channel'
+import { Route as DmDmIdRouteImport } from './routes/dm/$dmId'
+import { Route as ChannelChannelIdRouteImport } from './routes/channel/$channelId'
 import { Route as ChannelGeneralIndexRouteImport } from './routes/channel/general/index'
 
 const IndexRoute = IndexRouteImport.update({
@@ -37,14 +37,14 @@ const SignInSplatRoute = SignInSplatRouteImport.update({
   path: '/sign-in/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DmDmRoute = DmDmRouteImport.update({
-  id: '/dm/$dm',
-  path: '/dm/$dm',
+const DmDmIdRoute = DmDmIdRouteImport.update({
+  id: '/dm/$dmId',
+  path: '/dm/$dmId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ChannelChannelRoute = ChannelChannelRouteImport.update({
-  id: '/channel/$channel',
-  path: '/channel/$channel',
+const ChannelChannelIdRoute = ChannelChannelIdRouteImport.update({
+  id: '/channel/$channelId',
+  path: '/channel/$channelId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChannelGeneralIndexRoute = ChannelGeneralIndexRouteImport.update({
@@ -55,8 +55,8 @@ const ChannelGeneralIndexRoute = ChannelGeneralIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/channel/$channel': typeof ChannelChannelRoute
-  '/dm/$dm': typeof DmDmRoute
+  '/channel/$channelId': typeof ChannelChannelIdRoute
+  '/dm/$dmId': typeof DmDmIdRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/channel': typeof ChannelIndexRoute
@@ -64,8 +64,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/channel/$channel': typeof ChannelChannelRoute
-  '/dm/$dm': typeof DmDmRoute
+  '/channel/$channelId': typeof ChannelChannelIdRoute
+  '/dm/$dmId': typeof DmDmIdRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/channel': typeof ChannelIndexRoute
@@ -74,8 +74,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/channel/$channel': typeof ChannelChannelRoute
-  '/dm/$dm': typeof DmDmRoute
+  '/channel/$channelId': typeof ChannelChannelIdRoute
+  '/dm/$dmId': typeof DmDmIdRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/channel/': typeof ChannelIndexRoute
@@ -85,8 +85,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/channel/$channel'
-    | '/dm/$dm'
+    | '/channel/$channelId'
+    | '/dm/$dmId'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/channel'
@@ -94,8 +94,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/channel/$channel'
-    | '/dm/$dm'
+    | '/channel/$channelId'
+    | '/dm/$dmId'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/channel'
@@ -103,8 +103,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/channel/$channel'
-    | '/dm/$dm'
+    | '/channel/$channelId'
+    | '/dm/$dmId'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/channel/'
@@ -113,8 +113,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ChannelChannelRoute: typeof ChannelChannelRoute
-  DmDmRoute: typeof DmDmRoute
+  ChannelChannelIdRoute: typeof ChannelChannelIdRoute
+  DmDmIdRoute: typeof DmDmIdRoute
   SignInSplatRoute: typeof SignInSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
   ChannelIndexRoute: typeof ChannelIndexRoute
@@ -151,18 +151,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dm/$dm': {
-      id: '/dm/$dm'
-      path: '/dm/$dm'
-      fullPath: '/dm/$dm'
-      preLoaderRoute: typeof DmDmRouteImport
+    '/dm/$dmId': {
+      id: '/dm/$dmId'
+      path: '/dm/$dmId'
+      fullPath: '/dm/$dmId'
+      preLoaderRoute: typeof DmDmIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/channel/$channel': {
-      id: '/channel/$channel'
-      path: '/channel/$channel'
-      fullPath: '/channel/$channel'
-      preLoaderRoute: typeof ChannelChannelRouteImport
+    '/channel/$channelId': {
+      id: '/channel/$channelId'
+      path: '/channel/$channelId'
+      fullPath: '/channel/$channelId'
+      preLoaderRoute: typeof ChannelChannelIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/channel/general/': {
@@ -177,8 +177,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ChannelChannelRoute: ChannelChannelRoute,
-  DmDmRoute: DmDmRoute,
+  ChannelChannelIdRoute: ChannelChannelIdRoute,
+  DmDmIdRoute: DmDmIdRoute,
   SignInSplatRoute: SignInSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
   ChannelIndexRoute: ChannelIndexRoute,

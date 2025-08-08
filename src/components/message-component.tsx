@@ -9,7 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { ClipboardIcon, MoreHorizontal, Trash2 } from "lucide-react";
+import { ClipboardIcon, LinkIcon, MoreHorizontal, Trash2 } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import { Separator } from "./ui/separator";
 import { EditMessage } from "./edit-message";
@@ -88,9 +88,11 @@ function DeleteMessage({
 export function MessageComponent({
   message,
   userId,
+  channelId,
 }: {
   message: Message;
   userId: Id<"users">;
+  channelId: Id<"channels">;
 }) {
   const isImage = message.format === "image";
 
@@ -124,6 +126,20 @@ export function MessageComponent({
                     <EditMessage message={message} userId={userId} />
                   </>
                 )}
+                {/* <DropdownMenuItem */}
+                {/*   onClick={() => */}
+                {/*     navigator.clipboard.writeText( */}
+                {/*       window.location.origin + */}
+                {/*         "/channel/" + */}
+                {/*         channelId + */}
+                {/*         "#" + */}
+                {/*         message._id, */}
+                {/*     ) */}
+                {/*   } */}
+                {/* > */}
+                {/*   <LinkIcon /> */}
+                {/*   <span>Copy Link</span> */}
+                {/* </DropdownMenuItem> */}
                 <DeleteMessage message={message} userId={userId} />
               </DropdownMenuGroup>
             </DropdownMenuContent>

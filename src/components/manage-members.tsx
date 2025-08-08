@@ -25,14 +25,7 @@ import { useQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
-import {
-  Calculator,
-  Calendar,
-  CreditCard,
-  Settings,
-  Smile,
-  User,
-} from "lucide-react";
+import { User } from "lucide-react";
 
 import {
   Command,

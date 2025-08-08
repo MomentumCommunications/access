@@ -1,26 +1,17 @@
-import { SignedIn, SignedOut, useUser } from "@clerk/tanstack-react-start";
+import { SignedOut, useUser } from "@clerk/tanstack-react-start";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
-import { Cog, OctagonMinus } from "lucide-react";
+import { OctagonMinus } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { BottomScroll } from "~/components/bottom-scroll";
 import { Header } from "~/components/header";
 import { MessageComponent } from "~/components/message-component";
 import { MessageInput } from "~/components/message-input";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { Button } from "~/components/ui/button";
 import { ScrollArea } from "~/components/ui/scroll-area";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
 import { Skeleton } from "~/components/ui/skeleton";
 import { SignInPrompt } from "~/components/sign-in-prompt";
 import { channelNameOrFallback } from "~/lib/utils";
@@ -29,7 +20,7 @@ const fetchMessages = (channel: string) => {
   return convexQuery(api.messages.getMessagesByChannel, { channel });
 };
 
-export const Route = createFileRoute("/dm/$dm")({
+export const Route = createFileRoute("/dm/$dmId")({
   component: RouteComponent,
 });
 
@@ -43,7 +34,7 @@ function RouteComponent() {
     convexQuery(api.users.getUserByClerkId, { ClerkId: user.user?.id }),
   );
 
-  const channelId = params.dm as Id<"channels">;
+  const channelId = params.dmId as Id<"channels">;
 
   const { data: channel } = useQuery(
     convexQuery(api.channels.getChannel, { id: channelId }),
@@ -125,6 +116,7 @@ function RouteComponent() {
             messages?.map((m) => (
               <MessageComponent
                 key={m._id}
+                channelId={channel._id}
                 message={m}
                 userId={convexUser._id}
               />

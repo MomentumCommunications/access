@@ -4,15 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
-import { Cog, OctagonMinus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { BottomScroll } from "~/components/bottom-scroll";
+import { Cog, DotIcon, Hash, LockIcon, OctagonMinus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Header } from "~/components/header";
-import { MessageComponent } from "~/components/message-component";
-import { MessageInput } from "~/components/message-input";
+import { ChatWindow } from "~/components/chat-window";
+import { ContextualChatWindow } from "~/components/contextual-chat-window";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
-import { ScrollArea } from "~/components/ui/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,46 +19,65 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { Skeleton } from "~/components/ui/skeleton";
 import { SignInPrompt } from "~/components/sign-in-prompt";
-import { channelNameOrFallback } from "~/lib/utils";
 import { DeleteChannelButton } from "~/components/channel-delete-button";
 import { ManageMembers } from "~/components/manage-members";
+import {
+  Message,
+  mergeMessages,
+  mergeOlderMessages,
+  mergeNewerMessages,
+  getOldestMessageTime,
+  areMessageArraysEqual,
+  BidirectionalPaginationState,
+} from "~/lib/message-utils";
+import { EditChannel } from "~/components/edit-channel";
 
 const fetchMessages = (channel: string) => {
   return convexQuery(api.messages.getMessagesByChannel, { channel });
 };
 
-type Message = {
-  _id: Id<"messages">;
-  _creationTime: number;
-  body: string;
-  date?: string;
-  author: Id<"users">;
-  image?: string;
-  format?: string;
-  channel: string;
-  reactions?: string;
-  edited?: boolean;
+const fetchMessageContext = (
+  messageId: Id<"messages">,
+  contextSize?: number,
+) => {
+  return convexQuery(api.messages.getMessageContext, {
+    messageId,
+    contextSize,
+  });
 };
 
 export const Route = createFileRoute("/channel/$channelId")({
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      messageId: search.messageId as string | undefined,
+    };
+  },
   component: RouteComponent,
 });
 
 function RouteComponent() {
   const params = Route.useParams();
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const bottomRef = useRef<HTMLDivElement | null>(null);
-
+  const search = Route.useSearch();
   const convex = useConvex();
   const user = useUser();
   const channelId = params.channelId as Id<"channels">;
+  const messageId = search.messageId as Id<"messages"> | undefined;
 
   // Queries (must be declared unconditionally)
   const { data: messages, isLoading: messagesLoading } = useQuery(
     fetchMessages(channelId),
   );
+
+  // Contextual message query (only when messageId is present)
+  const {
+    data: messageContext,
+    isLoading: contextLoading,
+    // error: contextError
+  } = useQuery({
+    ...fetchMessageContext(messageId as Id<"messages">, 15),
+    enabled: !!messageId,
+  });
 
   const { data: convexUser } = useQuery(
     convexQuery(api.users.getUserByClerkId, { ClerkId: user?.user?.id }),
@@ -74,91 +91,211 @@ function RouteComponent() {
     convexQuery(api.users.getUsersByChannel, { channel: channel?._id }),
   );
 
-  // Pagination state
+  // Regular pagination state
   const [messageArray, setMessages] = useState<Message[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  // Initialize messages once
+  // Contextual chat state (when messageId is provided)
+  const [contextualMessageArray, setContextualMessages] = useState<Message[]>(
+    [],
+  );
+  const [contextualPaginationState, setContextualPaginationState] =
+    useState<BidirectionalPaginationState>({
+      canLoadOlder: true,
+      canLoadNewer: true,
+      loadingOlder: false,
+      loadingNewer: false,
+      targetMessageId: messageId || ("" as Id<"messages">),
+      hasScrolledToTarget: false,
+    });
+
+  // Initialize contextual messages when messageContext loads
   useEffect(() => {
-    if (!messagesLoading && messages?.length) {
-      setMessages(messages);
-      scrollToBottom();
+    if (messageContext?.messages && messageId) {
+      console.log("Initializing contextual messages:", messageContext.messages);
+      setContextualMessages(messageContext.messages);
+      setContextualPaginationState((prev) => ({
+        ...prev,
+        targetMessageId: messageId as Id<"messages">,
+        hasScrolledToTarget: false,
+      }));
     }
-  }, [messages, messagesLoading]);
+  }, [messageContext, messageId]);
 
-  // Scroll to bottom
-  const scrollToBottom = () => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  // Properly merge messages from TanStack Query with chronological ordering
+  const orderedMessages = useMemo(() => {
+    if (!messages?.length) return [];
 
-  // Load older messages
-  const loadMore = async () => {
-    if (loading || !hasMore) return;
-    if (!channelId) return;
+    if (messageArray.length === 0) {
+      // Initial load - messages from DB are already sorted
+      return messages;
+    } else {
+      // Handle real-time updates - properly merge and sort
+      return mergeMessages(messageArray, messages);
+    }
+  }, [messages, messageArray]);
 
-    console.log("loading more");
+  // Update state only when messages actually change
+  useEffect(() => {
+    if (
+      orderedMessages.length > 0 &&
+      !areMessageArraysEqual(messageArray, orderedMessages)
+    ) {
+      setMessages(orderedMessages);
+    }
+  }, [orderedMessages, messageArray]);
 
-    const container = scrollContainerRef.current;
-    if (!container) return;
+  // Load older messages with proper chronological handling
+  const loadMore = useCallback(async () => {
+    if (loading || !hasMore || !channelId) return;
 
     setLoading(true);
+    const beforeTime = getOldestMessageTime(messageArray);
 
-    const beforeId = messageArray[0]?._id;
+    try {
+      const olderMessages = await convex.query(api.messages.getOlderMessages, {
+        channelId,
+        beforeTime,
+        limit: 20,
+      });
 
-    // Store scroll height before loading more
-    const prevScrollHeight = container.scrollHeight;
-
-    const olderMessages = await convex.query(api.messages.getOlderMessages, {
-      channelId,
-      beforeId,
-      limit: 20,
-    });
-
-    setMessages((prev) => [...olderMessages, ...prev]);
-    setHasMore(olderMessages.length === 20);
-    setLoading(false);
-
-    // Adjust scrollTop to maintain position after messages are prepended
-    requestAnimationFrame(() => {
-      const newScrollHeight = container.scrollHeight;
-      const heightDiff = newScrollHeight - prevScrollHeight;
-      container.scrollTop += heightDiff;
-    });
-  };
-
-  // Scroll event to trigger loadMore
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const handleScroll = () => {
-      if (container.scrollTop < 20 && !loading && hasMore) {
-        loadMore();
+      if (olderMessages.length > 0) {
+        // Use proper merge function to maintain chronological order
+        setMessages((prev) => mergeOlderMessages(prev, olderMessages));
       }
-    };
 
-    container.addEventListener("scroll", handleScroll);
-    return () => {
-      container.removeEventListener("scroll", handleScroll);
-    };
-  }, [loading, hasMore, messageArray]);
+      // Update hasMore based on whether we got a full page
+      setHasMore(olderMessages.length === 20);
+    } catch (error) {
+      console.error("Failed to load older messages:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [convex, channelId, messageArray, loading, hasMore]);
 
+  // Bidirectional pagination functions for contextual chat
+  const loadOlderContextualMessages = useCallback(async () => {
+    if (
+      contextualPaginationState.loadingOlder ||
+      !contextualPaginationState.canLoadOlder ||
+      !messageId
+    ) {
+      return;
+    }
+
+    setContextualPaginationState((prev) => ({ ...prev, loadingOlder: true }));
+
+    try {
+      // Find the oldest message in our current contextual array
+      const oldestMessage = contextualMessageArray[0];
+      if (!oldestMessage) return;
+
+      const olderMessages = await convex.query(
+        api.messages.getMessagesBeforeMessage,
+        {
+          messageId: oldestMessage._id,
+          limit: 15,
+        },
+      );
+
+      if (olderMessages.length > 0) {
+        setContextualMessages((prev) =>
+          mergeOlderMessages(prev, olderMessages),
+        );
+        setContextualPaginationState((prev) => ({
+          ...prev,
+          canLoadOlder: olderMessages.length === 15,
+        }));
+      } else {
+        setContextualPaginationState((prev) => ({
+          ...prev,
+          canLoadOlder: false,
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to load older contextual messages:", error);
+    } finally {
+      setContextualPaginationState((prev) => ({
+        ...prev,
+        loadingOlder: false,
+      }));
+    }
+  }, [
+    convex,
+    contextualMessageArray,
+    contextualPaginationState.loadingOlder,
+    contextualPaginationState.canLoadOlder,
+    messageId,
+  ]);
+
+  const loadNewerContextualMessages = useCallback(async () => {
+    if (
+      contextualPaginationState.loadingNewer ||
+      !contextualPaginationState.canLoadNewer ||
+      !messageId
+    ) {
+      return;
+    }
+
+    setContextualPaginationState((prev) => ({ ...prev, loadingNewer: true }));
+
+    try {
+      // Find the newest message in our current contextual array
+      const newestMessage =
+        contextualMessageArray[contextualMessageArray.length - 1];
+      if (!newestMessage) return;
+
+      const newerMessages = await convex.query(
+        api.messages.getMessagesAfterMessage,
+        {
+          messageId: newestMessage._id,
+          limit: 15,
+        },
+      );
+
+      if (newerMessages.length > 0) {
+        setContextualMessages((prev) =>
+          mergeNewerMessages(prev, newerMessages),
+        );
+        setContextualPaginationState((prev) => ({
+          ...prev,
+          canLoadNewer: newerMessages.length === 15,
+        }));
+      } else {
+        setContextualPaginationState((prev) => ({
+          ...prev,
+          canLoadNewer: false,
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to load newer contextual messages:", error);
+    } finally {
+      setContextualPaginationState((prev) => ({
+        ...prev,
+        loadingNewer: false,
+      }));
+    }
+  }, [
+    convex,
+    contextualMessageArray,
+    contextualPaginationState.loadingNewer,
+    contextualPaginationState.canLoadNewer,
+    messageId,
+  ]);
+
+  // Don't render anything while loading essential data
   if (!user || !convexUser || !channel) return null;
+
+  // Check if user has access to private channel
   if (
     channel?.isPrivate &&
     !channelMembers?.some((m) => m?._id === convexUser._id)
   ) {
     return (
       <>
-        <Header
-          currentPage={channelNameOrFallback(channel.name)}
-          breadcrumbs={[
-            { title: "Home", url: "/" },
-            { title: "Channel", url: "/Channel" },
-          ]}
-        />
-        <div className="w-full h-[calc(100vh-46px)] px-4 flex items-center justify-center">
+        <Header />
+        <div className="h-[calc(100vh-64px)] flex items-center justify-center px-4">
           <Alert className="max-w-sm">
             <OctagonMinus color="red" />
             <AlertTitle>Restricted</AlertTitle>
@@ -177,79 +314,104 @@ function RouteComponent() {
   }
 
   return (
-    <>
-      <Header
-        currentPage={channelNameOrFallback(channel.name)}
-        breadcrumbs={[
-          { title: "Home", url: "/" },
-          { title: "channel", url: "/channel" },
-        ]}
-      />
-      <div className="flex relative h-[calc(100vh+130px)] sm:h-[calc(100vh-46px)] md:h-[calc(100vh-64px)] overflow-visible md:pt-4 px-4 justify-end flex-col relative">
-        <SignedIn>
+    <div className="h-screen flex flex-col">
+      {/* Header */}
+      <Header />
+      <div className="flex align-middle flex-row py-2 px-4 justify-between">
+        <div className="flex flex-row gap-2 items-center align-middle">
+          {channel?.isPrivate ? (
+            <LockIcon color="#ce2128" />
+          ) : (
+            <Hash color="#ce2128" />
+          )}
+          <h1 className="text-2xl font-bold">{channel.name}</h1>
+          {channel.description && (
+            <div className="pt-1 flex flex-row gap-2 align-middle items-center">
+              <DotIcon className="text-muted-foreground" />
+              <p className="text-xs align-bottom text-muted-foreground">
+                {channel.description}
+              </p>
+            </div>
+          )}
+        </div>
+        {/* Channel Settings Dropdown */}
+        {convexUser?.role === "admin" && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="absolute -top-4 right-4 z-10">
-                <Cog />
+              <Button
+                variant="ghost"
+                size="icon"
+                className=" bg-background/80 backdrop-blur-sm hover:bg-background/90 transition-colors"
+              >
+                <Cog className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent align="end">
               <DropdownMenuLabel>Channel Settings</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Edit</DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <ManageMembers channelId={channel._id} />
+                <EditChannel channel={channel} />
               </DropdownMenuItem>
+              {channel?.isPrivate && (
+                <DropdownMenuItem asChild>
+                  <ManageMembers channelId={channel._id} />
+                </DropdownMenuItem>
+              )}
               <DeleteChannelButton channelId={channel._id} />
             </DropdownMenuContent>
           </DropdownMenu>
-          <ScrollArea
-            ref={scrollContainerRef}
-            className="flex-grow flex flex-col items-end overflow-auto px-4 overscroll-none"
-          >
-            {messages?.length === 0 && (
-              <div className="w-full h-full flex items-center justify-center">
-                <Alert className="max-w-sm">
-                  <AlertDescription>No messages yet...</AlertDescription>
-                </Alert>
-              </div>
-            )}
-            {messagesLoading ? (
-              <div className="flex flex-col gap-2">
-                <Skeleton className="w-full h-24" />
-                <Skeleton className="w-full h-24" />
-                <Skeleton className="w-full h-24" />
-              </div>
-            ) : (
-              messages?.map((m) => (
-                <MessageComponent
-                  key={m._id}
-                  message={m}
-                  userId={convexUser._id}
-                  channelId={channel._id}
-                />
-              ))
-            )}
-            <div className="h-22"></div>
-            <div id="bottom" ref={bottomRef}></div>
-          </ScrollArea>
-          {channel && (
-            <div className="absolute inset-x-0 bottom-0 bg-background z-20 px-4 pb-4">
-              <BottomScroll bottomRef={bottomRef} />
-              <MessageInput userId={convexUser._id} channel={channel._id} />
-            </div>
+        )}
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 px-0 md:px-2 min-h-0 w-full relative">
+        <SignedIn>
+          {/* Chat Window - Conditional rendering based on messageId */}
+          {messageId ? (
+            <ContextualChatWindow
+              messages={contextualMessageArray}
+              onLoadOlder={loadOlderContextualMessages}
+              onLoadNewer={loadNewerContextualMessages}
+              loadingOlder={contextualPaginationState.loadingOlder}
+              loadingNewer={contextualPaginationState.loadingNewer}
+              hasMoreOlder={contextualPaginationState.canLoadOlder}
+              hasMoreNewer={contextualPaginationState.canLoadNewer}
+              userId={convexUser._id}
+              channelId={channel._id}
+              targetMessageId={messageId as Id<"messages">}
+              isLoading={contextLoading}
+              className="h-full w-full"
+              channel={channel}
+            />
+          ) : (
+            <ChatWindow
+              messages={messageArray}
+              onLoadMore={loadMore}
+              loading={loading}
+              hasMore={hasMore}
+              userId={convexUser._id}
+              channelId={channel._id}
+              isLoading={messagesLoading}
+              className="h-full w-full"
+              channel={channel}
+            />
           )}
         </SignedIn>
+
         <SignedOut>
-          <Alert className="max-w-sm">
-            <OctagonMinus color="red" />
-            <AlertDescription>
-              You must be signed in to view this channel.
-            </AlertDescription>
-          </Alert>
-          <SignInPrompt />
+          <div className="h-full flex items-center justify-center px-4">
+            <div className="text-center space-y-4">
+              <Alert className="max-w-sm">
+                <OctagonMinus color="red" />
+                <AlertDescription>
+                  You must be signed in to view this channel.
+                </AlertDescription>
+              </Alert>
+              <SignInPrompt />
+            </div>
+          </div>
         </SignedOut>
       </div>
-    </>
+    </div>
   );
 }

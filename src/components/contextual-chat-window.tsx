@@ -8,7 +8,7 @@ import { Skeleton } from "./ui/skeleton";
 import { Alert, AlertDescription } from "./ui/alert";
 import { cn } from "~/lib/utils";
 import { Message } from "~/lib/message-utils";
-import { ChevronUp, ChevronDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ChevronUp, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "./ui/button";
 
 interface ContextualChatWindowProps {
@@ -24,6 +24,7 @@ interface ContextualChatWindowProps {
   targetMessageId: Id<"messages">;
   isLoading: boolean;
   className?: string;
+  channel?: { isDM: boolean };
 }
 
 export function ContextualChatWindow({
@@ -39,40 +40,132 @@ export function ContextualChatWindow({
   targetMessageId,
   isLoading,
   className,
+  channel,
 }: ContextualChatWindowProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const targetMessageRef = useRef<HTMLDivElement | null>(null);
   const [shouldShowScrollButton, setShouldShowScrollButton] = useState(false);
   const [hasScrolledToTarget, setHasScrolledToTarget] = useState(false);
+  const [lastTargetMessageId, setLastTargetMessageId] =
+    useState<Id<"messages"> | null>(null);
   const [showLoadMoreButtons, setShowLoadMoreButtons] = useState(false);
+  const [hasNewMessages, setHasNewMessages] = useState(false);
+  const [lastSeenMessageCount, setLastSeenMessageCount] = useState(0);
+
+  console.log("ContextualChatWindow messages:", messages);
 
   // Find the target message index
-  const targetMessageIndex = messages.findIndex(msg => msg._id === targetMessageId);
+  const targetMessageIndex = messages.findIndex(
+    (msg) => msg._id === targetMessageId,
+  );
   const hasTargetMessage = targetMessageIndex !== -1;
 
-  // Scroll to target message on initial load
-  const scrollToTargetMessage = useCallback((behavior: ScrollBehavior = "smooth") => {
-    if (targetMessageRef.current && !hasScrolledToTarget) {
-      targetMessageRef.current.scrollIntoView({ 
-        behavior, 
-        block: "center" // Center the message in the viewport
+  // Position target message in center immediately
+  const scrollToTargetMessage = useCallback(
+    (behavior: ScrollBehavior = "smooth") => {
+      console.log("scrollToTargetMessage called:", {
+        hasTargetRef: !!targetMessageRef.current,
+        behavior,
+        targetMessageId,
       });
-      setHasScrolledToTarget(true);
-    }
-  }, [hasScrolledToTarget]);
 
-  // Auto-scroll to target when messages load initially
+      if (targetMessageRef.current) {
+        // Simple and direct: use scrollIntoView to center the message
+        targetMessageRef.current.scrollIntoView({
+          behavior,
+          block: "center",
+          inline: "nearest",
+        });
+
+        setHasScrolledToTarget(true);
+        console.log("Target message positioned in center");
+      }
+    },
+    [targetMessageId],
+  );
+
+  // Reset scroll state when target message changes
   useEffect(() => {
-    if (!isLoading && hasTargetMessage && !hasScrolledToTarget) {
-      // Small delay to ensure DOM has rendered
-      setTimeout(() => {
-        scrollToTargetMessage("smooth");
-      }, 100);
+    if (targetMessageId !== lastTargetMessageId) {
+      console.log("Target message changed, resetting scroll state:", {
+        oldTarget: lastTargetMessageId,
+        newTarget: targetMessageId,
+      });
+      setHasScrolledToTarget(false);
+      setLastTargetMessageId(targetMessageId);
     }
-  }, [isLoading, hasTargetMessage, hasScrolledToTarget, scrollToTargetMessage]);
+  }, [targetMessageId, lastTargetMessageId]);
 
-  // Check scroll position and show/hide load more buttons
+  // Scroll to bottom function for new messages
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    bottomRef.current?.scrollIntoView({ behavior });
+    // Clear new messages notification when user scrolls to bottom
+    setHasNewMessages(false);
+    setLastSeenMessageCount(messages.length);
+  }, [messages.length]);
+
+  // Handle new messages - show notification if user isn't at bottom
+  useEffect(() => {
+    if (messages.length > lastSeenMessageCount && lastSeenMessageCount > 0) {
+      // New messages have arrived, check if user is at bottom
+      const container = scrollContainerRef.current;
+      if (container) {
+        const scrollViewport = container.querySelector(
+          "[data-radix-scroll-area-viewport]",
+        ) as HTMLElement;
+        
+        if (scrollViewport) {
+          const isNearBottom = 
+            scrollViewport.scrollTop + scrollViewport.clientHeight >= 
+            scrollViewport.scrollHeight - 100;
+          
+          if (!isNearBottom) {
+            // User is scrolled up, show notification
+            setHasNewMessages(true);
+          } else {
+            // User is at bottom, update count without notification
+            setLastSeenMessageCount(messages.length);
+          }
+        }
+      }
+    }
+  }, [messages.length, lastSeenMessageCount]);
+
+  // Initialize message count when messages first load
+  useEffect(() => {
+    if (messages.length > 0 && lastSeenMessageCount === 0) {
+      setLastSeenMessageCount(messages.length);
+    }
+  }, [messages.length, lastSeenMessageCount]);
+
+  // Position target message in center immediately on initial load
+  useEffect(() => {
+    console.log("Initial positioning effect triggered:", {
+      isLoading,
+      hasTargetMessage,
+      hasScrolledToTarget,
+      messagesLength: messages.length,
+      targetMessageIndex,
+    });
+
+    if (!isLoading && hasTargetMessage && !hasScrolledToTarget) {
+      console.log("Positioning target message in center immediately");
+
+      // Small delay to ensure DOM is fully rendered, then position instantly
+      setTimeout(() => {
+        scrollToTargetMessage("auto");
+      }, 50);
+    }
+  }, [
+    isLoading,
+    hasTargetMessage,
+    hasScrolledToTarget,
+    scrollToTargetMessage,
+    messages.length,
+  ]);
+
+  // Check scroll position and handle auto-loading with scroll preservation
   const checkScrollPosition = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container) return false;
@@ -92,23 +185,49 @@ export function ContextualChatWindow({
     const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
 
     // Show scroll to bottom button
-    setShouldShowScrollButton(
-      !isNearBottom && scrollHeight > clientHeight,
-    );
+    setShouldShowScrollButton(!isNearBottom && scrollHeight > clientHeight);
 
     // Show load more buttons when scrolled
     setShowLoadMoreButtons(scrollHeight > clientHeight);
 
-    // Auto-load when reaching extremes (but only if not already loading)
-    if (isAtTop && !loadingOlder && hasMoreOlder) {
-      onLoadOlder();
+    // Clear new messages notification if user scrolls to bottom
+    if (isNearBottom && hasNewMessages) {
+      setHasNewMessages(false);
+      setLastSeenMessageCount(messages.length);
     }
+
+    // Auto-load older messages when at top (with scroll preservation)
+    if (isAtTop && !loadingOlder && hasMoreOlder) {
+      // Store current scroll position before loading
+      const prevScrollHeight = scrollViewport.scrollHeight;
+      const prevScrollTop = scrollViewport.scrollTop;
+
+      onLoadOlder().then(() => {
+        // Restore scroll position after messages load
+        requestAnimationFrame(() => {
+          const newScrollHeight = scrollViewport.scrollHeight;
+          const heightDiff = newScrollHeight - prevScrollHeight;
+          scrollViewport.scrollTop = prevScrollTop + heightDiff;
+        });
+      });
+    }
+
+    // Auto-load newer messages when at bottom (no scroll preservation needed)
     if (isAtBottom && !loadingNewer && hasMoreNewer) {
       onLoadNewer();
     }
 
     return isNearBottom;
-  }, [loadingOlder, loadingNewer, hasMoreOlder, hasMoreNewer, onLoadOlder, onLoadNewer]);
+  }, [
+    loadingOlder,
+    loadingNewer,
+    hasMoreOlder,
+    hasMoreNewer,
+    onLoadOlder,
+    onLoadNewer,
+    hasNewMessages,
+    messages.length,
+  ]);
 
   // Handle scroll events
   useEffect(() => {
@@ -125,7 +244,7 @@ export function ContextualChatWindow({
     };
 
     scrollViewport.addEventListener("scroll", handleScroll, { passive: true });
-    
+
     // Initial check
     setTimeout(checkScrollPosition, 100);
 
@@ -135,23 +254,23 @@ export function ContextualChatWindow({
   }, [checkScrollPosition]);
 
   // Scroll to bottom function
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    bottomRef.current?.scrollIntoView({ behavior });
-  }, []);
+  // const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+  //   bottomRef.current?.scrollIntoView({ behavior });
+  // }, []);
 
-  // Manual load functions with scroll preservation
+  // Manual load functions
   const handleLoadOlder = useCallback(async () => {
     if (loadingOlder || !hasMoreOlder) return;
-    
+
     const container = scrollContainerRef.current;
     if (!container) return;
-    
+
     const scrollViewport = container.querySelector(
       "[data-radix-scroll-area-viewport]",
     ) as HTMLElement;
     if (!scrollViewport) return;
 
-    // Store current scroll position
+    // Store current scroll position for manual loads too
     const prevScrollHeight = scrollViewport.scrollHeight;
     const prevScrollTop = scrollViewport.scrollTop;
 
@@ -239,8 +358,8 @@ export function ContextualChatWindow({
               </div>
             )}
 
-            {/* Messages */}
-            {messages.map((message, index) => {
+            {/* Messages, there was an unused index varible that may be useful one day */}
+            {messages.map((message) => {
               const isTargetMessage = message._id === targetMessageId;
               return (
                 <div
@@ -256,7 +375,7 @@ export function ContextualChatWindow({
                       "before:rounded-lg before:border before:border-yellow-300/30",
                       "before:shadow-sm",
                       "p-2 -m-2", // Add padding to highlight area
-                    ]
+                    ],
                   )}
                   style={{
                     scrollMarginTop: "80px", // Ensure proper scroll positioning
@@ -266,6 +385,7 @@ export function ContextualChatWindow({
                     message={message}
                     userId={userId}
                     channelId={channelId as Id<"channels">}
+                    channel={channel}
                   />
                 </div>
               );
@@ -313,8 +433,10 @@ export function ContextualChatWindow({
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => scrollToTargetMessage("smooth")}
-              className="bg-yellow-100 hover:bg-yellow-200 dark:bg-yellow-900/20 dark:hover:bg-yellow-800/30 text-yellow-800 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700 text-xs gap-1 shadow-sm"
+              onClick={() => {
+                // Scroll to target with smooth animation
+                scrollToTargetMessage("smooth");
+              }}
             >
               <ChevronUp className="w-3 h-3" />
               Go to linked message
@@ -322,8 +444,22 @@ export function ContextualChatWindow({
           )}
         </div>
 
+        {/* Jump to new messages button */}
+        {hasNewMessages && (
+          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10">
+            <Button
+              onClick={() => scrollToBottom("smooth")}
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg border-0 text-sm px-4 py-2 h-auto"
+              size="sm"
+            >
+              <ArrowDown className="w-4 h-4 mr-2" />
+              Jump to new messages
+            </Button>
+          </div>
+        )}
+
         {/* Scroll to bottom button */}
-        {shouldShowScrollButton && (
+        {shouldShowScrollButton && !hasNewMessages && (
           <div className="absolute bottom-0 right-4 z-10">
             <BottomScroll bottomRef={bottomRef} />
           </div>

@@ -53,6 +53,32 @@ export const getMessagesByChannel = query({
   },
 });
 
+export const getMessagesByUserAccessability = query({
+  args: { user: v.optional(v.id("users")) },
+  handler: async (ctx, { user }) => {
+    if (!user) {
+      return [];
+    }
+
+    const channelMembers = await ctx.db
+      .query("channelMembers")
+      .withIndex("byUser", (q) => q.eq("user", user))
+      .collect();
+
+    const messages = await Promise.all(
+      channelMembers.map(async (cm) => {
+        const messagesByChannel = await ctx.db
+          .query("messages")
+          .withIndex("byChannel", (q) => q.eq("channel", cm.channel))
+          .collect();
+        return messagesByChannel;
+      }),
+    );
+
+    return messages.flat();
+  },
+});
+
 export const getOlderMessages = query({
   args: {
     channelId: v.id("channels"),
@@ -71,7 +97,6 @@ export const getOlderMessages = query({
     }
 
     const messages = await q.take(args.limit);
-    // Return in chronological order (oldest first for UI display)
     return messages.reverse();
   },
 });
@@ -113,46 +138,57 @@ export const deleteMessage = mutation({
 });
 
 // New queries for message linking functionality
+export const getMessageById = query({
+  args: { messageId: v.id("messages") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.messageId);
+  },
+});
+
 export const getMessageContext = query({
-  args: { 
-    messageId: v.id("messages"), 
-    contextSize: v.optional(v.number()) 
+  args: {
+    messageId: v.id("messages"),
+    contextSize: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const contextSize = args.contextSize || 10;
 
-    // Get the target message first
+    // First get the target message to find its channel and creation time
     const targetMessage = await ctx.db.get(args.messageId);
-    if (!targetMessage) return null;
+    if (!targetMessage) {
+      return { messages: [], targetMessageIndex: -1 };
+    }
 
-    // Get messages before the target message
+    // Get messages before the target
     const messagesBefore = await ctx.db
       .query("messages")
       .withIndex("byChannel", (q) => q.eq("channel", targetMessage.channel))
-      .filter((q) => q.lt(q.field("_creationTime"), targetMessage._creationTime))
+      .filter((q) =>
+        q.lt(q.field("_creationTime"), targetMessage._creationTime),
+      )
       .order("desc")
       .take(contextSize);
 
-    // Get messages after the target message
+    // Get messages after the target
     const messagesAfter = await ctx.db
       .query("messages")
       .withIndex("byChannel", (q) => q.eq("channel", targetMessage.channel))
-      .filter((q) => q.gt(q.field("_creationTime"), targetMessage._creationTime))
+      .filter((q) =>
+        q.gt(q.field("_creationTime"), targetMessage._creationTime),
+      )
       .order("asc")
       .take(contextSize);
 
-    // Combine and sort all messages chronologically
+    // Combine all messages in chronological order
     const allMessages = [
-      ...messagesBefore.reverse(), // Reverse because we got them in desc order
+      ...messagesBefore.reverse(), // Reverse to get chronological order
       targetMessage,
-      ...messagesAfter
+      ...messagesAfter,
     ];
 
     return {
       messages: allMessages,
-      targetMessageId: targetMessage._id,
-      targetMessageIndex: messagesBefore.length, // Index of target in the array
-      channelId: targetMessage.channel
+      targetMessageIndex: messagesBefore.length, // Index of target message in array
     };
   },
 });
@@ -163,20 +199,23 @@ export const getMessagesBeforeMessage = query({
     limit: v.number(),
   },
   handler: async (ctx, args) => {
-    // Get the reference message to get its timestamp and channel
+    // Get the reference message first
     const referenceMessage = await ctx.db.get(args.messageId);
-    if (!referenceMessage) return [];
+    if (!referenceMessage) {
+      return [];
+    }
 
     // Get messages before the reference message
     const messages = await ctx.db
       .query("messages")
       .withIndex("byChannel", (q) => q.eq("channel", referenceMessage.channel))
-      .filter((q) => q.lt(q.field("_creationTime"), referenceMessage._creationTime))
+      .filter((q) =>
+        q.lt(q.field("_creationTime"), referenceMessage._creationTime),
+      )
       .order("desc")
       .take(args.limit);
 
-    // Return in chronological order (oldest first for UI display)
-    return messages.reverse();
+    return messages.reverse(); // Return in chronological order
   },
 });
 
@@ -186,26 +225,23 @@ export const getMessagesAfterMessage = query({
     limit: v.number(),
   },
   handler: async (ctx, args) => {
-    // Get the reference message to get its timestamp and channel
+    // Get the reference message first
     const referenceMessage = await ctx.db.get(args.messageId);
-    if (!referenceMessage) return [];
+    if (!referenceMessage) {
+      return [];
+    }
 
     // Get messages after the reference message
     const messages = await ctx.db
       .query("messages")
       .withIndex("byChannel", (q) => q.eq("channel", referenceMessage.channel))
-      .filter((q) => q.gt(q.field("_creationTime"), referenceMessage._creationTime))
+      .filter((q) =>
+        q.gt(q.field("_creationTime"), referenceMessage._creationTime),
+      )
       .order("asc")
       .take(args.limit);
 
-    // Already in chronological order
-    return messages;
+    return messages; // Already in chronological order
   },
 });
 
-export const getMessageById = query({
-  args: { messageId: v.id("messages") },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.messageId);
-  },
-});

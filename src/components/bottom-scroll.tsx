@@ -3,15 +3,15 @@ import { ArrowDown } from "lucide-react";
 export function BottomScroll({
   bottomRef,
 }: {
-  bottomRef: React.RefObject<HTMLDivElement> | undefined;
+  bottomRef: React.RefObject<HTMLDivElement> | null;
 }) {
-  if (!bottomRef) return null;
+  if (bottomRef === null) return;
   return (
     <button
       onClick={() => bottomRef.current?.scrollIntoView()}
-      className="bg-slate-900 hover:bg-slate-800 animate-[bounce_3s] duration-300 p-2 aspect-square rounded-full absolute bottom-28 right-4"
+      className="bg-muted hover:bg-slate-800 duration-300 p-2 aspect-square rounded-full absolute bottom-8 right-4"
     >
-      <ArrowDown color="white" />
+      <ArrowDown />
     </button>
   );
 }

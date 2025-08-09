@@ -9,9 +9,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { ClipboardIcon, LinkIcon, MoreHorizontal, Trash2, Check } from "lucide-react";
+import {
+  ClipboardIcon,
+  LinkIcon,
+  MoreHorizontal,
+  Trash2,
+  Check,
+} from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
-import { Separator } from "./ui/separator";
 import { EditMessage } from "./edit-message";
 import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
@@ -30,6 +35,7 @@ import { format } from "date-fns";
 import { Markdown } from "./markdown-wrapper";
 import { generateShareableMessageLink } from "~/lib/message-utils";
 import { useState, useCallback } from "react";
+import { useConvexQuery } from "@convex-dev/react-query";
 
 type Message = {
   _id: Id<"messages">;
@@ -44,13 +50,7 @@ type Message = {
   edited?: boolean;
 };
 
-function DeleteMessage({
-  message,
-  userId,
-}: {
-  message: Message;
-  userId: Id<"users">;
-}) {
+function DeleteMessage({ message }: { message: Message; userId: Id<"users"> }) {
   const deleteFunction = useMutation(api.messages.deleteMessage);
 
   const deleteMessage = () => {
@@ -61,7 +61,6 @@ function DeleteMessage({
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button
-          disabled={message.author !== userId}
           variant="ghost"
           className="px-0 size-8 has-[>svg]:px-2 mx-0 w-full justify-start"
         >
@@ -91,27 +90,40 @@ export function MessageComponent({
   message,
   userId,
   channelId,
+  channel,
 }: {
   message: Message;
   userId: Id<"users">;
   channelId: Id<"channels">;
+  channel?: { isDM: boolean };
 }) {
   const isImage = message.format === "image";
   const [linkCopied, setLinkCopied] = useState(false);
 
+  const user = useConvexQuery(api.users.getUserById, {
+    id: userId,
+  });
+
   const handleCopyMessageLink = useCallback(async () => {
     try {
-      const messageLink = generateShareableMessageLink(channelId, message._id);
+      const isDM = channel?.isDM ?? false;
+      const messageLink = generateShareableMessageLink(
+        channelId,
+        message._id,
+        isDM,
+      );
       await navigator.clipboard.writeText(messageLink);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000); // Reset after 2 seconds
     } catch (error) {
       console.error("Failed to copy message link:", error);
     }
-  }, [channelId, message._id]);
+  }, [channelId, message._id, channel?.isDM]);
+
+  const isAuthorOrAdmin = message.author === userId || user?.role === "admin";
 
   return (
-    <div id={message._id} className="flex flex-col gap-2 align-bottom">
+    <div id={message._id} className="flex py-2 flex-col gap-2 align-bottom">
       <div className="flex flex-row justify-between">
         <AuthorInfo author={message.author} />
         <div className="flex flex-row gap-2">
@@ -137,14 +149,20 @@ export function MessageComponent({
                       <ClipboardIcon />
                       Copy Text
                     </DropdownMenuItem>
-                    <EditMessage message={message} userId={userId} />
+                    {message.author === userId && (
+                      <EditMessage message={message} userId={userId} />
+                    )}
                   </>
                 )}
                 <DropdownMenuItem onClick={handleCopyMessageLink}>
                   {linkCopied ? <Check className="w-4 h-4" /> : <LinkIcon />}
-                  <span>{linkCopied ? "Link Copied!" : "Copy Message Link"}</span>
+                  <span>
+                    {linkCopied ? "Link Copied!" : "Copy Message Link"}
+                  </span>
                 </DropdownMenuItem>
-                <DeleteMessage message={message} userId={userId} />
+                {isAuthorOrAdmin && (
+                  <DeleteMessage message={message} userId={userId} />
+                )}
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -153,7 +171,7 @@ export function MessageComponent({
           </p>
         </div>
       </div>
-      <div className="prose prose-list:marker:text-primary text-sm whitespace-pre-wrap list-disc">
+      <div className="text-sm whitespace-pre-wrap pl-10">
         {isImage ? (
           <ImageComponent storageId={message.body as Id<"_storage">} />
         ) : (
@@ -165,7 +183,6 @@ export function MessageComponent({
           </div>
         )}
       </div>
-      <Separator className="my-2" />
     </div>
   );
 }

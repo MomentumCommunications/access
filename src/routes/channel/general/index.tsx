@@ -31,6 +31,11 @@ function RouteComponent() {
     convexQuery(api.messages.getGeneralMessages, {}),
   );
 
+  const { data: channel } = useQuery({
+    ...convexQuery(api.channels.getChannel, { id: channelId! }),
+    enabled: !!channelId,
+  });
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,6 +81,8 @@ function RouteComponent() {
                   key={m._id}
                   message={m}
                   userId={convexUser._id}
+                  channelId={channelId!}
+                  channel={channel}
                 />
               ))
             )}

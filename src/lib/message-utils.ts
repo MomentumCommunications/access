@@ -26,7 +26,7 @@ export function sortMessagesByTime(messages: Message[]): Message[] {
  */
 export function deduplicateMessages(messages: Message[]): Message[] {
   const seen = new Set<string>();
-  return messages.filter(message => {
+  return messages.filter((message) => {
     if (seen.has(message._id)) {
       return false;
     }
@@ -41,14 +41,14 @@ export function deduplicateMessages(messages: Message[]): Message[] {
  */
 export function mergeMessages(
   existingMessages: Message[],
-  newMessages: Message[]
+  newMessages: Message[],
 ): Message[] {
   // Combine all messages
   const allMessages = [...existingMessages, ...newMessages];
-  
+
   // Remove duplicates
   const uniqueMessages = deduplicateMessages(allMessages);
-  
+
   // Sort chronologically
   return sortMessagesByTime(uniqueMessages);
 }
@@ -59,14 +59,14 @@ export function mergeMessages(
  */
 export function mergeOlderMessages(
   existingMessages: Message[],
-  olderMessages: Message[]
+  olderMessages: Message[],
 ): Message[] {
   // Combine messages (older first, then existing)
   const allMessages = [...olderMessages, ...existingMessages];
-  
+
   // Remove duplicates
   const uniqueMessages = deduplicateMessages(allMessages);
-  
+
   // Sort chronologically to ensure perfect order
   return sortMessagesByTime(uniqueMessages);
 }
@@ -76,8 +76,8 @@ export function mergeOlderMessages(
  */
 export function getOldestMessageTime(messages: Message[]): number | undefined {
   if (messages.length === 0) return undefined;
-  
-  return Math.min(...messages.map(m => m._creationTime));
+
+  return Math.min(...messages.map((m) => m._creationTime));
 }
 
 /**
@@ -86,13 +86,13 @@ export function getOldestMessageTime(messages: Message[]): number | undefined {
  */
 export function areMessageArraysEqual(a: Message[], b: Message[]): boolean {
   if (a.length !== b.length) return false;
-  
+
   for (let i = 0; i < a.length; i++) {
     if (a[i]._id !== b[i]._id || a[i]._creationTime !== b[i]._creationTime) {
       return false;
     }
   }
-  
+
   return true;
 }
 
@@ -102,14 +102,14 @@ export function areMessageArraysEqual(a: Message[], b: Message[]): boolean {
  */
 export function mergeNewerMessages(
   existingMessages: Message[],
-  newerMessages: Message[]
+  newerMessages: Message[],
 ): Message[] {
   // Combine messages (existing first, then newer)
   const allMessages = [...existingMessages, ...newerMessages];
-  
+
   // Remove duplicates
   const uniqueMessages = deduplicateMessages(allMessages);
-  
+
   // Sort chronologically to ensure perfect order
   return sortMessagesByTime(uniqueMessages);
 }
@@ -119,8 +119,8 @@ export function mergeNewerMessages(
  */
 export function getNewestMessageTime(messages: Message[]): number | undefined {
   if (messages.length === 0) return undefined;
-  
-  return Math.max(...messages.map(m => m._creationTime));
+
+  return Math.max(...messages.map((m) => m._creationTime));
 }
 
 /**
@@ -148,33 +148,54 @@ export interface BidirectionalPaginationState {
 /**
  * Generates a message link URL for the given channel and message
  */
-export function generateMessageLink(channelId: string, messageId: Id<"messages">): string {
-  return `/channel/${channelId}/${messageId}`;
+export function generateMessageLink(
+  channelId: string,
+  messageId: Id<"messages">,
+  isDM: boolean = false,
+): string {
+  const route = isDM ? "dm" : "channel";
+  return `/${route}/${channelId}?messageId=${messageId}`;
 }
 
 /**
  * Generates a shareable message link URL (for external sharing)
  */
-export function generateShareableMessageLink(channelId: string, messageId: Id<"messages">, baseUrl?: string): string {
-  const path = generateMessageLink(channelId, messageId);
-  return baseUrl ? `${baseUrl}${path}` : `${window?.location?.origin || ''}${path}`;
+export function generateShareableMessageLink(
+  channelId: string,
+  messageId: Id<"messages">,
+  isDM: boolean = false,
+  baseUrl?: string,
+): string {
+  const path = generateMessageLink(channelId, messageId, isDM);
+  return baseUrl
+    ? `${baseUrl}${path}`
+    : `${window?.location?.origin || ""}${path}`;
 }
 
 /**
- * Extracts message and channel IDs from a message link URL
+ * Extracts message and channel IDs from a message link URL with query parameters
  */
-export function parseMessageLink(url: string): { channelId?: string; messageId?: Id<"messages"> } | null {
+export function parseMessageLink(
+  url: string,
+): { channelId?: string; messageId?: Id<"messages">; isDM?: boolean } | null {
   try {
     const urlObj = new URL(url, window?.location?.origin);
-    const pathParts = urlObj.pathname.split('/').filter(Boolean);
-    
-    if (pathParts[0] === 'channel' && pathParts.length >= 3) {
-      return {
-        channelId: pathParts[1],
-        messageId: pathParts[2] as Id<"messages">
-      };
+    const pathParts = urlObj.pathname.split("/").filter(Boolean);
+
+    if (
+      (pathParts[0] === "channel" || pathParts[0] === "dm") &&
+      pathParts.length >= 2
+    ) {
+      const messageId = urlObj.searchParams.get("messageId");
+      if (messageId) {
+        return {
+          channelId: pathParts[1],
+          messageId: messageId as Id<"messages">,
+          isDM: pathParts[0] === "dm",
+        };
+      }
     }
-    
+
     return null;
   } catch {
     return null;

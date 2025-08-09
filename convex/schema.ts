@@ -46,7 +46,8 @@ export default defineSchema({
     channel: v.union(v.id("channels"), v.string()),
     reactions: v.optional(v.id("reactions")),
     edited: v.optional(v.boolean()),
-  }).index("byChannel", ["channel"]),
+  })
+    .index("byChannel", ["channel"]),
   channels: defineTable({
     name: v.optional(v.string()),
     description: v.string(),

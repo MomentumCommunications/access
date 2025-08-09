@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 export const getChannel = query({
   args: { id: v.id("channels") },
@@ -15,6 +16,21 @@ export const getChannelByName = query({
       .query("channels")
       .withIndex("byName", (q) => q.eq("name", name))
       .unique();
+  },
+});
+
+export const getChannelByMessage = query({
+  args: { messageId: v.id("messages") },
+  handler: async (ctx, { messageId }) => {
+    const message = await ctx.db.get(messageId);
+
+    if (!message) {
+      return null;
+    }
+
+    const channelId = message.channel as Id<"channels">;
+
+    return await ctx.db.get(channelId);
   },
 });
 

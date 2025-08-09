@@ -135,17 +135,14 @@
   0% {
     background-color: rgba(251, 191, 36, 0.3); /* yellow-400/30 */
     border-color: rgba(251, 191, 36, 0.5); /* yellow-400/50 */
-    transform: scale(1);
   }
   50% {
     background-color: rgba(251, 191, 36, 0.2); /* yellow-400/20 */
     border-color: rgba(251, 191, 36, 0.4); /* yellow-400/40 */
-    transform: scale(1.02);
   }
   100% {
     background-color: rgba(251, 191, 36, 0.1); /* yellow-400/10 */
     border-color: rgba(251, 191, 36, 0.2); /* yellow-400/20 */
-    transform: scale(1);
   }
 }
 
@@ -154,17 +151,14 @@
     0% {
       background-color: rgba(251, 191, 36, 0.15); /* yellow-400/15 dark mode */
       border-color: rgba(251, 191, 36, 0.3); /* yellow-400/30 dark mode */
-      transform: scale(1);
     }
     50% {
       background-color: rgba(251, 191, 36, 0.1); /* yellow-400/10 dark mode */
       border-color: rgba(251, 191, 36, 0.2); /* yellow-400/20 dark mode */
-      transform: scale(1.02);
     }
     100% {
       background-color: rgba(251, 191, 36, 0.05); /* yellow-400/5 dark mode */
       border-color: rgba(251, 191, 36, 0.1); /* yellow-400/10 dark mode */
-      transform: scale(1);
     }
   }
 }

@@ -26,3 +26,7 @@ npm-debug.log*
 node_modules/
 .vite/
 .tanstack/
+
+CLAUDE.md
+
+.claude/

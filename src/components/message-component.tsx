@@ -34,7 +34,7 @@ import {
 import { format } from "date-fns";
 import { Markdown } from "./markdown-wrapper";
 import { generateShareableMessageLink } from "~/lib/message-utils";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useConvexQuery } from "@convex-dev/react-query";
 
 type Message = {
@@ -91,18 +91,34 @@ export function MessageComponent({
   userId,
   channelId,
   channel,
+  onRegisterElement,
 }: {
   message: Message;
   userId: Id<"users">;
   channelId: Id<"channels">;
   channel?: { isDM: boolean };
+  onRegisterElement?: (messageId: string, element: Element | null) => void;
 }) {
   const isImage = message.format === "image";
   const [linkCopied, setLinkCopied] = useState(false);
+  const messageRef = useRef<HTMLDivElement>(null);
 
   const user = useConvexQuery(api.users.getUserById, {
     id: userId,
   });
+
+  // Register this message element for read tracking
+  useEffect(() => {
+    if (onRegisterElement && messageRef.current) {
+      onRegisterElement(message._id, messageRef.current);
+    }
+    
+    return () => {
+      if (onRegisterElement) {
+        onRegisterElement(message._id, null);
+      }
+    };
+  }, [message._id, onRegisterElement]);
 
   const handleCopyMessageLink = useCallback(async () => {
     try {
@@ -123,7 +139,11 @@ export function MessageComponent({
   const isAuthorOrAdmin = message.author === userId || user?.role === "admin";
 
   return (
-    <div id={message._id} className="flex py-2 flex-col gap-2 align-bottom">
+    <div 
+      ref={messageRef}
+      id={message._id} 
+      className="flex py-2 flex-col gap-2 align-bottom"
+    >
       <div className="flex flex-row justify-between">
         <AuthorInfo author={message.author} />
         <div className="flex flex-row gap-2">

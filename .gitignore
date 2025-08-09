@@ -30,3 +30,7 @@ node_modules/
 CLAUDE.md
 
 .claude/
+
+.output/
+
+.nitro/

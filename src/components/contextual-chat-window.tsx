@@ -10,6 +10,7 @@ import { cn } from "~/lib/utils";
 import { Message } from "~/lib/message-utils";
 import { ChevronUp, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "./ui/button";
+import { useMessageReadTracking } from "~/hooks/useMessageReadTracking";
 
 interface ContextualChatWindowProps {
   messages?: Message[];
@@ -52,6 +53,15 @@ export function ContextualChatWindow({
   const [showLoadMoreButtons, setShowLoadMoreButtons] = useState(false);
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const [lastSeenMessageCount, setLastSeenMessageCount] = useState(0);
+
+  // Initialize read tracking
+  const { registerMessageElement } = useMessageReadTracking({
+    messages,
+    userId,
+    channelId: channelId as Id<"channels">,
+    scrollContainerRef,
+    enabled: true,
+  });
 
   console.log("ContextualChatWindow messages:", messages);
 
@@ -386,6 +396,7 @@ export function ContextualChatWindow({
                     userId={userId}
                     channelId={channelId as Id<"channels">}
                     channel={channel}
+                    onRegisterElement={registerMessageElement}
                   />
                 </div>
               );

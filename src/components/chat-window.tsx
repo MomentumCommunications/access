@@ -10,6 +10,7 @@ import { Button } from "./ui/button";
 import { cn } from "~/lib/utils";
 import { Message } from "~/lib/message-utils";
 import { ArrowDown } from "lucide-react";
+import { useMessageReadTracking } from "~/hooks/useMessageReadTracking";
 
 interface ChatWindowProps {
   messages?: Message[];
@@ -39,6 +40,15 @@ export function ChatWindow({
   const [shouldShowScrollButton, setShouldShowScrollButton] = useState(false);
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const [lastSeenMessageCount, setLastSeenMessageCount] = useState(0);
+
+  // Initialize read tracking
+  const { registerMessageElement } = useMessageReadTracking({
+    messages,
+    userId,
+    channelId: channelId as Id<"channels">,
+    scrollContainerRef,
+    enabled: true,
+  });
 
   // Scroll to bottom function
   const scrollToBottom = useCallback(
@@ -210,6 +220,7 @@ export function ChatWindow({
                 userId={userId}
                 channelId={channelId as Id<"channels">}
                 channel={channel}
+                onRegisterElement={registerMessageElement}
               />
             ))}
 

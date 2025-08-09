@@ -32,6 +32,7 @@ import {
   BidirectionalPaginationState,
 } from "~/lib/message-utils";
 import { EditChannel } from "~/components/edit-channel";
+import { channelNameOrFallback } from "~/lib/utils";
 
 const fetchMessages = (channel: string) => {
   return convexQuery(api.messages.getMessagesByChannel, { channel });
@@ -75,7 +76,9 @@ function RouteComponent() {
     isLoading: contextLoading,
     // error: contextError
   } = useQuery({
-    ...fetchMessageContext(messageId as Id<"messages">, 15),
+    ...(messageId
+      ? fetchMessageContext(messageId as Id<"messages">, 15)
+      : { queryKey: ["disabled"], queryFn: () => null }),
     enabled: !!messageId,
   });
 
@@ -324,7 +327,9 @@ function RouteComponent() {
           ) : (
             <Hash color="#ce2128" />
           )}
-          <h1 className="text-2xl font-bold">{channel.name}</h1>
+          <h1 className="text-2xl font-bold">
+            {channelNameOrFallback(channel.name)}
+          </h1>
           {channel.description && (
             <div className="pt-1 flex flex-row gap-2 align-middle items-center">
               <DotIcon className="text-muted-foreground" />

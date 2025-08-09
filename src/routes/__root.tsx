@@ -10,7 +10,7 @@ import {
 import { ThemeProvider } from "~/components/theme-provider";
 import { SidebarProvider } from "~/components/ui/sidebar";
 import { AppSidebar } from "~/components/app-sidebar";
-import { ClerkProvider, SignedIn } from "@clerk/tanstack-react-start";
+import { ClerkProvider } from "@clerk/tanstack-react-start";
 import { shadcn } from "@clerk/themes";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;

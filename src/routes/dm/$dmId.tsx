@@ -71,7 +71,7 @@ function RouteComponent() {
     isLoading: contextLoading,
     error: contextError,
   } = useQuery({
-    ...fetchMessageContext(messageId as Id<"messages">, 15),
+    ...(messageId ? fetchMessageContext(messageId as Id<"messages">, 15) : { queryKey: ['disabled'], queryFn: () => null }),
     enabled: !!messageId,
   });
 

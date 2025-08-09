@@ -133,6 +133,18 @@ export const editMessage = mutation({
 export const deleteMessage = mutation({
   args: { id: v.id("messages") },
   handler: async (ctx, args) => {
+    // First delete all associated messageReads
+    const messageReads = await ctx.db
+      .query("messageReads")
+      .withIndex("byMessage", (q) => q.eq("messageId", args.id))
+      .collect();
+
+    // Delete all messageReads for this message
+    for (const messageRead of messageReads) {
+      await ctx.db.delete(messageRead._id);
+    }
+
+    // Then delete the message itself
     await ctx.db.delete(args.id);
   },
 });
@@ -245,3 +257,127 @@ export const getMessagesAfterMessage = query({
   },
 });
 
+// Message read tracking mutations and queries
+export const markMessageAsRead = mutation({
+  args: {
+    messageId: v.id("messages"),
+    userId: v.id("users"),
+    channelId: v.union(v.id("channels"), v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Check if this user has already read this message
+    const existingRead = await ctx.db
+      .query("messageReads")
+      .withIndex("byMessageUser", (q) =>
+        q.eq("messageId", args.messageId).eq("userId", args.userId),
+      )
+      .first();
+
+    // Only create a new read record if one doesn't exist
+    if (!existingRead) {
+      await ctx.db.insert("messageReads", {
+        messageId: args.messageId,
+        userId: args.userId,
+        channelId: args.channelId,
+        readAt: Date.now(),
+      });
+    }
+  },
+});
+
+export const markMultipleMessagesAsRead = mutation({
+  args: {
+    messageIds: v.array(v.id("messages")),
+    userId: v.id("users"),
+    channelId: v.union(v.id("channels"), v.string()),
+  },
+  handler: async (ctx, args) => {
+    const readAt = Date.now();
+
+    for (const messageId of args.messageIds) {
+      // Check if this user has already read this message
+      const existingRead = await ctx.db
+        .query("messageReads")
+        .withIndex("byMessageUser", (q) =>
+          q.eq("messageId", messageId).eq("userId", args.userId),
+        )
+        .first();
+
+      // Only create a new read record if one doesn't exist
+      if (!existingRead) {
+        await ctx.db.insert("messageReads", {
+          messageId,
+          userId: args.userId,
+          channelId: args.channelId,
+          readAt,
+        });
+      }
+    }
+  },
+});
+
+export const getMessageReads = query({
+  args: {
+    messageId: v.id("messages"),
+  },
+  handler: async (ctx, args) => {
+    const messageReads = await ctx.db
+      .query("messageReads")
+      .withIndex("byMessage", (q) => q.eq("messageId", args.messageId))
+      .collect();
+
+    return messageReads;
+  },
+});
+
+export const getUserReadStatus = query({
+  args: {
+    messageIds: v.array(v.id("messages")),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const readStatuses: Record<string, boolean> = {};
+
+    for (const messageId of args.messageIds) {
+      const existingRead = await ctx.db
+        .query("messageReads")
+        .withIndex("byMessageUser", (q) =>
+          q.eq("messageId", messageId).eq("userId", args.userId),
+        )
+        .first();
+
+      readStatuses[messageId] = !!existingRead;
+    }
+
+    return readStatuses;
+  },
+});
+
+export const getUnreadMessageCount = query({
+  args: {
+    channelId: v.union(v.id("channels"), v.string()),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Get all messages in the channel
+    const allMessages = await ctx.db
+      .query("messages")
+      .withIndex("byChannel", (q) => q.eq("channel", args.channelId))
+      .collect();
+
+    // Get all reads for this user in this channel
+    const userReads = await ctx.db
+      .query("messageReads")
+      .withIndex("byChannelUser", (q) =>
+        q.eq("channelId", args.channelId).eq("userId", args.userId),
+      )
+      .collect();
+
+    const readMessageIds = new Set(userReads.map((read) => read.messageId));
+    const unreadCount = allMessages.filter(
+      (msg) => !readMessageIds.has(msg._id),
+    ).length;
+
+    return unreadCount;
+  },
+});

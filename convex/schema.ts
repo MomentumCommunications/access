@@ -79,4 +79,15 @@ export default defineSchema({
     toTask: v.optional(v.id("tasks")),
     toMessage: v.optional(v.id("messages")),
   }),
+  messageReads: defineTable({
+    messageId: v.id("messages"),
+    userId: v.id("users"),
+    channelId: v.union(v.id("channels"), v.string()),
+    readAt: v.number(), // timestamp when message was read
+  })
+    .index("byMessage", ["messageId"])
+    .index("byUser", ["userId"])
+    .index("byChannel", ["channelId"])
+    .index("byMessageUser", ["messageId", "userId"])
+    .index("byChannelUser", ["channelId", "userId"]),
 });

@@ -1,9 +1,4 @@
-import {
-  SignedIn,
-  SignedOut,
-  SignIn,
-  useUser,
-} from "@clerk/tanstack-react-start";
+import { SignedIn, SignedOut, useUser } from "@clerk/tanstack-react-start";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
@@ -26,6 +21,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSkeleton,
+  SidebarMenuBadge,
 } from "~/components/ui/sidebar";
 import {
   Collapsible,
@@ -35,6 +31,7 @@ import {
 import { NewChannel } from "./new-channel";
 import { NewDm } from "./new-dm";
 import { channelNameOrFallback } from "~/lib/utils";
+import { useUnreadCounts } from "~/hooks/useUnreadCounts";
 
 export function AppSidebar() {
   const user = useUser();
@@ -42,6 +39,9 @@ export function AppSidebar() {
   const { data: convexUser } = useQuery(
     convexQuery(api.users.getUserByClerkId, { ClerkId: user.user?.id }),
   );
+
+  const { publicChannelUnreads, privateChannelUnreads, dmUnreads } =
+    useUnreadCounts(convexUser?._id);
 
   const { data: publicChannels, isLoading: isPublicChannelsLoading } = useQuery(
     convexQuery(api.channels.getPublicChannels, {}),
@@ -92,34 +92,62 @@ export function AppSidebar() {
                 {convexUser?.role === "admin" && (
                   <NewChannel userId={convexUser._id} />
                 )}
-                {isPublicChannelsLoading ? (
-                  <SidebarMenuSkeleton />
-                ) : (
-                  publicChannels?.map((channel) => (
-                    <SidebarMenuButton asChild key={channel?._id}>
-                      <a href={`/channel/${channel?._id}`}>
-                        <Hash />
-                        <span>{channelNameOrFallback(channel?.name)}</span>
-                      </a>
-                    </SidebarMenuButton>
-                  ))
-                )}
-                {isPrivateChannelsLoading ? (
-                  <>
+                <SidebarMenu>
+                  {isPublicChannelsLoading ? (
                     <SidebarMenuSkeleton />
-                    <SidebarMenuSkeleton />
-                    <SidebarMenuSkeleton />
-                  </>
-                ) : (
-                  privateChannels?.map((channel) => (
-                    <SidebarMenuButton asChild key={channel?._id}>
-                      <a href={`/channel/${channel?._id}`}>
-                        <Lock />
-                        <span>{channelNameOrFallback(channel?.name)}</span>
-                      </a>
-                    </SidebarMenuButton>
-                  ))
-                )}
+                  ) : (
+                    publicChannels?.map((channel, index) => {
+                    let unreadCount = channel?._id
+                      ? publicChannelUnreads[channel._id] || 0
+                      : 0;
+
+                    console.log(
+                      `Channel ${channel?.name} unread count:`,
+                      unreadCount,
+                    );
+                    return (
+                      <SidebarMenuItem key={channel?._id}>
+                        <SidebarMenuButton asChild>
+                          <a href={`/channel/${channel?._id}`}>
+                            <Hash />
+                            <span>{channelNameOrFallback(channel?.name)}</span>
+                          </a>
+                        </SidebarMenuButton>
+                        {unreadCount > 0 && (
+                          <SidebarMenuBadge>{unreadCount}</SidebarMenuBadge>
+                        )}
+                      </SidebarMenuItem>
+                    );
+                    })
+                  )}
+                  {isPrivateChannelsLoading ? (
+                    <>
+                      <SidebarMenuSkeleton />
+                      <SidebarMenuSkeleton />
+                      <SidebarMenuSkeleton />
+                    </>
+                  ) : (
+                    privateChannels?.map((channel) => {
+                    const unreadCount = channel?._id
+                      ? privateChannelUnreads[channel._id] || 0
+                      : 0;
+                    console.log(unreadCount);
+                    return (
+                      <SidebarMenuItem key={channel?._id}>
+                        <SidebarMenuButton asChild>
+                          <a href={`/channel/${channel?._id}`}>
+                            <Lock />
+                            <span>{channelNameOrFallback(channel?.name)}</span>
+                          </a>
+                        </SidebarMenuButton>
+                        {unreadCount > 0 && (
+                          <SidebarMenuBadge>{unreadCount}</SidebarMenuBadge>
+                        )}
+                      </SidebarMenuItem>
+                    );
+                    })
+                  )}
+                </SidebarMenu>
               </CollapsibleContent>
             </SidebarGroup>
           </Collapsible>
@@ -133,18 +161,31 @@ export function AppSidebar() {
               </SidebarGroupLabel>
               <CollapsibleContent>
                 <NewDm userId={convexUser?._id} />
-                {isDMsLoading ? (
-                  <SidebarMenuSkeleton />
-                ) : (
-                  dms?.map((channel) => (
-                    <SidebarMenuButton asChild key={channel?._id}>
-                      <a href={`/dm/${channel?._id}`}>
-                        <MessageSquare />
-                        <span>{channel.otherMembers}</span>
-                      </a>
-                    </SidebarMenuButton>
-                  ))
-                )}
+                <SidebarMenu>
+                  {isDMsLoading ? (
+                    <SidebarMenuSkeleton />
+                  ) : (
+                    dms?.map((channel) => {
+                    const unreadCount = channel?._id
+                      ? dmUnreads[channel._id] || 0
+                      : 0;
+                    console.log(`DM ${channel.otherMembers} unread count:`, unreadCount);
+                    return (
+                      <SidebarMenuItem key={channel?._id}>
+                        <SidebarMenuButton asChild>
+                          <a href={`/dm/${channel?._id}`}>
+                            <MessageSquare />
+                            <span>{channel.otherMembers}</span>
+                          </a>
+                        </SidebarMenuButton>
+                        {unreadCount > 0 && (
+                          <SidebarMenuBadge>{unreadCount}</SidebarMenuBadge>
+                        )}
+                      </SidebarMenuItem>
+                    );
+                    })
+                  )}
+                </SidebarMenu>
               </CollapsibleContent>
             </SidebarGroup>
           </Collapsible>

@@ -1,13 +1,14 @@
 # dependencies
-/node_modules
 /.pnp
 .pnp.js
 
 # testing
 /coverage
+.output/
 
 # production
 /build
+.nitro/
 
 # misc
 .DS_Store
@@ -23,14 +24,8 @@ npm-debug.log*
 # typescript
 *.tsbuildinfo
 
-node_modules/
-.vite/
+# tools
 .tanstack/
-
 CLAUDE.md
-
 .claude/
 
-.output/
-
-.nitro/

@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { useEffect, useRef } from "react";
-import { Header } from "~/components/header";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { BottomScroll } from "~/components/bottom-scroll";
 import { MessageComponent } from "~/components/message-component";
@@ -12,7 +11,7 @@ import { MessageInput } from "~/components/message-input";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Alert, AlertDescription } from "~/components/ui/alert";
 
-export const Route = createFileRoute("/channel/general/")({
+export const Route = createFileRoute("/_app/channel/general/")({
   component: RouteComponent,
 });
 
@@ -47,13 +46,6 @@ function RouteComponent() {
 
   return (
     <>
-      <Header
-        currentPage="General"
-        breadcrumbs={[
-          { title: "Home", url: "/" },
-          { title: "Channel", url: "/channel/" },
-        ]}
-      />
       <SignedOut>
         <div className="flex fixed inset-0 h-screen px-4 justify-center flex-col">
           <h1 className="text-2xl font-bold">Sign in to chat</h1>

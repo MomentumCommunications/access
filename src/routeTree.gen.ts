@@ -9,22 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ChannelIndexRouteImport } from './routes/channel/index'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
-import { Route as DmDmIdRouteImport } from './routes/dm/$dmId'
-import { Route as ChannelChannelIdRouteImport } from './routes/channel/$channelId'
-import { Route as ChannelGeneralIndexRouteImport } from './routes/channel/general/index'
+import { Route as AppHomeRouteImport } from './routes/_app.home'
+import { Route as AppChannelIndexRouteImport } from './routes/_app.channel/index'
+import { Route as AppDmDmIdRouteImport } from './routes/_app.dm/$dmId'
+import { Route as AppChannelChannelIdRouteImport } from './routes/_app.channel/$channelId'
+import { Route as AppChannelGeneralIndexRouteImport } from './routes/_app.channel/general/index'
 
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChannelIndexRoute = ChannelIndexRouteImport.update({
-  id: '/channel/',
-  path: '/channel/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignUpSplatRoute = SignUpSplatRouteImport.update({
@@ -37,104 +38,119 @@ const SignInSplatRoute = SignInSplatRouteImport.update({
   path: '/sign-in/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DmDmIdRoute = DmDmIdRouteImport.update({
+const AppHomeRoute = AppHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppChannelIndexRoute = AppChannelIndexRouteImport.update({
+  id: '/channel/',
+  path: '/channel/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDmDmIdRoute = AppDmDmIdRouteImport.update({
   id: '/dm/$dmId',
   path: '/dm/$dmId',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const ChannelChannelIdRoute = ChannelChannelIdRouteImport.update({
+const AppChannelChannelIdRoute = AppChannelChannelIdRouteImport.update({
   id: '/channel/$channelId',
   path: '/channel/$channelId',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const ChannelGeneralIndexRoute = ChannelGeneralIndexRouteImport.update({
+const AppChannelGeneralIndexRoute = AppChannelGeneralIndexRouteImport.update({
   id: '/channel/general/',
   path: '/channel/general/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/channel/$channelId': typeof ChannelChannelIdRoute
-  '/dm/$dmId': typeof DmDmIdRoute
+  '/home': typeof AppHomeRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
-  '/channel': typeof ChannelIndexRoute
-  '/channel/general': typeof ChannelGeneralIndexRoute
+  '/channel/$channelId': typeof AppChannelChannelIdRoute
+  '/dm/$dmId': typeof AppDmDmIdRoute
+  '/channel': typeof AppChannelIndexRoute
+  '/channel/general': typeof AppChannelGeneralIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/channel/$channelId': typeof ChannelChannelIdRoute
-  '/dm/$dmId': typeof DmDmIdRoute
+  '/home': typeof AppHomeRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
-  '/channel': typeof ChannelIndexRoute
-  '/channel/general': typeof ChannelGeneralIndexRoute
+  '/channel/$channelId': typeof AppChannelChannelIdRoute
+  '/dm/$dmId': typeof AppDmDmIdRoute
+  '/channel': typeof AppChannelIndexRoute
+  '/channel/general': typeof AppChannelGeneralIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/channel/$channelId': typeof ChannelChannelIdRoute
-  '/dm/$dmId': typeof DmDmIdRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_app/home': typeof AppHomeRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
-  '/channel/': typeof ChannelIndexRoute
-  '/channel/general/': typeof ChannelGeneralIndexRoute
+  '/_app/channel/$channelId': typeof AppChannelChannelIdRoute
+  '/_app/dm/$dmId': typeof AppDmDmIdRoute
+  '/_app/channel/': typeof AppChannelIndexRoute
+  '/_app/channel/general/': typeof AppChannelGeneralIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/channel/$channelId'
-    | '/dm/$dmId'
+    | '/home'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/channel/$channelId'
+    | '/dm/$dmId'
     | '/channel'
     | '/channel/general'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/channel/$channelId'
-    | '/dm/$dmId'
+    | '/home'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/channel/$channelId'
+    | '/dm/$dmId'
     | '/channel'
     | '/channel/general'
   id:
     | '__root__'
     | '/'
-    | '/channel/$channelId'
-    | '/dm/$dmId'
+    | '/_app'
+    | '/_app/home'
     | '/sign-in/$'
     | '/sign-up/$'
-    | '/channel/'
-    | '/channel/general/'
+    | '/_app/channel/$channelId'
+    | '/_app/dm/$dmId'
+    | '/_app/channel/'
+    | '/_app/channel/general/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ChannelChannelIdRoute: typeof ChannelChannelIdRoute
-  DmDmIdRoute: typeof DmDmIdRoute
+  AppRoute: typeof AppRouteWithChildren
   SignInSplatRoute: typeof SignInSplatRoute
   SignUpSplatRoute: typeof SignUpSplatRoute
-  ChannelIndexRoute: typeof ChannelIndexRoute
-  ChannelGeneralIndexRoute: typeof ChannelGeneralIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/channel/': {
-      id: '/channel/'
-      path: '/channel'
-      fullPath: '/channel'
-      preLoaderRoute: typeof ChannelIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-up/$': {
@@ -151,38 +167,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dm/$dmId': {
-      id: '/dm/$dmId'
+    '/_app/home': {
+      id: '/_app/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof AppHomeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/channel/': {
+      id: '/_app/channel/'
+      path: '/channel'
+      fullPath: '/channel'
+      preLoaderRoute: typeof AppChannelIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dm/$dmId': {
+      id: '/_app/dm/$dmId'
       path: '/dm/$dmId'
       fullPath: '/dm/$dmId'
-      preLoaderRoute: typeof DmDmIdRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppDmDmIdRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/channel/$channelId': {
-      id: '/channel/$channelId'
+    '/_app/channel/$channelId': {
+      id: '/_app/channel/$channelId'
       path: '/channel/$channelId'
       fullPath: '/channel/$channelId'
-      preLoaderRoute: typeof ChannelChannelIdRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppChannelChannelIdRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/channel/general/': {
-      id: '/channel/general/'
+    '/_app/channel/general/': {
+      id: '/_app/channel/general/'
       path: '/channel/general'
       fullPath: '/channel/general'
-      preLoaderRoute: typeof ChannelGeneralIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppChannelGeneralIndexRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
+interface AppRouteChildren {
+  AppHomeRoute: typeof AppHomeRoute
+  AppChannelChannelIdRoute: typeof AppChannelChannelIdRoute
+  AppDmDmIdRoute: typeof AppDmDmIdRoute
+  AppChannelIndexRoute: typeof AppChannelIndexRoute
+  AppChannelGeneralIndexRoute: typeof AppChannelGeneralIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppHomeRoute: AppHomeRoute,
+  AppChannelChannelIdRoute: AppChannelChannelIdRoute,
+  AppDmDmIdRoute: AppDmDmIdRoute,
+  AppChannelIndexRoute: AppChannelIndexRoute,
+  AppChannelGeneralIndexRoute: AppChannelGeneralIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ChannelChannelIdRoute: ChannelChannelIdRoute,
-  DmDmIdRoute: DmDmIdRoute,
+  AppRoute: AppRouteWithChildren,
   SignInSplatRoute: SignInSplatRoute,
   SignUpSplatRoute: SignUpSplatRoute,
-  ChannelIndexRoute: ChannelIndexRoute,
-  ChannelGeneralIndexRoute: ChannelGeneralIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

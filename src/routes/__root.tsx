@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import appCss from "~/styles/app.css?url";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
   HeadContent,
@@ -8,10 +8,9 @@ import {
   createRootRouteWithContext,
 } from "@tanstack/react-router";
 import { ThemeProvider } from "~/components/theme-provider";
-import { SidebarProvider } from "~/components/ui/sidebar";
-import { AppSidebar } from "~/components/app-sidebar";
 import { ClerkProvider } from "@clerk/tanstack-react-start";
 import { shadcn } from "@clerk/themes";
+import { getGlobalClients } from "~/lib/query-client";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -50,20 +49,25 @@ export const Route = createRootRouteWithContext<{
 });
 
 function RootComponent() {
+  // Get the global QueryClient to provide at the root level
+  const { queryClient } = getGlobalClients();
+  
   return (
-    <ThemeProvider>
-      <ClerkProvider
-        publishableKey={PUBLISHABLE_KEY}
-        afterSignOutUrl="/"
-        appearance={{
-          baseTheme: shadcn,
-        }}
-      >
-        <RootDocument>
-          <Outlet />
-        </RootDocument>
-      </ClerkProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <ClerkProvider
+          publishableKey={PUBLISHABLE_KEY}
+          afterSignOutUrl="/"
+          appearance={{
+            baseTheme: shadcn,
+          }}
+        >
+          <RootDocument>
+            <Outlet />
+          </RootDocument>
+        </ClerkProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
@@ -90,10 +94,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         />
       </head>
       <body className="md:overscroll-none">
-        <SidebarProvider>
-          <AppSidebar />
-          <div className="flex flex-1 flex-col">{children}</div>
-        </SidebarProvider>
+        {children}
         <Scripts />
       </body>
     </html>

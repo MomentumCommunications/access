@@ -4,11 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Hash } from "lucide-react";
-import { Header } from "~/components/header";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 
-export const Route = createFileRoute("/channel/")({
+export const Route = createFileRoute("/_app/channel/")({
   component: RouteComponent,
 });
 
@@ -27,7 +26,6 @@ function RouteComponent() {
 
   return (
     <>
-      <Header currentPage="Chat" breadcrumbs={[{ title: "Home", url: "/" }]} />
       <div className="p-4">
         <h1 className="text-2xl font-bold">Chat</h1>
         <div className="flex flex-col items-stretch max-w-[200px] w-full gap-2">

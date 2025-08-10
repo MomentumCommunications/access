@@ -1,27 +1,16 @@
-import { SignedIn, SignedOut, useUser } from "@clerk/tanstack-react-start";
+import { SignedOut, useUser } from "@clerk/tanstack-react-start";
 import { convexQuery, useConvex } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
-import { Cog, DotIcon, Hash, LockIcon, OctagonMinus } from "lucide-react";
+import { MessageSquare, OctagonMinus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Header } from "~/components/header";
 import { ChatWindow } from "~/components/chat-window";
 import { ContextualChatWindow } from "~/components/contextual-chat-window";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { Button } from "~/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
 import { SignInPrompt } from "~/components/sign-in-prompt";
-import { DeleteChannelButton } from "~/components/channel-delete-button";
-import { ManageMembers } from "~/components/manage-members";
+import { channelNameOrFallback } from "~/lib/utils";
 import {
   Message,
   mergeMessages,
@@ -31,8 +20,11 @@ import {
   areMessageArraysEqual,
   BidirectionalPaginationState,
 } from "~/lib/message-utils";
-import { EditChannel } from "~/components/edit-channel";
-import { channelNameOrFallback } from "~/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
+import { Button } from "~/components/ui/button";
 
 const fetchMessages = (channel: string) => {
   return convexQuery(api.messages.getMessagesByChannel, { channel });
@@ -48,7 +40,7 @@ const fetchMessageContext = (
   });
 };
 
-export const Route = createFileRoute("/channel/$channelId")({
+export const Route = createFileRoute("/_app/dm/$dmId")({
   validateSearch: (search: Record<string, unknown>) => {
     return {
       messageId: search.messageId as string | undefined,
@@ -62,8 +54,10 @@ function RouteComponent() {
   const search = Route.useSearch();
   const convex = useConvex();
   const user = useUser();
-  const channelId = params.channelId as Id<"channels">;
+  const channelId = params.dmId as Id<"channels">;
   const messageId = search.messageId as Id<"messages"> | undefined;
+
+  console.log("channelId:", channelId, "messageId from search:", messageId);
 
   // Queries (must be declared unconditionally)
   const { data: messages, isLoading: messagesLoading } = useQuery(
@@ -74,13 +68,13 @@ function RouteComponent() {
   const {
     data: messageContext,
     isLoading: contextLoading,
-    // error: contextError
+    error: contextError,
   } = useQuery({
-    ...(messageId
-      ? fetchMessageContext(messageId as Id<"messages">, 15)
-      : { queryKey: ["disabled"], queryFn: () => null }),
+    ...(messageId ? fetchMessageContext(messageId as Id<"messages">, 15) : { queryKey: ['disabled'], queryFn: () => null }),
     enabled: !!messageId,
   });
+
+  console.log("messageContext data:", messageContext);
 
   const { data: convexUser } = useQuery(
     convexQuery(api.users.getUserByClerkId, { ClerkId: user?.user?.id }),
@@ -287,123 +281,75 @@ function RouteComponent() {
     messageId,
   ]);
 
+  // Generate DM name from other participants
+  const dmName = channelMembers
+    ?.filter((m) => m?._id !== convexUser?._id)
+    .map((m) => m?.displayName)
+    .filter(Boolean)
+    .join(", ");
+
   // Don't render anything while loading essential data
   if (!user || !convexUser || !channel) return null;
 
-  // Check if user has access to private channel
+  // Check if user has access to private DM
   if (
     channel?.isPrivate &&
     !channelMembers?.some((m) => m?._id === convexUser._id)
   ) {
     return (
-      <>
-        <Header />
-        <div className="h-[calc(100vh-64px)] flex items-center justify-center px-4">
-          <Alert className="max-w-sm">
-            <OctagonMinus color="red" />
-            <AlertTitle>Restricted</AlertTitle>
-            <AlertDescription>
-              You are not a member of this channel.
-              <div className="py-2">
-                <Button asChild className="w-min cursor-pointer">
-                  <a href="/">Go Home</a>
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        </div>
-      </>
+      <div className="h-[calc(100vh-64px)] flex items-center justify-center px-4">
+        <Alert className="max-w-sm">
+          <OctagonMinus color="red" />
+          <AlertTitle>Restricted</AlertTitle>
+          <AlertDescription>
+            You are not a member of this conversation.
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   return (
     <div className="h-screen flex flex-col">
-      {/* Header */}
-      <Header />
       <div className="flex align-middle flex-row py-2 px-4 justify-between">
-        <div className="flex flex-row gap-2 items-center align-middle">
-          {channel?.isPrivate ? (
-            <LockIcon color="#ce2128" />
-          ) : (
-            <Hash color="#ce2128" />
-          )}
-          <h1 className="text-2xl font-bold">
-            {channelNameOrFallback(channel.name)}
-          </h1>
-          {channel.description && (
-            <div className="pt-1 flex flex-row gap-2 align-middle items-center">
-              <DotIcon className="text-muted-foreground" />
-              <p className="text-xs align-bottom text-muted-foreground">
-                {channel.description}
-              </p>
-            </div>
-          )}
+        <div className="flex flex-row gap-3 items-center align-middle">
+          <MessageSquare color="#ce2128" />
+          <h1 className="text-2xl font-bold">{dmName}</h1>
         </div>
-        {/* Channel Settings Dropdown */}
-        {convexUser?.role === "admin" && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className=" bg-background/80 backdrop-blur-sm hover:bg-background/90 transition-colors"
-              >
-                <Cog className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Channel Settings</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <EditChannel channel={channel} />
-              </DropdownMenuItem>
-              {channel?.isPrivate && (
-                <DropdownMenuItem asChild>
-                  <ManageMembers channelId={channel._id} />
-                </DropdownMenuItem>
-              )}
-              <DeleteChannelButton channelId={channel._id} />
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 px-0 md:px-2 min-h-0 w-full relative">
-        <SignedIn>
-          {/* Chat Window - Conditional rendering based on messageId */}
-          {messageId ? (
-            <ContextualChatWindow
-              messages={contextualMessageArray}
-              onLoadOlder={loadOlderContextualMessages}
-              onLoadNewer={loadNewerContextualMessages}
-              loadingOlder={contextualPaginationState.loadingOlder}
-              loadingNewer={contextualPaginationState.loadingNewer}
-              hasMoreOlder={contextualPaginationState.canLoadOlder}
-              hasMoreNewer={contextualPaginationState.canLoadNewer}
-              userId={convexUser._id}
-              channelId={channel._id}
-              targetMessageId={messageId as Id<"messages">}
-              isLoading={contextLoading}
-              className="h-full w-full"
-              channel={channel}
-              adminControlled={channel.adminControlled}
-            />
-          ) : (
-            <ChatWindow
-              messages={messageArray}
-              onLoadMore={loadMore}
-              loading={loading}
-              hasMore={hasMore}
-              userId={convexUser._id}
-              channelId={channel._id}
-              isLoading={messagesLoading}
-              className="h-full w-full"
-              channel={channel}
-              adminControlled={channel.adminControlled}
-            />
-          )}
-        </SignedIn>
+      <div className="flex-1 w-full min-h-0 relative">
+        {/* Chat Window - Conditional rendering based on messageId */}
+        {messageId ? (
+          <ContextualChatWindow
+            messages={contextualMessageArray}
+            onLoadOlder={loadOlderContextualMessages}
+            onLoadNewer={loadNewerContextualMessages}
+            loadingOlder={contextualPaginationState.loadingOlder}
+            loadingNewer={contextualPaginationState.loadingNewer}
+            hasMoreOlder={contextualPaginationState.canLoadOlder}
+            hasMoreNewer={contextualPaginationState.canLoadNewer}
+            userId={convexUser._id}
+            channelId={channel._id}
+            targetMessageId={messageId as Id<"messages">}
+            isLoading={contextLoading}
+            className="h-full w-full"
+            channel={channel}
+          />
+        ) : (
+          <ChatWindow
+            messages={messageArray}
+            onLoadMore={loadMore}
+            loading={loading}
+            hasMore={hasMore}
+            userId={convexUser._id}
+            channelId={channel._id}
+            isLoading={messagesLoading}
+            className="h-full w-full"
+            channel={channel}
+          />
+        )}
 
         <SignedOut>
           <div className="h-full flex items-center justify-center px-4">
@@ -411,7 +357,7 @@ function RouteComponent() {
               <Alert className="max-w-sm">
                 <OctagonMinus color="red" />
                 <AlertDescription>
-                  You must be signed in to view this channel.
+                  You must be signed in to view this conversation.
                 </AlertDescription>
               </Alert>
               <SignInPrompt />

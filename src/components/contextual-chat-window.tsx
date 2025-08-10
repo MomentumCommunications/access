@@ -26,6 +26,7 @@ interface ContextualChatWindowProps {
   isLoading: boolean;
   className?: string;
   channel?: { isDM: boolean };
+  adminControlled?: boolean;
 }
 
 export function ContextualChatWindow({
@@ -42,6 +43,7 @@ export function ContextualChatWindow({
   isLoading,
   className,
   channel,
+  adminControlled,
 }: ContextualChatWindowProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -108,12 +110,15 @@ export function ContextualChatWindow({
   }, [targetMessageId, lastTargetMessageId]);
 
   // Scroll to bottom function for new messages
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    bottomRef.current?.scrollIntoView({ behavior });
-    // Clear new messages notification when user scrolls to bottom
-    setHasNewMessages(false);
-    setLastSeenMessageCount(messages.length);
-  }, [messages.length]);
+  const scrollToBottom = useCallback(
+    (behavior: ScrollBehavior = "smooth") => {
+      bottomRef.current?.scrollIntoView({ behavior });
+      // Clear new messages notification when user scrolls to bottom
+      setHasNewMessages(false);
+      setLastSeenMessageCount(messages.length);
+    },
+    [messages.length],
+  );
 
   // Handle new messages - show notification if user isn't at bottom
   useEffect(() => {
@@ -124,12 +129,12 @@ export function ContextualChatWindow({
         const scrollViewport = container.querySelector(
           "[data-radix-scroll-area-viewport]",
         ) as HTMLElement;
-        
+
         if (scrollViewport) {
-          const isNearBottom = 
-            scrollViewport.scrollTop + scrollViewport.clientHeight >= 
+          const isNearBottom =
+            scrollViewport.scrollTop + scrollViewport.clientHeight >=
             scrollViewport.scrollHeight - 100;
-          
+
           if (!isNearBottom) {
             // User is scrolled up, show notification
             setHasNewMessages(true);
@@ -438,22 +443,21 @@ export function ContextualChatWindow({
         </ScrollArea>
 
         {/* Floating Action Buttons */}
-        <div className="absolute top-4 left-4 z-10 space-y-2">
-          {/* Jump to Target Message Button */}
-          {hasTargetMessage && hasScrolledToTarget && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                // Scroll to target with smooth animation
-                scrollToTargetMessage("smooth");
-              }}
-            >
-              <ChevronUp className="w-3 h-3" />
-              Go to linked message
-            </Button>
-          )}
-        </div>
+        {/* <div className="absolute top-4 left-4 z-10 space-y-2"> */}
+        {/*   {hasTargetMessage && hasScrolledToTarget && ( */}
+        {/*     <Button */}
+        {/*       variant="secondary" */}
+        {/*       size="sm" */}
+        {/*       onClick={() => { */}
+        {/*         // Scroll to target with smooth animation */}
+        {/*         scrollToTargetMessage("smooth"); */}
+        {/*       }} */}
+        {/*     > */}
+        {/*       <ChevronUp className="w-3 h-3" /> */}
+        {/*       Go to linked message */}
+        {/*     </Button> */}
+        {/*   )} */}
+        {/* </div> */}
 
         {/* Jump to new messages button */}
         {hasNewMessages && (
@@ -479,7 +483,7 @@ export function ContextualChatWindow({
 
       {/* Message Input */}
       <div className="border-t bg-background/95 backdrop-blur-sm px-4 py-3">
-        <MessageInput userId={userId} channel={channelId} />
+        <MessageInput userId={userId} channel={channelId} adminControlled />
       </div>
     </div>
   );

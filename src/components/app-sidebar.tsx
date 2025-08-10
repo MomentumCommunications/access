@@ -1,7 +1,5 @@
-import { SignedIn, SignedOut, useUser } from "@clerk/tanstack-react-start";
-import { convexQuery } from "@convex-dev/react-query";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "convex/_generated/api";
+import { SignedIn, SignedOut } from "@clerk/tanstack-react-start";
+import { memo, useCallback } from "react";
 import {
   ChevronsRight,
   ChevronUp,
@@ -10,6 +8,7 @@ import {
   Lock,
   MessageSquare,
 } from "lucide-react";
+import { Id } from "convex/_generated/dataModel";
 import {
   Sidebar,
   SidebarContent,
@@ -31,30 +30,122 @@ import {
 import { NewChannel } from "./new-channel";
 import { NewDm } from "./new-dm";
 import { channelNameOrFallback } from "~/lib/utils";
-import { useUnreadCounts } from "~/hooks/useUnreadCounts";
+import { useSidebarDataContext } from "~/contexts/SidebarDataContext";
 
-export function AppSidebar() {
-  const user = useUser();
+// Memoized components for individual sidebar items
+const PublicChannelItem = memo<{
+  channel: { _id: Id<"channels">; name?: string; description?: string };
+  unreadCount: number;
+}>(({ channel, unreadCount }) => (
+  <SidebarMenuItem key={channel._id}>
+    <SidebarMenuButton asChild>
+      <a href={`/channel/${channel._id}`}>
+        <Hash />
+        <span>{channelNameOrFallback(channel.name)}</span>
+      </a>
+    </SidebarMenuButton>
+    {unreadCount > 0 && (
+      <SidebarMenuBadge>
+        {unreadCount > 99 ? "99+" : unreadCount}
+      </SidebarMenuBadge>
+    )}
+  </SidebarMenuItem>
+));
+PublicChannelItem.displayName = "PublicChannelItem";
 
-  const { data: convexUser } = useQuery(
-    convexQuery(api.users.getUserByClerkId, { ClerkId: user.user?.id }),
-  );
+const PrivateChannelItem = memo<{
+  channel: { _id: Id<"channels">; name?: string; description?: string };
+  unreadCount: number;
+}>(({ channel, unreadCount }) => (
+  <SidebarMenuItem key={channel._id}>
+    <SidebarMenuButton asChild>
+      <a href={`/channel/${channel._id}`}>
+        <Lock />
+        <span>{channelNameOrFallback(channel.name)}</span>
+      </a>
+    </SidebarMenuButton>
+    {unreadCount > 0 && (
+      <SidebarMenuBadge>
+        {unreadCount > 99 ? "99+" : unreadCount}
+      </SidebarMenuBadge>
+    )}
+  </SidebarMenuItem>
+));
+PrivateChannelItem.displayName = "PrivateChannelItem";
 
-  const { publicChannelUnreads, privateChannelUnreads, dmUnreads } =
-    useUnreadCounts(convexUser?._id);
+const DMItem = memo<{
+  channel: { _id: Id<"channels">; otherMembers: string };
+  unreadCount: number;
+}>(({ channel, unreadCount }) => (
+  <SidebarMenuItem key={channel._id}>
+    <SidebarMenuButton asChild>
+      <a href={`/dm/${channel._id}`}>
+        <MessageSquare />
+        <span>{channel.otherMembers}</span>
+      </a>
+    </SidebarMenuButton>
+    {unreadCount > 0 && (
+      <SidebarMenuBadge>
+        {unreadCount > 99 ? "99+" : unreadCount}
+      </SidebarMenuBadge>
+    )}
+  </SidebarMenuItem>
+));
+DMItem.displayName = "DMItem";
 
-  const { data: publicChannels, isLoading: isPublicChannelsLoading } = useQuery(
-    convexQuery(api.channels.getPublicChannels, {}),
-  );
+const AppSidebarComponent = memo(() => {
+  const {
+    convexUser,
+    publicChannels,
+    privateChannels,
+    dms,
+    isPublicChannelsLoading,
+    isPrivateChannelsLoading,
+    isDMsLoading,
+    publicChannelUnreads,
+    privateChannelUnreads,
+    dmUnreads,
+  } = useSidebarDataContext();
 
-  const { data: privateChannels, isLoading: isPrivateChannelsLoading } =
-    useQuery(
-      convexQuery(api.channels.getChannelsByUser, { user: convexUser?._id }),
+  // Memoize the channel rendering functions to prevent unnecessary re-renders
+  const renderPublicChannel = useCallback((channel: typeof publicChannels[0]) => {
+    if (!channel?._id) return null;
+    const unreadCount = publicChannelUnreads[channel._id] || 0;
+    
+    return (
+      <PublicChannelItem
+        key={channel._id}
+        channel={channel}
+        unreadCount={unreadCount}
+      />
     );
+  }, [publicChannelUnreads]);
 
-  const { data: dms, isLoading: isDMsLoading } = useQuery(
-    convexQuery(api.channels.getDMsByUser, { user: convexUser?._id }),
-  );
+  const renderPrivateChannel = useCallback((channel: typeof privateChannels[0]) => {
+    if (!channel?._id) return null;
+    const unreadCount = privateChannelUnreads[channel._id] || 0;
+    
+    return (
+      <PrivateChannelItem
+        key={channel._id}
+        channel={channel}
+        unreadCount={unreadCount}
+      />
+    );
+  }, [privateChannelUnreads]);
+
+  const renderDMChannel = useCallback((channel: typeof dms[0]) => {
+    if (!channel?._id) return null;
+    const unreadCount = dmUnreads[channel._id] || 0;
+    
+    return (
+      <DMItem
+        key={channel._id}
+        channel={channel}
+        unreadCount={unreadCount}
+      />
+    );
+  }, [dmUnreads]);
 
   return (
     <Sidebar collapsible="icon">
@@ -73,7 +164,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenuButton asChild>
-            <a href="/">
+            <a href="/home">
               <Home />
               <span>Home</span>
             </a>
@@ -96,29 +187,7 @@ export function AppSidebar() {
                   {isPublicChannelsLoading ? (
                     <SidebarMenuSkeleton />
                   ) : (
-                    publicChannels?.map((channel, index) => {
-                    let unreadCount = channel?._id
-                      ? publicChannelUnreads[channel._id] || 0
-                      : 0;
-
-                    console.log(
-                      `Channel ${channel?.name} unread count:`,
-                      unreadCount,
-                    );
-                    return (
-                      <SidebarMenuItem key={channel?._id}>
-                        <SidebarMenuButton asChild>
-                          <a href={`/channel/${channel?._id}`}>
-                            <Hash />
-                            <span>{channelNameOrFallback(channel?.name)}</span>
-                          </a>
-                        </SidebarMenuButton>
-                        {unreadCount > 0 && (
-                          <SidebarMenuBadge>{unreadCount > 99 ? "99+" : unreadCount}</SidebarMenuBadge>
-                        )}
-                      </SidebarMenuItem>
-                    );
-                    })
+                    publicChannels?.map(renderPublicChannel)
                   )}
                   {isPrivateChannelsLoading ? (
                     <>
@@ -127,25 +196,7 @@ export function AppSidebar() {
                       <SidebarMenuSkeleton />
                     </>
                   ) : (
-                    privateChannels?.map((channel) => {
-                    const unreadCount = channel?._id
-                      ? privateChannelUnreads[channel._id] || 0
-                      : 0;
-                    console.log(unreadCount);
-                    return (
-                      <SidebarMenuItem key={channel?._id}>
-                        <SidebarMenuButton asChild>
-                          <a href={`/channel/${channel?._id}`}>
-                            <Lock />
-                            <span>{channelNameOrFallback(channel?.name)}</span>
-                          </a>
-                        </SidebarMenuButton>
-                        {unreadCount > 0 && (
-                          <SidebarMenuBadge>{unreadCount > 99 ? "99+" : unreadCount}</SidebarMenuBadge>
-                        )}
-                      </SidebarMenuItem>
-                    );
-                    })
+                    privateChannels?.map(renderPrivateChannel)
                   )}
                 </SidebarMenu>
               </CollapsibleContent>
@@ -165,25 +216,7 @@ export function AppSidebar() {
                   {isDMsLoading ? (
                     <SidebarMenuSkeleton />
                   ) : (
-                    dms?.map((channel) => {
-                    const unreadCount = channel?._id
-                      ? dmUnreads[channel._id] || 0
-                      : 0;
-                    console.log(`DM ${channel.otherMembers} unread count:`, unreadCount);
-                    return (
-                      <SidebarMenuItem key={channel?._id}>
-                        <SidebarMenuButton asChild>
-                          <a href={`/dm/${channel?._id}`}>
-                            <MessageSquare />
-                            <span>{channel.otherMembers}</span>
-                          </a>
-                        </SidebarMenuButton>
-                        {unreadCount > 0 && (
-                          <SidebarMenuBadge>{unreadCount > 99 ? "99+" : unreadCount}</SidebarMenuBadge>
-                        )}
-                      </SidebarMenuItem>
-                    );
-                    })
+                    dms?.map(renderDMChannel)
                   )}
                 </SidebarMenu>
               </CollapsibleContent>
@@ -202,4 +235,8 @@ export function AppSidebar() {
       <SidebarFooter />
     </Sidebar>
   );
-}
+});
+
+AppSidebarComponent.displayName = "AppSidebar";
+
+export const AppSidebar = AppSidebarComponent;

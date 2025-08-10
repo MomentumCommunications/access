@@ -3,17 +3,28 @@ import { SendIcon } from "lucide-react";
 import { Textarea } from "./ui/textarea";
 import { useState } from "react";
 import { Id } from "convex/_generated/dataModel";
-import { useConvexMutation } from "@convex-dev/react-query";
+import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
 import { api } from "convex/_generated/api";
 import { ImageUpload } from "./image-upload";
+import { useUser } from "@clerk/tanstack-react-start";
 
 export function MessageInput({
   userId,
   channel,
+  adminControlled,
 }: {
   userId: Id<"users">;
   channel: Id<"channels"> | string;
+  adminControlled: boolean | undefined;
 }) {
+  const user = useUser();
+
+  const convexUser = useConvexQuery(api.users.getUserByClerkId, {
+    ClerkId: user?.user?.id,
+  });
+
+  const role = convexUser?.role;
+
   const mutate = useConvexMutation(api.messages.createMessage);
 
   const sendData = {
@@ -39,6 +50,9 @@ export function MessageInput({
 
     setMessage("");
   };
+
+  const disabledConditions = adminControlled && role !== "admin";
+
   return (
     <form className="flex flex-row gap-2" onSubmit={handleSubmit}>
       <Textarea
@@ -46,8 +60,13 @@ export function MessageInput({
         rows={textRowCount}
         className="w-full"
         name="message"
+        disabled={disabledConditions}
         value={message}
-        placeholder="Type a message..."
+        placeholder={
+          disabledConditions
+            ? "You are not allowed to send messages in this channel."
+            : "Send a message..."
+        }
         onKeyDown={(e) => {
           // Submit on Enter (without Shift)
           if (e.key === "Enter" && !e.shiftKey) {

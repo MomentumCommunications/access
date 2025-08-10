@@ -46,14 +46,14 @@ export default defineSchema({
     channel: v.union(v.id("channels"), v.string()),
     reactions: v.optional(v.id("reactions")),
     edited: v.optional(v.boolean()),
-  })
-    .index("byChannel", ["channel"]),
+  }).index("byChannel", ["channel"]),
   channels: defineTable({
     name: v.optional(v.string()),
     description: v.string(),
     group: v.optional(v.id("groups")),
     isDM: v.boolean(),
     isPrivate: v.optional(v.boolean()),
+    adminControlled: v.optional(v.boolean()),
     messages: v.optional(v.id("messages")),
     users: v.optional(v.id("groupMembers")),
   })
@@ -69,16 +69,13 @@ export default defineSchema({
     .index("byUser", ["user"])
     .index("byChannelUser", ["channel", "user"]),
   reactions: defineTable({
-    thumbsUp: v.optional(v.id("users")),
-    thumbsDown: v.optional(v.id("users")),
-    heart: v.optional(v.id("users")),
-    laugh: v.optional(v.id("users")),
-    confused: v.optional(v.id("users")),
-    fire: v.optional(v.id("users")),
+    userId: v.id("users"),
+    reaction: v.string(),
     toBulletin: v.optional(v.id("bulletin")),
-    toTask: v.optional(v.id("tasks")),
     toMessage: v.optional(v.id("messages")),
-  }),
+  })
+    .index("byMessage", ["toMessage"])
+    .index("byMessageUser", ["toMessage", "userId"]),
   messageReads: defineTable({
     messageId: v.id("messages"),
     userId: v.id("users"),

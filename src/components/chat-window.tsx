@@ -22,6 +22,7 @@ interface ChatWindowProps {
   isLoading: boolean;
   className?: string;
   channel?: { isDM: boolean };
+  adminControlled?: boolean;
 }
 
 export function ChatWindow({
@@ -34,6 +35,7 @@ export function ChatWindow({
   isLoading,
   className,
   channel,
+  adminControlled,
 }: ChatWindowProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -253,7 +255,11 @@ export function ChatWindow({
 
       {/* Message Input - Row 2: Fixed height at bottom */}
       <div className="border-t bg-background/95 backdrop-blur-sm px-4 py-3">
-        <MessageInput userId={userId} channel={channelId} />
+        <MessageInput
+          userId={userId}
+          channel={channelId}
+          adminControlled={adminControlled}
+        />
       </div>
     </div>
   );

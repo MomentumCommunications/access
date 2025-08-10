@@ -387,6 +387,7 @@ function RouteComponent() {
               isLoading={contextLoading}
               className="h-full w-full"
               channel={channel}
+              adminControlled={channel.adminControlled}
             />
           ) : (
             <ChatWindow
@@ -399,6 +400,7 @@ function RouteComponent() {
               isLoading={messagesLoading}
               className="h-full w-full"
               channel={channel}
+              adminControlled={channel.adminControlled}
             />
           )}
         </SignedIn>

@@ -114,7 +114,7 @@ export function AppSidebar() {
                           </a>
                         </SidebarMenuButton>
                         {unreadCount > 0 && (
-                          <SidebarMenuBadge>{unreadCount}</SidebarMenuBadge>
+                          <SidebarMenuBadge>{unreadCount > 99 ? "99+" : unreadCount}</SidebarMenuBadge>
                         )}
                       </SidebarMenuItem>
                     );
@@ -141,7 +141,7 @@ export function AppSidebar() {
                           </a>
                         </SidebarMenuButton>
                         {unreadCount > 0 && (
-                          <SidebarMenuBadge>{unreadCount}</SidebarMenuBadge>
+                          <SidebarMenuBadge>{unreadCount > 99 ? "99+" : unreadCount}</SidebarMenuBadge>
                         )}
                       </SidebarMenuItem>
                     );
@@ -179,7 +179,7 @@ export function AppSidebar() {
                           </a>
                         </SidebarMenuButton>
                         {unreadCount > 0 && (
-                          <SidebarMenuBadge>{unreadCount}</SidebarMenuBadge>
+                          <SidebarMenuBadge>{unreadCount > 99 ? "99+" : unreadCount}</SidebarMenuBadge>
                         )}
                       </SidebarMenuItem>
                     );

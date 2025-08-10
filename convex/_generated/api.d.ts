@@ -18,6 +18,7 @@ import type * as channels from "../channels.js";
 import type * as etcFunctions from "../etcFunctions.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
+import type * as reactions from "../reactions.js";
 import type * as tasks from "../tasks.js";
 import type * as users from "../users.js";
 
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   etcFunctions: typeof etcFunctions;
   http: typeof http;
   messages: typeof messages;
+  reactions: typeof reactions;
   tasks: typeof tasks;
   users: typeof users;
 }>;

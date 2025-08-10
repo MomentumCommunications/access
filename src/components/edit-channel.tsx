@@ -37,6 +37,7 @@ import {
 import { ScrollArea } from "./ui/scroll-area";
 import { PencilLine } from "lucide-react";
 import { Input } from "./ui/input";
+import { Switch } from "./ui/switch";
 
 type Channel = {
   _id: Id<"channels">;
@@ -48,6 +49,7 @@ type Channel = {
   isPrivate?: boolean;
   messages?: Id<"messages">;
   users?: Id<"groupMembers">;
+  adminControlled?: boolean;
 };
 
 export function EditChannel({ channel }: { channel: Channel }) {
@@ -108,6 +110,7 @@ export function EditChannel({ channel }: { channel: Channel }) {
 const formSchema = z.object({
   name: z.string().min(2).max(50),
   description: z.string().min(2).max(1000),
+  adminControlled: z.boolean(),
 });
 
 function EditChannelForm({ channel }: { channel: Channel }) {
@@ -120,6 +123,7 @@ function EditChannelForm({ channel }: { channel: Channel }) {
     defaultValues: {
       name: channel.name,
       description: channel.description,
+      adminControlled: channel.adminControlled,
     },
   });
 
@@ -128,6 +132,7 @@ function EditChannelForm({ channel }: { channel: Channel }) {
       id: channel._id,
       name: values.name,
       description: values.description,
+      adminControlled: values.adminControlled,
     });
 
     // send escape key
@@ -168,6 +173,21 @@ function EditChannelForm({ channel }: { channel: Channel }) {
                 <Textarea {...field} rows={rowCount} />
               </FormControl>
               <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="adminControlled"
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <FormLabel>Admin Controlled</FormLabel>
             </FormItem>
           )}
         />

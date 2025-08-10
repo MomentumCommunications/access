@@ -24,20 +24,18 @@ import {
 } from "./ui/form";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Checkbox } from "./ui/checkbox";
 import { Id } from "convex/_generated/dataModel";
-import { useNavigate } from "@tanstack/react-router";
+import { Switch } from "./ui/switch";
 
 const formSchema = z.object({
   name: z.string().min(1).max(50),
   description: z.string().min(1),
   isPrivate: z.boolean(),
+  adminControlled: z.boolean(),
 });
 
 export function NewChannel({ userId }: { userId: Id<"users"> }) {
   const mutate = useConvexMutation(api.channels.createChannel);
-
-  const navigate = useNavigate();
 
   // 1. Define your form.
   const form = useForm<z.infer<typeof formSchema>>({
@@ -46,21 +44,25 @@ export function NewChannel({ userId }: { userId: Id<"users"> }) {
       name: "",
       description: "",
       isPrivate: false,
+      adminControlled: false,
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    const { name, description, isPrivate } = values;
+    const { name, description, isPrivate, adminControlled } = values;
     const user = userId;
 
     try {
-      const channelId = await mutate({ name, description, isPrivate, user });
+      const channelId = await mutate({
+        name,
+        description,
+        isPrivate,
+        user,
+        adminControlled,
+      });
 
       if (channelId) {
-        navigate({
-          to: "/channel/$channel",
-          params: { channel: channelId },
-        });
+        window.location.href = `/channel/${channelId}`;
 
         form.reset();
 
@@ -130,12 +132,32 @@ export function NewChannel({ userId }: { userId: Id<"users"> }) {
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                   <FormControl>
-                    <Checkbox
+                    <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
                   <FormLabel className="font-normal">Private Channel</FormLabel>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="adminControlled"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormLabel className="font-normal">
+                    Admin Controlled
+                  </FormLabel>
+                  <FormDescription>
+                    Only admins can send messages in this channel.
+                  </FormDescription>
                 </FormItem>
               )}
             />

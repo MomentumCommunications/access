@@ -1,5 +1,7 @@
 import AuthorInfo from "./author-info";
 import { ImageComponent } from "./image-component";
+import { MessageReactions } from "./message-reactions";
+import { ReactionPicker } from "./reaction-picker";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -15,6 +17,7 @@ import {
   MoreHorizontal,
   Trash2,
   Check,
+  SmileIcon,
 } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import { EditMessage } from "./edit-message";
@@ -112,7 +115,7 @@ export function MessageComponent({
     if (onRegisterElement && messageRef.current) {
       onRegisterElement(message._id, messageRef.current);
     }
-    
+
     return () => {
       if (onRegisterElement) {
         onRegisterElement(message._id, null);
@@ -139,9 +142,9 @@ export function MessageComponent({
   const isAuthorOrAdmin = message.author === userId || user?.role === "admin";
 
   return (
-    <div 
+    <div
       ref={messageRef}
-      id={message._id} 
+      id={message._id}
       className="flex py-2 flex-col gap-2 align-bottom"
     >
       <div className="flex flex-row justify-between">
@@ -159,6 +162,16 @@ export function MessageComponent({
             <DropdownMenuContent align="start">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuGroup>
+                <ReactionPicker
+                  messageId={message._id}
+                  userId={userId}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <SmileIcon />
+                      Add Reaction
+                    </DropdownMenuItem>
+                  }
+                />
                 {!isImage && (
                   <>
                     <DropdownMenuItem
@@ -203,6 +216,7 @@ export function MessageComponent({
           </div>
         )}
       </div>
+      <MessageReactions messageId={message._id} userId={userId} />
     </div>
   );
 }

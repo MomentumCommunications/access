@@ -381,3 +381,115 @@ export const getUnreadMessageCount = query({
     return unreadCount;
   },
 });
+
+export const getUnreadMessages = query({
+  args: {
+    userId: v.id("users"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 50;
+
+    // Get all channels the user has access to
+    const publicChannels = await ctx.db.query("channels")
+      .withIndex("byIsPrivateNotDM", (q) => q.eq("isPrivate", false).eq("isDM", false))
+      .collect();
+    
+    const channelMembers = await ctx.db
+      .query("channelMembers")
+      .withIndex("byUser", (q) => q.eq("user", args.userId))
+      .collect();
+    
+    const accessibleChannelIds = [
+      ...publicChannels.map(c => c._id),
+      ...channelMembers.map(cm => cm.channel)
+    ];
+
+    // Get all reads for this user across all channels
+    const userReads = await ctx.db
+      .query("messageReads")
+      .withIndex("byUser", (q) => q.eq("userId", args.userId))
+      .collect();
+    
+    const readMessageIds = new Set(userReads.map((read) => read.messageId));
+    
+    // Get unread messages from accessible channels
+    const unreadMessages = [];
+    
+    for (const channelId of accessibleChannelIds) {
+      const channelMessages = await ctx.db
+        .query("messages")
+        .withIndex("byChannel", (q) => q.eq("channel", channelId))
+        .filter((q) => q.neq(q.field("author"), args.userId)) // Exclude user's own messages
+        .order("desc")
+        .take(20); // Limit per channel to avoid too many queries
+      
+      // Filter out read messages
+      const channelUnread = channelMessages.filter(
+        (msg) => !readMessageIds.has(msg._id)
+      );
+      
+      unreadMessages.push(...channelUnread);
+    }
+    
+    // Sort by creation time (newest first) and limit total results
+    const sortedUnread = unreadMessages
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .slice(0, limit);
+    
+    // Enrich with channel information
+    const enrichedMessages = await Promise.all(
+      sortedUnread.map(async (message) => {
+        // Get channel info
+        const channel = await ctx.db.get(message.channel as Id<"channels">);
+        let channelInfo = null;
+        
+        if (channel) {
+          if (channel.isDM) {
+            // This is a DM - get other member names
+            const members = await ctx.db
+              .query("channelMembers")
+              .withIndex("byChannel", (q) => q.eq("channel", channel._id))
+              .collect();
+            
+            const otherUserIds = members
+              .map((m) => m.user)
+              .filter((uid) => uid !== args.userId);
+            
+            const otherUsers = await Promise.all(
+              otherUserIds.map((uid) => ctx.db.get(uid)),
+            );
+            
+            const otherNames = otherUsers
+              .filter(Boolean)
+              .map((u) => u?.displayName || u?.name);
+            
+            channelInfo = {
+              name: otherNames.join(", ") || "Direct Message",
+              isDM: true,
+              dmId: channel._id
+            };
+          } else {
+            // Regular channel
+            channelInfo = {
+              name: channel.name || "Unknown Channel",
+              isDM: false,
+              channelId: channel._id
+            };
+          }
+        }
+        
+        // Get author info
+        const author = await ctx.db.get(message.author);
+        
+        return {
+          ...message,
+          channelInfo,
+          authorName: author?.name || author?.email || "Unknown",
+        };
+      })
+    );
+    
+    return enrichedMessages;
+  },
+});

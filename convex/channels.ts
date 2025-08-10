@@ -215,14 +215,19 @@ export const createChannel = mutation({
     description: v.string(),
     isPrivate: v.boolean(),
     user: v.id("users"),
+    adminControlled: v.boolean(),
   },
-  handler: async (ctx, { name, description, isPrivate, user }) => {
+  handler: async (
+    ctx,
+    { name, description, isPrivate, user, adminControlled },
+  ) => {
     const isDM = false;
     const channelId = await ctx.db.insert("channels", {
       name,
       description,
       isPrivate,
       isDM,
+      adminControlled,
     });
 
     if (isPrivate) {
@@ -237,9 +242,14 @@ export const createChannel = mutation({
 });
 
 export const editChannel = mutation({
-  args: { id: v.id("channels"), name: v.string(), description: v.string() },
-  handler: async (ctx, { id, name, description }) => {
-    await ctx.db.patch(id, { name, description });
+  args: {
+    id: v.id("channels"),
+    name: v.string(),
+    description: v.string(),
+    adminControlled: v.boolean(),
+  },
+  handler: async (ctx, { id, name, description, adminControlled }) => {
+    await ctx.db.patch(id, { name, description, adminControlled });
   },
 });
 

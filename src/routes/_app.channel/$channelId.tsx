@@ -388,7 +388,7 @@ function RouteComponent() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 px-0 md:px-2 min-h-0 w-full relative">
+      <div className="flex flex-1 min-h-0 w-full relative">
         <SignedIn>
           {/* Chat Window - Conditional rendering based on messageId */}
           {messageId ? (

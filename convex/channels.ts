@@ -294,3 +294,77 @@ export const deleteChannel = mutation({
     }
   },
 });
+
+export const getAccessibleChannelsForSearch = query({
+  args: { user: v.optional(v.id("users")) },
+  handler: async (ctx, { user }) => {
+    if (!user) {
+      return { publicChannels: [], privateChannels: [], dms: [] };
+    }
+
+    // Get public channels (no membership required)
+    const publicChannels = await ctx.db
+      .query("channels")
+      .withIndex("byIsPrivateNotDM", (q) =>
+        q.eq("isPrivate", false).eq("isDM", false),
+      )
+      .collect();
+
+    // Get user's channel memberships for private channels and DMs
+    const channelMemberships = await ctx.db
+      .query("channelMembers")
+      .withIndex("byUser", (q) => q.eq("user", user))
+      .collect();
+
+    const memberChannelIds = new Set(channelMemberships.map((m) => m.channel));
+
+    // Get private channels user has access to
+    const privateChannels = [];
+    const dms = [];
+
+    for (const channelId of memberChannelIds) {
+      const channel = await ctx.db.get(channelId);
+      if (channel) {
+        if (channel.isDM) {
+          // For DMs, get other member names
+          const members = await ctx.db
+            .query("channelMembers")
+            .withIndex("byChannel", (q) => q.eq("channel", channel._id))
+            .collect();
+
+          const otherUserIds = members
+            .map((m) => m.user)
+            .filter((uid) => uid !== user);
+
+          const otherUsers = await Promise.all(
+            otherUserIds.map((uid) => ctx.db.get(uid)),
+          );
+
+          const otherNames = otherUsers
+            .filter(Boolean)
+            .map((u) => u?.displayName || u?.name);
+
+          dms.push({
+            ...channel,
+            otherMembers: otherNames.join(", "),
+            displayName: otherNames.join(", ") || "Direct Message",
+          });
+        } else if (channel.isPrivate) {
+          privateChannels.push({
+            ...channel,
+            displayName: channel.name || "Private Channel",
+          });
+        }
+      }
+    }
+
+    return {
+      publicChannels: publicChannels.map((c) => ({
+        ...c,
+        displayName: c.name || "Public Channel",
+      })),
+      privateChannels,
+      dms,
+    };
+  },
+});

@@ -51,27 +51,25 @@ type Message = {
 
 export function EditMessage({
   message,
-  userId,
+  trigger,
 }: {
   message: Message;
-  userId: Id<"users">;
+  trigger?: React.ReactNode;
 }) {
   const [open, setOpen] = React.useState(false);
   const isMobile = useIsMobile();
 
+  const defaultTrigger = (
+    <Button variant="ghost" size="sm">
+      <PencilLine className="h-4 w-4" />
+      Edit
+    </Button>
+  );
+
   if (!isMobile) {
     return (
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button
-            disabled={message.author !== userId}
-            variant="ghost"
-            className="px-0 size-8 has-[>svg]:px-2 mx-0 w-full justify-start"
-          >
-            <PencilLine className="text-muted-foreground" />
-            <span>Edit</span>
-          </Button>
-        </DialogTrigger>
+        <DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Message</DialogTitle>
@@ -85,16 +83,7 @@ export function EditMessage({
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>
-        <Button
-          disabled={message.author !== userId}
-          variant="ghost"
-          className="px-0 size-8 has-[>svg]:px-2 mx-0 w-full justify-start"
-        >
-          <PencilLine className="mr-2 h-4 w-4" />
-          <span>Edit</span>
-        </Button>
-      </DrawerTrigger>
+      <DrawerTrigger asChild>{trigger || defaultTrigger}</DrawerTrigger>
       <DrawerContent>
         <ScrollArea className="px-2">
           <DrawerHeader className="text-left">

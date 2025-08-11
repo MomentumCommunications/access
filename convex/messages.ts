@@ -53,7 +53,7 @@ export const getMessagesByChannel = query({
   },
 });
 
-export const getMessagesByUserAccessability = query({
+export const getMessagesByUserAccessibility = query({
   args: { user: v.optional(v.id("users")) },
   handler: async (ctx, { user }) => {
     if (!user) {
@@ -391,18 +391,21 @@ export const getUnreadMessages = query({
     const limit = args.limit || 50;
 
     // Get all channels the user has access to
-    const publicChannels = await ctx.db.query("channels")
-      .withIndex("byIsPrivateNotDM", (q) => q.eq("isPrivate", false).eq("isDM", false))
+    const publicChannels = await ctx.db
+      .query("channels")
+      .withIndex("byIsPrivateNotDM", (q) =>
+        q.eq("isPrivate", false).eq("isDM", false),
+      )
       .collect();
-    
+
     const channelMembers = await ctx.db
       .query("channelMembers")
       .withIndex("byUser", (q) => q.eq("user", args.userId))
       .collect();
-    
+
     const accessibleChannelIds = [
-      ...publicChannels.map(c => c._id),
-      ...channelMembers.map(cm => cm.channel)
+      ...publicChannels.map((c) => c._id),
+      ...channelMembers.map((cm) => cm.channel),
     ];
 
     // Get all reads for this user across all channels
@@ -410,12 +413,12 @@ export const getUnreadMessages = query({
       .query("messageReads")
       .withIndex("byUser", (q) => q.eq("userId", args.userId))
       .collect();
-    
+
     const readMessageIds = new Set(userReads.map((read) => read.messageId));
-    
+
     // Get unread messages from accessible channels
     const unreadMessages = [];
-    
+
     for (const channelId of accessibleChannelIds) {
       const channelMessages = await ctx.db
         .query("messages")
@@ -423,27 +426,27 @@ export const getUnreadMessages = query({
         .filter((q) => q.neq(q.field("author"), args.userId)) // Exclude user's own messages
         .order("desc")
         .take(20); // Limit per channel to avoid too many queries
-      
+
       // Filter out read messages
       const channelUnread = channelMessages.filter(
-        (msg) => !readMessageIds.has(msg._id)
+        (msg) => !readMessageIds.has(msg._id),
       );
-      
+
       unreadMessages.push(...channelUnread);
     }
-    
+
     // Sort by creation time (newest first) and limit total results
     const sortedUnread = unreadMessages
       .sort((a, b) => b._creationTime - a._creationTime)
       .slice(0, limit);
-    
+
     // Enrich with channel information
     const enrichedMessages = await Promise.all(
       sortedUnread.map(async (message) => {
         // Get channel info
         const channel = await ctx.db.get(message.channel as Id<"channels">);
         let channelInfo = null;
-        
+
         if (channel) {
           if (channel.isDM) {
             // This is a DM - get other member names
@@ -451,45 +454,176 @@ export const getUnreadMessages = query({
               .query("channelMembers")
               .withIndex("byChannel", (q) => q.eq("channel", channel._id))
               .collect();
-            
+
             const otherUserIds = members
               .map((m) => m.user)
               .filter((uid) => uid !== args.userId);
-            
+
             const otherUsers = await Promise.all(
               otherUserIds.map((uid) => ctx.db.get(uid)),
             );
-            
+
             const otherNames = otherUsers
               .filter(Boolean)
               .map((u) => u?.displayName || u?.name);
-            
+
             channelInfo = {
               name: otherNames.join(", ") || "Direct Message",
               isDM: true,
-              dmId: channel._id
+              dmId: channel._id,
             };
           } else {
             // Regular channel
             channelInfo = {
               name: channel.name || "Unknown Channel",
               isDM: false,
-              channelId: channel._id
+              channelId: channel._id,
             };
           }
         }
-        
+
         // Get author info
         const author = await ctx.db.get(message.author);
-        
+
         return {
           ...message,
           channelInfo,
           authorName: author?.name || author?.email || "Unknown",
         };
-      })
+      }),
     );
-    
+
+    return enrichedMessages;
+  },
+});
+
+export const searchMessages = query({
+  args: {
+    query: v.string(),
+    userId: v.id("users"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 20;
+    const searchTerm = args.query.toLowerCase().trim();
+
+    if (searchTerm.length < 2) {
+      return [];
+    }
+
+    // Get all channels the user has access to
+    const publicChannels = await ctx.db
+      .query("channels")
+      .withIndex("byIsPrivateNotDM", (q) =>
+        q.eq("isPrivate", false).eq("isDM", false),
+      )
+      .collect();
+
+    const channelMembers = await ctx.db
+      .query("channelMembers")
+      .withIndex("byUser", (q) => q.eq("user", args.userId))
+      .collect();
+
+    const accessibleChannelIds = [
+      ...publicChannels.map((c) => c._id),
+      ...channelMembers.map((cm) => cm.channel),
+    ];
+
+    // Search for messages containing the search term
+    const matchingMessages = [];
+
+    for (const channelId of accessibleChannelIds) {
+      const channelMessages = await ctx.db
+        .query("messages")
+        .withIndex("byChannel", (q) => q.eq("channel", channelId))
+        .filter((q) => q.neq(q.field("format"), "image")) // Exclude image messages
+        .order("desc")
+        .take(50); // Limit per channel for performance
+
+      // Filter messages that contain the search term
+      const filtered = channelMessages.filter((msg) =>
+        msg.body.toLowerCase().includes(searchTerm)
+      );
+
+      matchingMessages.push(...filtered);
+    }
+
+    // Sort by relevance and creation time
+    const sortedMessages = matchingMessages
+      .sort((a, b) => {
+        const aBody = a.body.toLowerCase();
+        const bBody = b.body.toLowerCase();
+        
+        // Prioritize exact word matches
+        const aExactMatch = aBody.includes(` ${searchTerm} `) || 
+                           aBody.startsWith(`${searchTerm} `) || 
+                           aBody.endsWith(` ${searchTerm}`);
+        const bExactMatch = bBody.includes(` ${searchTerm} `) || 
+                           bBody.startsWith(`${searchTerm} `) || 
+                           bBody.endsWith(` ${searchTerm}`);
+        
+        if (aExactMatch && !bExactMatch) return -1;
+        if (!aExactMatch && bExactMatch) return 1;
+        
+        // Then sort by creation time (newest first)
+        return b._creationTime - a._creationTime;
+      })
+      .slice(0, limit);
+
+    // Enrich with channel and author information
+    const enrichedMessages = await Promise.all(
+      sortedMessages.map(async (message) => {
+        const channel = await ctx.db.get(message.channel as Id<"channels">);
+        const author = await ctx.db.get(message.author);
+        
+        let channelInfo = null;
+        if (channel) {
+          if (channel.isDM) {
+            // For DMs, get other member names
+            const members = await ctx.db
+              .query("channelMembers")
+              .withIndex("byChannel", (q) => q.eq("channel", channel._id))
+              .collect();
+
+            const otherUserIds = members
+              .map((m) => m.user)
+              .filter((uid) => uid !== args.userId);
+
+            const otherUsers = await Promise.all(
+              otherUserIds.map((uid) => ctx.db.get(uid)),
+            );
+
+            const otherNames = otherUsers
+              .filter(Boolean)
+              .map((u) => u?.displayName || u?.name);
+
+            channelInfo = {
+              name: otherNames.join(", ") || "Direct Message",
+              isDM: true,
+              channelId: channel._id,
+            };
+          } else {
+            channelInfo = {
+              name: channel.name || "Unknown Channel",
+              isDM: false,
+              channelId: channel._id,
+            };
+          }
+        }
+
+        return {
+          ...message,
+          channelInfo,
+          authorName: author?.displayName || author?.name || "Unknown",
+          // Highlight the search term in the message body
+          highlightedBody: message.body.replace(
+            new RegExp(`(${searchTerm})`, 'gi'),
+            '<mark>$1</mark>'
+          ),
+        };
+      }),
+    );
+
     return enrichedMessages;
   },
 });

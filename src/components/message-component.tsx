@@ -18,6 +18,8 @@ import {
   Trash2,
   Check,
   SmileIcon,
+  PencilLine,
+  Trash,
 } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import { EditMessage } from "./edit-message";
@@ -39,6 +41,12 @@ import { Markdown } from "./markdown-wrapper";
 import { generateShareableMessageLink } from "~/lib/message-utils";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useConvexQuery } from "@convex-dev/react-query";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "~/components/ui/context-menu";
 
 type Message = {
   _id: Id<"messages">;
@@ -53,23 +61,34 @@ type Message = {
   edited?: boolean;
 };
 
-function DeleteMessage({ message }: { message: Message; userId: Id<"users"> }) {
+function DeleteMessage({
+  message,
+  trigger,
+}: {
+  message: Message;
+  userId: Id<"users">;
+  trigger?: React.ReactNode;
+}) {
   const deleteFunction = useMutation(api.messages.deleteMessage);
 
   const deleteMessage = () => {
     deleteFunction({ id: message._id });
   };
 
+  const defaultTrigger = (
+    <Button
+      variant="ghost"
+      className="px-0 size-8 has-[>svg]:px-2 mx-0 w-full justify-start"
+    >
+      <Trash2 color="red" />
+      <span className="text-red-500">Delete</span>
+    </Button>
+  );
+
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button
-          variant="ghost"
-          className="px-0 size-8 has-[>svg]:px-2 mx-0 w-full justify-start"
-        >
-          <Trash2 color="red" />
-          <span className="text-red-500">Delete</span>
-        </Button>
+        {trigger || defaultTrigger}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -142,81 +161,156 @@ export function MessageComponent({
   const isAuthorOrAdmin = message.author === userId || user?.role === "admin";
 
   return (
-    <div
-      ref={messageRef}
-      id={message._id}
-      className="flex py-2 flex-col gap-2 align-bottom"
-    >
-      <div className="flex flex-row justify-between">
-        <AuthorInfo author={message.author} />
-        <div className="flex flex-row gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="z-10 cursor-pointer w-4 h-[22px]"
-              >
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuGroup>
-                <ReactionPicker
-                  messageId={message._id}
-                  userId={userId}
-                  trigger={
-                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                      <SmileIcon />
-                      Add Reaction
-                    </DropdownMenuItem>
-                  }
-                />
-                {!isImage && (
-                  <>
-                    <DropdownMenuItem
-                      onClick={() =>
-                        navigator.clipboard.writeText(message.body)
+    <ContextMenu>
+      <ContextMenuTrigger>
+        <div
+          ref={messageRef}
+          id={message._id}
+          className="flex p-2 flex-col gap-2 align-bottom hover:bg-muted/50 duration-100 lg:p-4 rounded ease-in-out"
+        >
+          <div className="flex flex-row justify-between">
+            <AuthorInfo author={message.author} />
+            <div className="flex flex-row gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="z-10 cursor-pointer w-4 h-[22px]"
+                  >
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                  <DropdownMenuGroup>
+                    <ReactionPicker
+                      messageId={message._id}
+                      userId={userId}
+                      trigger={
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                          <SmileIcon />
+                          Add Reaction
+                        </DropdownMenuItem>
                       }
-                    >
-                      <ClipboardIcon />
-                      Copy Text
-                    </DropdownMenuItem>
-                    {message.author === userId && (
-                      <EditMessage message={message} userId={userId} />
+                    />
+                    {!isImage && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={() =>
+                            navigator.clipboard.writeText(message.body)
+                          }
+                        >
+                          <ClipboardIcon />
+                          Copy Text
+                        </DropdownMenuItem>
+                        {message.author === userId && (
+                          <EditMessage
+                            message={message}
+                            trigger={
+                              <DropdownMenuItem>
+                                <PencilLine className="w-4 h-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            }
+                          />
+                        )}
+                      </>
                     )}
-                  </>
-                )}
-                <DropdownMenuItem onClick={handleCopyMessageLink}>
-                  {linkCopied ? <Check className="w-4 h-4" /> : <LinkIcon />}
-                  <span>
-                    {linkCopied ? "Link Copied!" : "Copy Message Link"}
-                  </span>
-                </DropdownMenuItem>
-                {isAuthorOrAdmin && (
-                  <DeleteMessage message={message} userId={userId} />
-                )}
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <p className="text-sm text-muted-foreground">
-            {format(new Date(message._creationTime), "M/d/yy h:mma")}
-          </p>
-        </div>
-      </div>
-      <div className="text-sm whitespace-pre-wrap pl-10">
-        {isImage ? (
-          <ImageComponent storageId={message.body as Id<"_storage">} />
-        ) : (
-          <Markdown content={message.body} />
-        )}
-        {message.edited && (
-          <div className="pt-2">
-            <p className="text-xs text-muted-foreground">(edited)</p>
+                    <DropdownMenuItem onClick={handleCopyMessageLink}>
+                      {linkCopied ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <LinkIcon />
+                      )}
+                      <span>
+                        {linkCopied ? "Link Copied!" : "Copy Message Link"}
+                      </span>
+                    </DropdownMenuItem>
+                    {isAuthorOrAdmin && (
+                      <DeleteMessage message={message} userId={userId} />
+                    )}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <p className="text-sm text-muted-foreground">
+                {format(new Date(message._creationTime), "M/d/yy h:mma")}
+              </p>
+            </div>
           </div>
+          <div className="text-sm whitespace-pre-wrap pl-10">
+            {isImage ? (
+              <ImageComponent storageId={message.body as Id<"_storage">} />
+            ) : (
+              <Markdown content={message.body} />
+            )}
+            {message.edited && (
+              <div className="pt-2">
+                <p className="text-xs text-muted-foreground">(edited)</p>
+              </div>
+            )}
+          </div>
+          <MessageReactions messageId={message._id} userId={userId} />
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        <ReactionPicker
+          messageId={message._id}
+          userId={userId}
+          trigger={
+            <ContextMenuItem onSelect={(e) => e.preventDefault()}>
+              <SmileIcon className="mr-2 h-4 w-4" />
+              Add Reaction
+            </ContextMenuItem>
+          }
+        />
+        {!isImage && (
+          <>
+            <ContextMenuItem
+              onClick={() => navigator.clipboard.writeText(message.body)}
+            >
+              <ClipboardIcon className="mr-2 h-4 w-4" />
+              Copy Text
+            </ContextMenuItem>
+            {message.author === userId && (
+              <EditMessage
+                message={message}
+                trigger={
+                  <ContextMenuItem onSelect={(e) => e.preventDefault()}>
+                    <PencilLine className="mr-2 h-4 w-4" />
+                    Edit Message
+                  </ContextMenuItem>
+                }
+              />
+            )}
+          </>
         )}
-      </div>
-      <MessageReactions messageId={message._id} userId={userId} />
-    </div>
+        <ContextMenuItem onClick={handleCopyMessageLink}>
+          {linkCopied ? (
+            <>
+              <Check className="mr-2 h-4 w-4" /> Link Copied!
+            </>
+          ) : (
+            <>
+              <LinkIcon className="mr-2 h-4 w-4" /> Copy Message Link
+            </>
+          )}
+        </ContextMenuItem>
+        {isAuthorOrAdmin && (
+          <DeleteMessage
+            message={message}
+            userId={userId}
+            trigger={
+              <ContextMenuItem
+                variant="destructive"
+                onSelect={(e) => e.preventDefault()}
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                Delete Message
+              </ContextMenuItem>
+            }
+          />
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

@@ -15,7 +15,7 @@ function PublicHome() {
 
   // If user is not signed in, redirect to sign-in
   if (user.isLoaded && !user.isSignedIn) {
-    return <Navigate to="/sign-in" replace />;
+    return <Navigate to="/sign-in/$" replace />;
   }
 
   // Loading state
@@ -25,3 +25,4 @@ function PublicHome() {
     </div>
   );
 }
+

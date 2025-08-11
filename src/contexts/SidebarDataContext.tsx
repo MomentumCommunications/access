@@ -29,6 +29,11 @@ interface SidebarDataContextType {
   privateChannelUnreads: Record<string, number>;
   dmUnreads: Record<string, number>;
   isLoading: boolean;
+  // Add missing individual loading states
+  isUserLoading: boolean;
+  isPublicChannelsLoading: boolean;
+  isPrivateChannelsLoading: boolean;
+  isDMsLoading: boolean;
   actions: {
     invalidateUnreadCounts: (channelId?: Id<"channels"> | string) => void;
     invalidateChannelList: () => void;
@@ -43,26 +48,23 @@ export function SidebarDataProvider({ children }: { children: ReactNode }) {
   const sidebarActions = useSidebarActions();
 
   // Memoize the context value to prevent unnecessary re-renders
-  // Optimize for persistent cache by reducing dependency array size
+  // Use a shallow comparison approach - only re-render when core structure changes
   const contextValue = useMemo(() => {
     return {
       ...sidebarData,
       actions: sidebarActions,
     };
   }, [
-    // Only track essential data that affects UI state
+    // Track only structural changes that require re-rendering
     sidebarData.convexUser?._id,
     sidebarData.publicChannels?.length,
-    sidebarData.privateChannels?.length, 
+    sidebarData.privateChannels?.length,
     sidebarData.dms?.length,
-    sidebarData.isUserLoading,
-    sidebarData.isPublicChannelsLoading,
-    sidebarData.isPrivateChannelsLoading,
-    sidebarData.isDMsLoading,
-    // Don't track individual unread counts to avoid excessive re-renders
-    Object.keys(sidebarData.publicChannelUnreads).length,
-    Object.keys(sidebarData.privateChannelUnreads).length,
-    Object.keys(sidebarData.dmUnreads).length,
+    sidebarData.isLoading, // Use combined loading state instead of individual ones
+    // Track unread counts as JSON strings for stable comparison
+    JSON.stringify(sidebarData.publicChannelUnreads),
+    JSON.stringify(sidebarData.privateChannelUnreads),
+    JSON.stringify(sidebarData.dmUnreads),
     sidebarActions,
   ]);
 

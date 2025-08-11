@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
+import { Route as AppSearchRouteImport } from './routes/_app.search'
 import { Route as AppHomeRouteImport } from './routes/_app.home'
 import { Route as AppChannelIndexRouteImport } from './routes/_app.channel/index'
 import { Route as AppDmDmIdRouteImport } from './routes/_app.dm/$dmId'
@@ -37,6 +38,11 @@ const SignInSplatRoute = SignInSplatRouteImport.update({
   id: '/sign-in/$',
   path: '/sign-in/$',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppSearchRoute = AppSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppHomeRoute = AppHomeRouteImport.update({
   id: '/home',
@@ -67,6 +73,7 @@ const AppChannelGeneralIndexRoute = AppChannelGeneralIndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/home': typeof AppHomeRoute
+  '/search': typeof AppSearchRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/channel/$channelId': typeof AppChannelChannelIdRoute
@@ -77,6 +84,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/home': typeof AppHomeRoute
+  '/search': typeof AppSearchRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/channel/$channelId': typeof AppChannelChannelIdRoute
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/_app/home': typeof AppHomeRoute
+  '/_app/search': typeof AppSearchRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/_app/channel/$channelId': typeof AppChannelChannelIdRoute
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/home'
+    | '/search'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/channel/$channelId'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/home'
+    | '/search'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/channel/$channelId'
@@ -122,6 +133,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/_app/home'
+    | '/_app/search'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/_app/channel/$channelId'
@@ -167,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/search': {
+      id: '/_app/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof AppSearchRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/home': {
       id: '/_app/home'
       path: '/home'
@@ -207,6 +226,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppHomeRoute: typeof AppHomeRoute
+  AppSearchRoute: typeof AppSearchRoute
   AppChannelChannelIdRoute: typeof AppChannelChannelIdRoute
   AppDmDmIdRoute: typeof AppDmDmIdRoute
   AppChannelIndexRoute: typeof AppChannelIndexRoute
@@ -215,6 +235,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppHomeRoute: AppHomeRoute,
+  AppSearchRoute: AppSearchRoute,
   AppChannelChannelIdRoute: AppChannelChannelIdRoute,
   AppDmDmIdRoute: AppDmDmIdRoute,
   AppChannelIndexRoute: AppChannelIndexRoute,

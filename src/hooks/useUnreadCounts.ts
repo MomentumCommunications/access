@@ -42,7 +42,7 @@ export function useUnreadCounts(userId?: Id<"users">) {
     const privateIds =
       privateChannels?.map((c) => c?._id).filter(Boolean) || [];
     const dmIds = dms?.map((d) => d?._id).filter(Boolean) || [];
-    
+
     return [...publicIds, ...privateIds, ...dmIds];
   }, [publicChannels, privateChannels, dms]);
 
@@ -69,90 +69,85 @@ export function useUnreadCounts(userId?: Id<"users">) {
 
   // Create stable empty objects to prevent unnecessary re-renders
   const emptyUnreads = useMemo(() => ({}), []);
-  
+
   // Build the result objects with memoization to prevent unnecessary re-renders
-  const { publicChannelUnreads, privateChannelUnreads, dmUnreads } = useMemo(() => {
-    const publicUnreads: Record<string, number> = {};
-    const privateUnreads: Record<string, number> = {};
-    const dmUnreadCounts: Record<string, number> = {};
+  const { publicChannelUnreads, privateChannelUnreads, dmUnreads } =
+    useMemo(() => {
+      const publicUnreads: Record<string, number> = {};
+      const privateUnreads: Record<string, number> = {};
+      const dmUnreadCounts: Record<string, number> = {};
 
-    // Debug logging for development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('useUnreadCounts Debug:', {
-        testChannelIds,
-        unreadQueriesLength: unreadQueries.length,
-        queriesWithData: unreadQueries.filter(q => q?.data !== undefined).length,
-        publicChannels: publicChannels?.length,
-        privateChannels: privateChannels?.length,
-        dms: dms?.length,
+      // Map unread counts back to their respective categories
+      testChannelIds.forEach((channelId, index) => {
+        const query = unreadQueries[index];
+
+        if (channelId && query?.data !== undefined) {
+          const count = query.data || 0;
+
+          // Convert channelId to string for consistent lookup
+          const channelIdStr = String(channelId);
+
+          // Determine which category this channel belongs to
+          const isPublic = publicChannels?.some(
+            (c) => String(c?._id) === channelIdStr,
+          );
+          const isPrivate = privateChannels?.some(
+            (c) => String(c?._id) === channelIdStr,
+          );
+          const isDM = dms?.some((d) => String(d?._id) === channelIdStr);
+
+          if (process.env.NODE_ENV === "development" && count > 0) {
+            console.log(
+              `Channel ${channelIdStr} has ${count} unread messages (public: ${isPublic}, private: ${isPrivate}, dm: ${isDM})`,
+            );
+          }
+
+          if (isPublic) {
+            publicUnreads[channelIdStr] = count;
+          } else if (isPrivate) {
+            privateUnreads[channelIdStr] = count;
+          } else if (isDM) {
+            dmUnreadCounts[channelIdStr] = count;
+          }
+        }
       });
-    }
 
-    // Map unread counts back to their respective categories
-    testChannelIds.forEach((channelId, index) => {
-      const query = unreadQueries[index];
-
-      if (channelId && query?.data !== undefined) {
-        const count = query.data || 0;
-
-        // Convert channelId to string for consistent lookup
-        const channelIdStr = String(channelId);
-
-        // Determine which category this channel belongs to
-        const isPublic = publicChannels?.some((c) => String(c?._id) === channelIdStr);
-        const isPrivate = privateChannels?.some((c) => String(c?._id) === channelIdStr);
-        const isDM = dms?.some((d) => String(d?._id) === channelIdStr);
-
-        if (process.env.NODE_ENV === 'development' && count > 0) {
-          console.log(`Channel ${channelIdStr} has ${count} unread messages (public: ${isPublic}, private: ${isPrivate}, dm: ${isDM})`);
+      // Fill remaining channels with 0 (for channels not in the test slice)
+      publicChannels?.forEach((channel) => {
+        const channelIdStr = String(channel?._id);
+        if (channel?._id && !(channelIdStr in publicUnreads)) {
+          publicUnreads[channelIdStr] = 0;
         }
+      });
 
-        if (isPublic) {
-          publicUnreads[channelIdStr] = count;
-        } else if (isPrivate) {
-          privateUnreads[channelIdStr] = count;
-        } else if (isDM) {
-          dmUnreadCounts[channelIdStr] = count;
+      privateChannels?.forEach((channel) => {
+        const channelIdStr = String(channel?._id);
+        if (channel?._id && !(channelIdStr in privateUnreads)) {
+          privateUnreads[channelIdStr] = 0;
         }
-      }
-    });
+      });
 
-    // Fill remaining channels with 0 (for channels not in the test slice)
-    publicChannels?.forEach((channel) => {
-      const channelIdStr = String(channel?._id);
-      if (channel?._id && !(channelIdStr in publicUnreads)) {
-        publicUnreads[channelIdStr] = 0;
-      }
-    });
+      dms?.forEach((dm) => {
+        const channelIdStr = String(dm?._id);
+        if (dm?._id && !(channelIdStr in dmUnreadCounts)) {
+          dmUnreadCounts[channelIdStr] = 0;
+        }
+      });
 
-    privateChannels?.forEach((channel) => {
-      const channelIdStr = String(channel?._id);
-      if (channel?._id && !(channelIdStr in privateUnreads)) {
-        privateUnreads[channelIdStr] = 0;
-      }
-    });
+      // Return stable references to prevent unnecessary re-renders
+      const hasAnyData =
+        Object.keys(publicUnreads).length > 0 ||
+        Object.keys(privateUnreads).length > 0 ||
+        Object.keys(dmUnreadCounts).length > 0;
 
-    dms?.forEach((dm) => {
-      const channelIdStr = String(dm?._id);
-      if (dm?._id && !(channelIdStr in dmUnreadCounts)) {
-        dmUnreadCounts[channelIdStr] = 0;
-      }
-    });
-
-    // Return stable references to prevent unnecessary re-renders
-    const hasAnyData = Object.keys(publicUnreads).length > 0 || 
-                      Object.keys(privateUnreads).length > 0 || 
-                      Object.keys(dmUnreadCounts).length > 0;
-    
-    return {
-      publicChannelUnreads: hasAnyData ? publicUnreads : emptyUnreads,
-      privateChannelUnreads: hasAnyData ? privateUnreads : emptyUnreads,
-      dmUnreads: hasAnyData ? dmUnreadCounts : emptyUnreads,
-    };
-  }, [testChannelIds, unreadQueries, publicChannels, privateChannels, dms]);
+      return {
+        publicChannelUnreads: hasAnyData ? publicUnreads : emptyUnreads,
+        privateChannelUnreads: hasAnyData ? privateUnreads : emptyUnreads,
+        dmUnreads: hasAnyData ? dmUnreadCounts : emptyUnreads,
+      };
+    }, [testChannelIds, unreadQueries, publicChannels, privateChannels, dms]);
 
   const isLoading = unreadQueries.some((q) => q.isLoading);
-
 
   return {
     publicChannelUnreads,
@@ -161,4 +156,3 @@ export function useUnreadCounts(userId?: Id<"users">) {
     isLoading,
   };
 }
-

@@ -21,8 +21,8 @@ import {
   PencilLine,
   Trash,
   Reply,
-  ReplyIcon,
   CornerUpRight,
+  Dot,
 } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import { EditMessage } from "./edit-message";
@@ -170,96 +170,109 @@ export function MessageComponent({
         <div
           ref={messageRef}
           id={message._id}
-          className="flex p-2 flex-col gap-2 align-bottom hover:bg-muted/50 duration-100 lg:p-4 rounded ease-in-out"
+          className="flex p-2 flex-col gap-2 align-bottom hover:bg-muted/50 duration-100 flex-1 min-w-0 lg:p-4 rounded ease-in-out"
         >
+          {/* display the reply */}
           {replyLoading && <Skeleton className="h-3 w-1/2" />}
+
           {replyData && (
-            <div className="flex flex-row gap-2 items-center pl-4">
-              <CornerUpRight className="w-4 h-4 translate-y-0.5 text-muted-foreground" />
+            <div className="flex flex-row gap-2 items-center pl-4 w-min">
+              <CornerUpRight className="flex-shrink-0 w-4 h-4 translate-y-0.5 text-muted-foreground" />
               <img
                 src={replyData.author?.image}
                 alt={replyData.author?.name}
-                className="w-6 h-6 rounded-full border border-muted"
+                className="flex-shrink-0 w-6 h-6 rounded-full border border-muted"
               />
-              <p className="text-sm text-muted-foreground">
-                {replyData.author?.displayName || replyData.author?.name}:{" "}
+              <p className="text-sm text-muted-foreground flex-shrink-0">
+                {replyData.author?.displayName || replyData.author?.name}:
+              </p>
+              {/* this is not the best way to deal with the flex container being too long issue */}
+              {/* but it'll do for now */}
+              {/* ideally this should inherit its max width from all of its parent */}
+              <p className="text-sm text-muted-foreground truncate min-w-0 w-[calc(100vw-16rem)] xs:w-[calc(100vw-20rem)] sm:w-[calc(100vw-20rem)] md:w-[calc(100vw-36rem)] flex-1">
                 {replyData.repliedMessage?.body || "(Lost or deleted)"}
               </p>
             </div>
           )}
-          <div className="flex flex-row justify-between">
+
+          <div className="flex flex-row items-center align-middle gap-2 justify-start">
             <AuthorInfo author={message.author} />
-            <div className="flex flex-row gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="z-10 cursor-pointer w-4 h-[22px]"
-                  >
-                    <MoreHorizontal />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                  <DropdownMenuGroup>
-                    {onReply && (
-                      <DropdownMenuItem onClick={() => onReply(message)}>
-                        <Reply className="w-4 h-4" />
-                        Reply
-                      </DropdownMenuItem>
-                    )}
-                    <ReactionPicker
-                      messageId={message._id}
-                      userId={userId}
-                      trigger={
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                          <SmileIcon />
-                          Add Reaction
-                        </DropdownMenuItem>
-                      }
-                    />
-                    {!isImage && (
-                      <>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            navigator.clipboard.writeText(message.body)
-                          }
-                        >
-                          <ClipboardIcon />
-                          Copy Text
-                        </DropdownMenuItem>
-                        {message.author === userId && (
-                          <EditMessage
-                            message={message}
-                            trigger={
-                              <DropdownMenuItem>
-                                <PencilLine className="w-4 h-4" />
-                                Edit
-                              </DropdownMenuItem>
-                            }
-                          />
-                        )}
-                      </>
-                    )}
-                    <DropdownMenuItem onClick={handleCopyMessageLink}>
-                      {linkCopied ? (
-                        <Check className="w-4 h-4" />
-                      ) : (
-                        <LinkIcon />
-                      )}
-                      <span>
-                        {linkCopied ? "Link Copied!" : "Copy Message Link"}
-                      </span>
-                    </DropdownMenuItem>
-                    {isAuthorOrAdmin && (
-                      <DeleteMessage message={message} userId={userId} />
-                    )}
-                  </DropdownMenuGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <p className="text-sm text-muted-foreground">
+            <Dot className="flex-shrink-0 w-4 h-4 text-muted-foreground" />
+            <div className="flex flex-row gap-2 items-center">
+              <p className="text-xs text-muted-foreground">
                 {format(new Date(message._creationTime), "M/d/yy h:mma")}
               </p>
+              <div className="flex flex-row gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="z-10 cursor-pointer w-4 h-[22px]"
+                    >
+                      <MoreHorizontal />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuGroup>
+                      {onReply && (
+                        <DropdownMenuItem onClick={() => onReply(message)}>
+                          <Reply className="w-4 h-4" />
+                          Reply
+                        </DropdownMenuItem>
+                      )}
+                      <ReactionPicker
+                        messageId={message._id}
+                        userId={userId}
+                        trigger={
+                          <DropdownMenuItem
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <SmileIcon />
+                            Add Reaction
+                          </DropdownMenuItem>
+                        }
+                      />
+                      {!isImage && (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              navigator.clipboard.writeText(message.body)
+                            }
+                          >
+                            <ClipboardIcon />
+                            Copy Text
+                          </DropdownMenuItem>
+                          {message.author === userId && (
+                            <EditMessage
+                              message={message}
+                              trigger={
+                                <DropdownMenuItem>
+                                  <PencilLine className="w-4 h-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                              }
+                            />
+                          )}
+                        </>
+                      )}
+                      <DropdownMenuItem onClick={handleCopyMessageLink}>
+                        {linkCopied ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          <LinkIcon />
+                        )}
+                        <span>
+                          {linkCopied ? "Link Copied!" : "Copy Message Link"}
+                        </span>
+                      </DropdownMenuItem>
+                      {isAuthorOrAdmin && (
+                        <DeleteMessage message={message} userId={userId} />
+                      )}
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
           <div className="text-sm whitespace-pre-wrap pl-10">

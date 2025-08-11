@@ -6,11 +6,9 @@ import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
 import { MessageSquare, OctagonMinus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChatWindow } from "~/components/chat-window";
 import { ContextualChatWindow } from "~/components/contextual-chat-window";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { SignInPrompt } from "~/components/sign-in-prompt";
-import { channelNameOrFallback } from "~/lib/utils";
 import {
   Message,
   mergeMessages,
@@ -20,16 +18,15 @@ import {
   areMessageArraysEqual,
   BidirectionalPaginationState,
 } from "~/lib/message-utils";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
-import { Button } from "~/components/ui/button";
+// import {
+//   DropdownMenu,
+//   DropdownMenuTrigger,
+// } from "~/components/ui/dropdown-menu";
+// import { Button } from "~/components/ui/button";
 
 const fetchMessages = (channel: string) => {
   return convexQuery(api.messages.getMessagesByChannel, { channel });
 };
-
 
 export const Route = createFileRoute("/_app/dm/$dmId")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -59,7 +56,7 @@ function RouteComponent() {
   const {
     data: messageContext,
     isLoading: contextLoading,
-    error: contextError,
+    // error: contextError,
   } = useQuery({
     ...convexQuery(api.messages.getMessageContext, {
       messageId: messageId || ("" as Id<"messages">),
@@ -148,7 +145,7 @@ function RouteComponent() {
       const olderMessages = await convex.query(api.messages.getOlderMessages, {
         channelId,
         beforeTime,
-        limit: 20,
+        limit: 200,
       });
 
       if (olderMessages.length > 0) {
@@ -304,7 +301,7 @@ function RouteComponent() {
   }
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-[calc(100vh-54px)] flex flex-col">
       <div className="flex align-middle flex-row py-2 px-4 justify-between">
         <div className="flex flex-row gap-3 items-center align-middle">
           <MessageSquare color="#ce2128" />
@@ -332,16 +329,25 @@ function RouteComponent() {
             channel={channel}
           />
         ) : (
-          <ChatWindow
+          <ContextualChatWindow
             messages={messageArray}
-            onLoadMore={loadMore}
-            loading={loading}
-            hasMore={hasMore}
+            onLoadOlder={loadMore}
+            onLoadNewer={() => Promise.resolve()} // No newer messages in regular chat
+            loadingOlder={loading}
+            loadingNewer={false}
+            hasMoreOlder={hasMore}
+            hasMoreNewer={false}
             userId={convexUser._id}
             channelId={channel._id}
+            targetMessageId={
+              messageArray[messageArray.length - 1]?._id ||
+              ("" as Id<"messages">)
+            }
             isLoading={messagesLoading}
             className="h-full w-full"
             channel={channel}
+            adminControlled={channel.adminControlled}
+            disableHighlight={true}
           />
         )}
 

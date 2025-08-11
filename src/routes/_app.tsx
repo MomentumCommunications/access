@@ -14,7 +14,7 @@ export const Route = createFileRoute("/_app")({
 
 function AppLayoutComponent() {
   const user = useUser();
-  
+
   // Pre-fetch all sidebar data at layout level to ensure it's cached
   const { data: convexUser } = useQuery({
     ...convexQuery(api.users.getUserByClerkId, { ClerkId: user.user?.id }),
@@ -69,3 +69,4 @@ function AppLayoutComponent() {
     </SidebarDataProvider>
   );
 }
+

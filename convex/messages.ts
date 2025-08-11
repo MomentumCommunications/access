@@ -48,7 +48,7 @@ export const getMessagesByChannel = query({
       .query("messages")
       .withIndex("byChannel", (q) => q.eq("channel", args.channel))
       .order("desc")
-      .take(20);
+      .take(200);
 
     // Return in chronological order (oldest first for UI display)
     return messages.reverse();

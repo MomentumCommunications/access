@@ -410,7 +410,10 @@ function RouteComponent() {
               hasMoreNewer={false}
               userId={convexUser._id}
               channelId={channel._id}
-              targetMessageId={messageArray[messageArray.length - 1]?._id || ("" as Id<"messages">)}
+              targetMessageId={
+                messageArray[messageArray.length - 1]?._id ||
+                ("" as Id<"messages">)
+              }
               isLoading={messagesLoading}
               className="h-full w-full"
               channel={channel}

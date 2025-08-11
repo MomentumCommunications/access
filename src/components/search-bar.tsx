@@ -119,7 +119,7 @@ export function SearchBar() {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full md:w-1/5 lg:w-[700px] -translate-y-10 p-0 data-[state=open]:animate-none">
-        <Command>
+        <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search channels and messages..."
             className="h-9"

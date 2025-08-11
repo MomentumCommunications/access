@@ -54,10 +54,14 @@ export function ContextualChatWindow({
   const [hasScrolledToTarget, setHasScrolledToTarget] = useState(false);
   const [lastTargetMessageId, setLastTargetMessageId] =
     useState<Id<"messages"> | null>(null);
-  const [showLoadMoreButtons, setShowLoadMoreButtons] = useState(false);
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const [lastSeenMessageCount, setLastSeenMessageCount] = useState(0);
   const [replyingTo, setReplyingTo] = useState<Message | undefined>();
+  const [isRestoringScrollPosition, setIsRestoringScrollPosition] =
+    useState(false);
+  const scrollEventDisabled = useRef(false);
+  const restorationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLoadTime = useRef<number>(0);
 
   // Initialize read tracking
   const { registerMessageElement } = useMessageReadTracking({
@@ -68,7 +72,14 @@ export function ContextualChatWindow({
     enabled: true,
   });
 
-  console.log("ContextualChatWindow messages:", messages);
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (restorationTimeoutRef.current) {
+        clearTimeout(restorationTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Find the target message index
   const targetMessageIndex = messages.findIndex(
@@ -93,7 +104,7 @@ export function ContextualChatWindow({
           inline: "nearest",
         });
 
-        setHasScrolledToTarget(true);
+        // setHasScrolledToTarget(true);
         console.log("Target message positioned in center");
       }
     },
@@ -107,7 +118,7 @@ export function ContextualChatWindow({
         oldTarget: lastTargetMessageId,
         newTarget: targetMessageId,
       });
-      setHasScrolledToTarget(false);
+      // setHasScrolledToTarget(false);
       setLastTargetMessageId(targetMessageId);
     }
   }, [targetMessageId, lastTargetMessageId]);
@@ -125,6 +136,11 @@ export function ContextualChatWindow({
 
   // Handle new messages - show notification if user isn't at bottom
   useEffect(() => {
+    // Skip new message detection during scroll restoration or loading
+    if (isRestoringScrollPosition || loadingOlder || loadingNewer) {
+      return;
+    }
+
     if (messages.length > lastSeenMessageCount && lastSeenMessageCount > 0) {
       // New messages have arrived, check if user is at bottom
       const container = scrollContainerRef.current;
@@ -148,7 +164,13 @@ export function ContextualChatWindow({
         }
       }
     }
-  }, [messages.length, lastSeenMessageCount]);
+  }, [
+    messages.length,
+    lastSeenMessageCount,
+    isRestoringScrollPosition,
+    loadingOlder,
+    loadingNewer,
+  ]);
 
   // Initialize message count when messages first load
   useEffect(() => {
@@ -204,45 +226,159 @@ export function ContextualChatWindow({
 
     if (!scrollViewport) return false;
 
+    // Skip all UI updates and auto-loading while restoring scroll position
+    if (isRestoringScrollPosition) {
+      return false;
+    }
+
     const scrollTop = scrollViewport.scrollTop;
     const scrollHeight = scrollViewport.scrollHeight;
     const clientHeight = scrollViewport.clientHeight;
 
-    const isAtTop = scrollTop < 50;
+    // Trigger load earlier (100px from top) so users don't need to stop scrolling
+    const isAtTop = scrollTop < 100;
     const isAtBottom = scrollTop + clientHeight >= scrollHeight - 50;
     const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
 
-    // Show scroll to bottom button
-    setShouldShowScrollButton(!isNearBottom && scrollHeight > clientHeight);
+    // Simplified scroll button logic - only show when scrolled away from bottom and not loading
+    const shouldShow =
+      !isNearBottom && scrollHeight > clientHeight && !loadingOlder;
+    setShouldShowScrollButton(shouldShow);
 
-    // Show load more buttons when scrolled
-    setShowLoadMoreButtons(scrollHeight > clientHeight);
-
-    // Clear new messages notification if user scrolls to bottom
-    if (isNearBottom && hasNewMessages) {
+    // Clear new messages notification if user scrolls to bottom - debounce during loads
+    if (
+      isNearBottom &&
+      hasNewMessages &&
+      !loadingOlder &&
+      !loadingNewer &&
+      !isRestoringScrollPosition
+    ) {
       setHasNewMessages(false);
       setLastSeenMessageCount(messages.length);
     }
 
-    // Auto-load older messages when at top (with scroll preservation)
-    if (isAtTop && !loadingOlder && hasMoreOlder) {
-      // Store current scroll position before loading
-      const prevScrollHeight = scrollViewport.scrollHeight;
-      const prevScrollTop = scrollViewport.scrollTop;
+    // Auto-load older messages when at top (with scroll preservation and cooldown)
+    const now = Date.now();
+    const canLoad = now - lastLoadTime.current > 1000; // 1000ms cooldown to prevent rapid requests
 
-      onLoadOlder().then(() => {
-        // Restore scroll position after messages load
-        requestAnimationFrame(() => {
-          const newScrollHeight = scrollViewport.scrollHeight;
-          const heightDiff = newScrollHeight - prevScrollHeight;
-          scrollViewport.scrollTop = prevScrollTop + heightDiff;
+    if (
+      isAtTop &&
+      !loadingOlder &&
+      hasMoreOlder &&
+      !isRestoringScrollPosition &&
+      canLoad
+    ) {
+      lastLoadTime.current = now;
+      // Disable scroll events during restoration
+      scrollEventDisabled.current = true;
+      setIsRestoringScrollPosition(true);
+
+      // Simplified anchor selection - use center-most message
+      let anchorMessageElement: HTMLElement | null = null;
+      let anchorMessageId: string | null = null;
+      let anchorOffset = 0;
+
+      try {
+        const messageElements =
+          scrollViewport.querySelectorAll("[data-message-id]");
+        const viewportRect = scrollViewport.getBoundingClientRect();
+        const viewportCenter = viewportRect.top + viewportRect.height / 2;
+
+        let closestDistance = Infinity;
+
+        // Find the message closest to viewport center
+        for (const element of messageElements) {
+          const rect = element.getBoundingClientRect();
+          const elementCenter = rect.top + rect.height / 2;
+          const distance = Math.abs(elementCenter - viewportCenter);
+
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            anchorMessageElement = element as HTMLElement;
+            anchorMessageId = element.getAttribute("data-message-id");
+          }
+        }
+
+        if (anchorMessageElement) {
+          anchorOffset =
+            anchorMessageElement.offsetTop - scrollViewport.scrollTop;
+        }
+      } catch (error) {
+        console.error("Error selecting anchor message:", error);
+        // Fallback: use current scroll position
+        anchorOffset = scrollViewport.scrollTop;
+      }
+
+      const messageCountBefore = messages.length;
+
+      onLoadOlder()
+        .then(() => {
+          // Wait for parent state to update, then check if messages were loaded
+          setTimeout(() => {
+            const messageCountAfter = messages.length;
+            const messagesWereLoaded = messageCountAfter > messageCountBefore;
+
+            console.log("Load check:", {
+              before: messageCountBefore,
+              after: messageCountAfter,
+              loaded: messagesWereLoaded,
+              hasMoreOlder,
+            });
+
+            try {
+              // Only restore scroll position if messages were loaded
+              if (messagesWereLoaded && anchorMessageId) {
+                const newAnchorElement = scrollViewport.querySelector(
+                  `[data-message-id="${anchorMessageId}"]`,
+                ) as HTMLElement;
+
+                if (newAnchorElement) {
+                  const newScrollTop =
+                    newAnchorElement.offsetTop - anchorOffset;
+                  scrollViewport.scrollTop = Math.max(0, newScrollTop);
+                } else {
+                  // Anchor not found, use height difference fallback
+                  const heightDiff = scrollViewport.scrollHeight - anchorOffset;
+                  scrollViewport.scrollTop = Math.max(0, heightDiff);
+                }
+              } else if (!messagesWereLoaded) {
+                // No messages loaded, add longer cooldown to prevent immediate retry
+                lastLoadTime.current = now + 2000; // Extra 2 second delay
+              }
+            } catch (error) {
+              console.error("Error restoring scroll position:", error);
+            } finally {
+              // Simple cleanup with minimal delay
+              restorationTimeoutRef.current = setTimeout(
+                () => {
+                  scrollEventDisabled.current = false;
+                  setIsRestoringScrollPosition(false);
+                },
+                messagesWereLoaded ? 50 : 200,
+              ); // Longer delay if no messages loaded
+            }
+          }, 100); // Wait 100ms for parent state to update
+        })
+        .catch((error) => {
+          // Handle loading errors - add extra cooldown
+          console.error("Error loading older messages:", error);
+          lastLoadTime.current = now + 2000; // Extra delay on error
+          scrollEventDisabled.current = false;
+          setIsRestoringScrollPosition(false);
         });
-      });
     }
 
     // Auto-load newer messages when at bottom (no scroll preservation needed)
-    if (isAtBottom && !loadingNewer && hasMoreNewer) {
-      onLoadNewer();
+    if (
+      isAtBottom &&
+      !loadingNewer &&
+      hasMoreNewer &&
+      !isRestoringScrollPosition
+    ) {
+      onLoadNewer().then(() => {
+        // Re-check scroll position after load
+        setTimeout(() => checkScrollPosition(), 100);
+      });
     }
 
     return isNearBottom;
@@ -255,9 +391,10 @@ export function ContextualChatWindow({
     onLoadNewer,
     hasNewMessages,
     messages.length,
+    isRestoringScrollPosition,
   ]);
 
-  // Handle scroll events
+  // Handle scroll events with throttling for better performance
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -267,19 +404,45 @@ export function ContextualChatWindow({
     ) as HTMLElement;
     if (!scrollViewport) return;
 
+    let throttleTimer: NodeJS.Timeout | null = null;
+
     const handleScroll = () => {
-      checkScrollPosition();
+      // Completely ignore scroll events when disabled
+      if (scrollEventDisabled.current) return;
+
+      if (throttleTimer) return;
+
+      // More aggressive throttling during loading or restoration
+      const throttleDelay =
+        loadingOlder || loadingNewer || isRestoringScrollPosition ? 100 : 16;
+
+      throttleTimer = setTimeout(() => {
+        // Double-check that events are still enabled
+        if (!scrollEventDisabled.current) {
+          checkScrollPosition();
+        }
+        throttleTimer = null;
+      }, throttleDelay);
     };
 
     scrollViewport.addEventListener("scroll", handleScroll, { passive: true });
 
-    // Initial check
-    setTimeout(checkScrollPosition, 100);
+    // Initial check - delayed if we're in restoration mode
+    const initialDelay = isRestoringScrollPosition ? 300 : 100;
+    setTimeout(checkScrollPosition, initialDelay);
 
     return () => {
+      if (throttleTimer) {
+        clearTimeout(throttleTimer);
+      }
       scrollViewport.removeEventListener("scroll", handleScroll);
     };
-  }, [checkScrollPosition]);
+  }, [
+    checkScrollPosition,
+    loadingOlder,
+    loadingNewer,
+    isRestoringScrollPosition,
+  ]);
 
   // Scroll to bottom function
   // const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
@@ -401,8 +564,8 @@ export function ContextualChatWindow({
                 <div
                   key={message._id}
                   ref={isTargetMessage ? targetMessageRef : undefined}
+                  data-message-id={message._id}
                   className={cn(
-                    "transition-all duration-1000 ease-out",
                     isTargetMessage &&
                       !disableHighlight && [
                         "relative",
@@ -482,8 +645,8 @@ export function ContextualChatWindow({
         {/*   )} */}
         {/* </div> */}
 
-        {/* Jump to new messages button */}
-        {hasNewMessages && (
+        {/* Jump to new messages button - hide during scroll position restoration */}
+        {hasNewMessages && !isRestoringScrollPosition && !loadingOlder && (
           <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10">
             <Button
               onClick={() => scrollToBottom("smooth")}
@@ -496,12 +659,15 @@ export function ContextualChatWindow({
           </div>
         )}
 
-        {/* Scroll to bottom button */}
-        {shouldShowScrollButton && !hasNewMessages && (
-          <div className="absolute bottom-0 right-4 z-10">
-            <BottomScroll bottomRef={bottomRef} />
-          </div>
-        )}
+        {/* Scroll to bottom button - hide during scroll position restoration */}
+        {shouldShowScrollButton &&
+          !hasNewMessages &&
+          !isRestoringScrollPosition &&
+          !loadingOlder && (
+            <div className="absolute bottom-0 right-4 z-10">
+              <BottomScroll bottomRef={bottomRef} />
+            </div>
+          )}
       </div>
 
       {/* Message Input */}

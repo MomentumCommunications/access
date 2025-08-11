@@ -49,8 +49,8 @@ const PublicChannelItem = memo<{
       </a>
     </SidebarMenuButton>
     {unreadCount > 0 && (
-      <SidebarMenuBadge className="!block !opacity-100 text-white">
-        {unreadCount > 99 ? "99+" : unreadCount}
+      <SidebarMenuBadge className="!opacity-100 bg-muted flex items-center justify-center text-current text-xs">
+        <p>{unreadCount > 99 ? "99+" : unreadCount}</p>
       </SidebarMenuBadge>
     )}
   </SidebarMenuItem>
@@ -73,8 +73,8 @@ const PrivateChannelItem = memo<{
       </a>
     </SidebarMenuButton>
     {unreadCount > 0 && (
-      <SidebarMenuBadge className="!block !opacity-100 text-white">
-        {unreadCount > 99 ? "99+" : unreadCount}
+      <SidebarMenuBadge className="!opacity-100 bg-muted flex items-center justify-center text-current text-xs">
+        <p>{unreadCount > 99 ? "99+" : unreadCount}</p>
       </SidebarMenuBadge>
     )}
   </SidebarMenuItem>
@@ -97,8 +97,8 @@ const DMItem = memo<{
       </a>
     </SidebarMenuButton>
     {unreadCount > 0 && (
-      <SidebarMenuBadge className="!block !opacity-100 text-white">
-        {unreadCount > 99 ? "99+" : unreadCount}
+      <SidebarMenuBadge className="!opacity-100 bg-muted flex items-center justify-center text-current text-xs">
+        <p>{unreadCount > 99 ? "99+" : unreadCount}</p>
       </SidebarMenuBadge>
     )}
   </SidebarMenuItem>

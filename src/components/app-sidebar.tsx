@@ -119,24 +119,24 @@ const AppSidebarComponent = memo(() => {
     dmUnreads,
   } = useSidebarDataContext();
 
-  // Debug logging for unread counts (remove in production)
-  if (process.env.NODE_ENV === "development") {
-    console.log("Sidebar Debug:", {
-      publicChannelUnreads,
-      privateChannelUnreads,
-      dmUnreads,
-      totalPublicUnreads: Object.values(publicChannelUnreads).reduce(
-        (a, b) => a + b,
-        0,
-      ),
-      totalPrivateUnreads: Object.values(privateChannelUnreads).reduce(
-        (a, b) => a + b,
-        0,
-      ),
-      totalDmUnreads: Object.values(dmUnreads).reduce((a, b) => a + b, 0),
-    });
-  }
-
+  // // Debug logging for unread counts (remove in production)
+  // if (process.env.NODE_ENV === "development") {
+  //   console.log("Sidebar Debug:", {
+  //     publicChannelUnreads,
+  //     privateChannelUnreads,
+  //     dmUnreads,
+  //     totalPublicUnreads: Object.values(publicChannelUnreads).reduce(
+  //       (a, b) => a + b,
+  //       0,
+  //     ),
+  //     totalPrivateUnreads: Object.values(privateChannelUnreads).reduce(
+  //       (a, b) => a + b,
+  //       0,
+  //     ),
+  //     totalDmUnreads: Object.values(dmUnreads).reduce((a, b) => a + b, 0),
+  //   });
+  // }
+  //
   // Memoize the channel rendering functions to prevent unnecessary re-renders
   const renderPublicChannel = useCallback(
     (channel: NonNullable<typeof publicChannels>[number]) => {

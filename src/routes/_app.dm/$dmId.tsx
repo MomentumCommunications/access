@@ -30,15 +30,6 @@ const fetchMessages = (channel: string) => {
   return convexQuery(api.messages.getMessagesByChannel, { channel });
 };
 
-const fetchMessageContext = (
-  messageId: Id<"messages">,
-  contextSize?: number,
-) => {
-  return convexQuery(api.messages.getMessageContext, {
-    messageId,
-    contextSize,
-  });
-};
 
 export const Route = createFileRoute("/_app/dm/$dmId")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -70,7 +61,10 @@ function RouteComponent() {
     isLoading: contextLoading,
     error: contextError,
   } = useQuery({
-    ...(messageId ? fetchMessageContext(messageId as Id<"messages">, 15) : { queryKey: ['disabled'], queryFn: () => null }),
+    ...convexQuery(api.messages.getMessageContext, {
+      messageId: messageId || ("" as Id<"messages">),
+      contextSize: 15,
+    }),
     enabled: !!messageId,
   });
 

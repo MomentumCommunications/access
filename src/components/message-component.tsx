@@ -20,10 +20,12 @@ import {
   SmileIcon,
   PencilLine,
   Trash,
+  Reply,
+  ReplyIcon,
+  CornerUpRight,
 } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import { EditMessage } from "./edit-message";
-import { useMutation } from "convex/react";
 import { api } from "convex/_generated/api";
 import {
   AlertDialog,
@@ -38,28 +40,21 @@ import {
 } from "./ui/alert-dialog";
 import { format } from "date-fns";
 import { Markdown } from "./markdown-wrapper";
-import { generateShareableMessageLink } from "~/lib/message-utils";
+import { generateShareableMessageLink, Message } from "~/lib/message-utils";
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useConvexQuery } from "@convex-dev/react-query";
+import {
+  convexQuery,
+  useConvexMutation,
+  useConvexQuery,
+} from "@convex-dev/react-query";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
 } from "~/components/ui/context-menu";
-
-type Message = {
-  _id: Id<"messages">;
-  _creationTime: number;
-  body: string;
-  date?: string;
-  author: Id<"users">;
-  image?: string;
-  format?: string;
-  channel: string; // assuming id is represented as a string
-  reactions?: string; // assuming id is represented as a string
-  edited?: boolean;
-};
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Skeleton } from "./ui/skeleton";
 
 function DeleteMessage({
   message,
@@ -69,7 +64,9 @@ function DeleteMessage({
   userId: Id<"users">;
   trigger?: React.ReactNode;
 }) {
-  const deleteFunction = useMutation(api.messages.deleteMessage);
+  const { mutate: deleteFunction } = useMutation({
+    mutationFn: useConvexMutation(api.messages.deleteMessage),
+  });
 
   const deleteMessage = () => {
     deleteFunction({ id: message._id });
@@ -114,12 +111,14 @@ export function MessageComponent({
   channelId,
   channel,
   onRegisterElement,
+  onReply,
 }: {
   message: Message;
   userId: Id<"users">;
   channelId: Id<"channels">;
   channel?: { isDM: boolean };
   onRegisterElement?: (messageId: string, element: Element | null) => void;
+  onReply?: (message: Message) => void;
 }) {
   const isImage = message.format === "image";
   const [linkCopied, setLinkCopied] = useState(false);
@@ -127,6 +126,11 @@ export function MessageComponent({
 
   const user = useConvexQuery(api.users.getUserById, {
     id: userId,
+  });
+
+  const { data: replyData, isLoading: replyLoading } = useQuery({
+    ...convexQuery(api.messages.getReplyData, { id: message._id }),
+    enabled: !!message.replyToId,
   });
 
   // Register this message element for read tracking
@@ -168,6 +172,21 @@ export function MessageComponent({
           id={message._id}
           className="flex p-2 flex-col gap-2 align-bottom hover:bg-muted/50 duration-100 lg:p-4 rounded ease-in-out"
         >
+          {replyLoading && <Skeleton className="h-3 w-1/2" />}
+          {replyData && (
+            <div className="flex flex-row gap-2 items-center pl-4">
+              <CornerUpRight className="w-4 h-4 translate-y-0.5 text-muted-foreground" />
+              <img
+                src={replyData.author?.image}
+                alt={replyData.author?.name}
+                className="w-6 h-6 rounded-full border border-muted"
+              />
+              <p className="text-sm text-muted-foreground">
+                {replyData.author?.displayName || replyData.author?.name}:{" "}
+                {replyData.repliedMessage?.body || "(Lost or deleted)"}
+              </p>
+            </div>
+          )}
           <div className="flex flex-row justify-between">
             <AuthorInfo author={message.author} />
             <div className="flex flex-row gap-2">
@@ -183,6 +202,12 @@ export function MessageComponent({
                 <DropdownMenuContent align="start">
                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
                   <DropdownMenuGroup>
+                    {onReply && (
+                      <DropdownMenuItem onClick={() => onReply(message)}>
+                        <Reply className="w-4 h-4" />
+                        Reply
+                      </DropdownMenuItem>
+                    )}
                     <ReactionPicker
                       messageId={message._id}
                       userId={userId}
@@ -253,6 +278,12 @@ export function MessageComponent({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
+        {onReply && (
+          <ContextMenuItem onClick={() => onReply(message)}>
+            <Reply className="mr-2 h-4 w-4" />
+            Reply
+          </ContextMenuItem>
+        )}
         <ReactionPicker
           messageId={message._id}
           userId={userId}

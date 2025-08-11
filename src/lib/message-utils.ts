@@ -11,6 +11,7 @@ export type Message = {
   channel: string;
   reactions?: string;
   edited?: boolean;
+  replyToId?: Id<"messages">;
 };
 
 /**
@@ -37,14 +38,24 @@ export function deduplicateMessages(messages: Message[]): Message[] {
 
 /**
  * Merges new messages with existing messages, maintaining chronological order
- * Handles deduplication and proper sorting
+ * Handles deduplication, proper sorting, and message deletions
+ * Treats newMessages as the authoritative source of truth for real-time updates
  */
 export function mergeMessages(
   existingMessages: Message[],
   newMessages: Message[],
 ): Message[] {
-  // Combine all messages
-  const allMessages = [...existingMessages, ...newMessages];
+  // Create a set of new message IDs for fast lookup
+  const newMessageIds = new Set(newMessages.map((m) => m._id));
+
+  // Filter existing messages to only include those that still exist in newMessages
+  // This properly handles deletions by removing messages not in the authoritative data
+  const filteredExisting = existingMessages.filter((msg) =>
+    newMessageIds.has(msg._id),
+  );
+
+  // Combine filtered existing with new messages
+  const allMessages = [...filteredExisting, ...newMessages];
 
   // Remove duplicates
   const uniqueMessages = deduplicateMessages(allMessages);

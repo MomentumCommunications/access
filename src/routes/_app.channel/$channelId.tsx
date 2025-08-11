@@ -6,7 +6,6 @@ import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
 import { Cog, DotIcon, Hash, Info, LockIcon, OctagonMinus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChatWindow } from "~/components/chat-window";
 import { ContextualChatWindow } from "~/components/contextual-chat-window";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
@@ -46,16 +45,6 @@ const fetchMessages = (channel: string) => {
   return convexQuery(api.messages.getMessagesByChannel, { channel });
 };
 
-const fetchMessageContext = (
-  messageId: Id<"messages">,
-  contextSize?: number,
-) => {
-  return convexQuery(api.messages.getMessageContext, {
-    messageId,
-    contextSize,
-  });
-};
-
 export const Route = createFileRoute("/_app/channel/$channelId")({
   validateSearch: (search: Record<string, unknown>) => {
     return {
@@ -85,9 +74,10 @@ function RouteComponent() {
     isLoading: contextLoading,
     // error: contextError
   } = useQuery({
-    ...(messageId
-      ? fetchMessageContext(messageId as Id<"messages">, 15)
-      : { queryKey: ["disabled"], queryFn: () => null }),
+    ...convexQuery(api.messages.getMessageContext, {
+      messageId: messageId || ("" as Id<"messages">),
+      contextSize: 15,
+    }),
     enabled: !!messageId,
   });
 
@@ -390,7 +380,7 @@ function RouteComponent() {
       {/* Main Content Area */}
       <div className="flex flex-1 min-h-0 w-full relative">
         <SignedIn>
-          {/* Chat Window - Conditional rendering based on messageId */}
+          {/* Chat Window - Using ContextualChatWindow for both cases */}
           {messageId ? (
             <ContextualChatWindow
               messages={contextualMessageArray}
@@ -407,19 +397,25 @@ function RouteComponent() {
               className="h-full w-full"
               channel={channel}
               adminControlled={channel.adminControlled}
+              disableHighlight={false}
             />
           ) : (
-            <ChatWindow
+            <ContextualChatWindow
               messages={messageArray}
-              onLoadMore={loadMore}
-              loading={loading}
-              hasMore={hasMore}
+              onLoadOlder={loadMore}
+              onLoadNewer={() => Promise.resolve()} // No newer messages in regular chat
+              loadingOlder={loading}
+              loadingNewer={false}
+              hasMoreOlder={hasMore}
+              hasMoreNewer={false}
               userId={convexUser._id}
               channelId={channel._id}
+              targetMessageId={messageArray[messageArray.length - 1]?._id || ("" as Id<"messages">)}
               isLoading={messagesLoading}
               className="h-full w-full"
               channel={channel}
               adminControlled={channel.adminControlled}
+              disableHighlight={true}
             />
           )}
         </SignedIn>

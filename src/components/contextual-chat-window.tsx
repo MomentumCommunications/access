@@ -8,7 +8,7 @@ import { Skeleton } from "./ui/skeleton";
 import { Alert, AlertDescription } from "./ui/alert";
 import { cn } from "~/lib/utils";
 import { Message } from "~/lib/message-utils";
-import { ChevronUp, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowDown } from "lucide-react";
 import { Button } from "./ui/button";
 import { useMessageReadTracking } from "~/hooks/useMessageReadTracking";
 
@@ -27,6 +27,7 @@ interface ContextualChatWindowProps {
   className?: string;
   channel?: { isDM: boolean };
   adminControlled?: boolean;
+  disableHighlight?: boolean;
 }
 
 export function ContextualChatWindow({
@@ -44,6 +45,7 @@ export function ContextualChatWindow({
   className,
   channel,
   adminControlled,
+  disableHighlight = false,
 }: ContextualChatWindowProps) {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -55,6 +57,7 @@ export function ContextualChatWindow({
   const [showLoadMoreButtons, setShowLoadMoreButtons] = useState(false);
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const [lastSeenMessageCount, setLastSeenMessageCount] = useState(0);
+  const [replyingTo, setReplyingTo] = useState<Message | undefined>();
 
   // Initialize read tracking
   const { registerMessageElement } = useMessageReadTracking({
@@ -154,7 +157,7 @@ export function ContextualChatWindow({
     }
   }, [messages.length, lastSeenMessageCount]);
 
-  // Position target message in center immediately on initial load
+  // Position target message in center immediately on initial load, or scroll to bottom for regular chat
   useEffect(() => {
     console.log("Initial positioning effect triggered:", {
       isLoading,
@@ -162,22 +165,32 @@ export function ContextualChatWindow({
       hasScrolledToTarget,
       messagesLength: messages.length,
       targetMessageIndex,
+      disableHighlight,
     });
 
-    if (!isLoading && hasTargetMessage && !hasScrolledToTarget) {
-      console.log("Positioning target message in center immediately");
+    if (!isLoading && messages.length > 0) {
+      if (disableHighlight || !hasTargetMessage) {
+        // For regular chat mode, scroll to bottom on initial load
+        setTimeout(() => {
+          scrollToBottom("auto");
+        }, 50);
+      } else if (hasTargetMessage && !hasScrolledToTarget) {
+        console.log("Positioning target message in center immediately");
 
-      // Small delay to ensure DOM is fully rendered, then position instantly
-      setTimeout(() => {
-        scrollToTargetMessage("auto");
-      }, 50);
+        // Small delay to ensure DOM is fully rendered, then position instantly
+        setTimeout(() => {
+          scrollToTargetMessage("auto");
+        }, 50);
+      }
     }
   }, [
     isLoading,
     hasTargetMessage,
     hasScrolledToTarget,
     scrollToTargetMessage,
+    scrollToBottom,
     messages.length,
+    disableHighlight,
   ]);
 
   // Check scroll position and handle auto-loading with scroll preservation
@@ -274,35 +287,43 @@ export function ContextualChatWindow({
   // }, []);
 
   // Manual load functions
-  const handleLoadOlder = useCallback(async () => {
-    if (loadingOlder || !hasMoreOlder) return;
+  // const handleLoadOlder = useCallback(async () => {
+  //   if (loadingOlder || !hasMoreOlder) return;
 
-    const container = scrollContainerRef.current;
-    if (!container) return;
+  //   const container = scrollContainerRef.current;
+  //   if (!container) return;
+  //
+  //   const scrollViewport = container.querySelector(
+  //     "[data-radix-scroll-area-viewport]",
+  //   ) as HTMLElement;
+  //   if (!scrollViewport) return;
+  //
+  //   // Store current scroll position for manual loads too
+  //   const prevScrollHeight = scrollViewport.scrollHeight;
+  //   const prevScrollTop = scrollViewport.scrollTop;
+  //
+  //   await onLoadOlder();
+  //
+  //   // Restore scroll position after messages load
+  //   requestAnimationFrame(() => {
+  //     const newScrollHeight = scrollViewport.scrollHeight;
+  //     const heightDiff = newScrollHeight - prevScrollHeight;
+  //     scrollViewport.scrollTop = prevScrollTop + heightDiff;
+  //   });
+  // }, [loadingOlder, hasMoreOlder, onLoadOlder]);
+  //
+  // // const handleLoadNewer = useCallback(async () => {
+  // //   if (loadingNewer || !hasMoreNewer) return;
+  // //   await onLoadNewer();
+  // // }, [loadingNewer, hasMoreNewer, onLoadNewer]);
 
-    const scrollViewport = container.querySelector(
-      "[data-radix-scroll-area-viewport]",
-    ) as HTMLElement;
-    if (!scrollViewport) return;
+  const handleReply = useCallback((message: Message) => {
+    setReplyingTo(message);
+  }, []);
 
-    // Store current scroll position for manual loads too
-    const prevScrollHeight = scrollViewport.scrollHeight;
-    const prevScrollTop = scrollViewport.scrollTop;
-
-    await onLoadOlder();
-
-    // Restore scroll position after messages load
-    requestAnimationFrame(() => {
-      const newScrollHeight = scrollViewport.scrollHeight;
-      const heightDiff = newScrollHeight - prevScrollHeight;
-      scrollViewport.scrollTop = prevScrollTop + heightDiff;
-    });
-  }, [loadingOlder, hasMoreOlder, onLoadOlder]);
-
-  const handleLoadNewer = useCallback(async () => {
-    if (loadingNewer || !hasMoreNewer) return;
-    await onLoadNewer();
-  }, [loadingNewer, hasMoreNewer, onLoadNewer]);
+  const handleCancelReply = useCallback(() => {
+    setReplyingTo(undefined);
+  }, []);
 
   return (
     <div
@@ -317,28 +338,28 @@ export function ContextualChatWindow({
         <ScrollArea ref={scrollContainerRef} className="h-full">
           <div className="px-4 py-4 space-y-4">
             {/* Load More Older Messages Button */}
-            {showLoadMoreButtons && hasMoreOlder && (
-              <div className="flex justify-center py-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLoadOlder}
-                  disabled={loadingOlder}
-                  className="text-xs gap-1"
-                >
-                  {loadingOlder ? (
-                    <Skeleton className="w-4 h-4 rounded-full" />
-                  ) : (
-                    <ArrowUp className="w-3 h-3" />
-                  )}
-                  {loadingOlder ? "Loading..." : "Load older messages"}
-                </Button>
-              </div>
-            )}
-
+            {/* {showLoadMoreButtons && hasMoreOlder && ( */}
+            {/*   <div className="flex justify-center py-2"> */}
+            {/*     <Button */}
+            {/*       variant="outline" */}
+            {/*       size="sm" */}
+            {/*       onClick={handleLoadOlder} */}
+            {/*       disabled={loadingOlder} */}
+            {/*       className="text-xs gap-1" */}
+            {/*     > */}
+            {/*       {loadingOlder ? ( */}
+            {/*         <Skeleton className="w-4 h-4 rounded-full" /> */}
+            {/*       ) : ( */}
+            {/*         <ArrowUp className="w-3 h-3" /> */}
+            {/*       )} */}
+            {/*       {loadingOlder ? "Loading..." : "Load older messages"} */}
+            {/*     </Button> */}
+            {/*   </div> */}
+            {/* )} */}
+            {/**/}
             {/* Loading indicator for older messages */}
             {loadingOlder && messages.length > 0 && (
-              <div className="flex justify-center py-2">
+              <div className="absolute top-0 inset-x-0 flex justify-center py-2">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Skeleton className="w-4 h-4 rounded-full" />
                   Loading older messages...
@@ -382,15 +403,16 @@ export function ContextualChatWindow({
                   ref={isTargetMessage ? targetMessageRef : undefined}
                   className={cn(
                     "transition-all duration-1000 ease-out",
-                    isTargetMessage && [
-                      "relative",
-                      "animate-pulse-highlight", // We'll define this in CSS
-                      "before:absolute before:inset-0 before:-z-10",
-                      "before:bg-yellow-200/20 dark:before:bg-yellow-500/10",
-                      "before:rounded-lg before:border before:border-yellow-300/30",
-                      "before:shadow-sm",
-                      "p-2 -m-2", // Add padding to highlight area
-                    ],
+                    isTargetMessage &&
+                      !disableHighlight && [
+                        "relative",
+                        "animate-pulse-highlight", // We'll define this in CSS
+                        "before:absolute before:inset-0 before:-z-10",
+                        "before:bg-yellow-200/20 dark:before:bg-yellow-500/10",
+                        "before:rounded-lg before:border before:border-yellow-300/30",
+                        "before:shadow-sm",
+                        "p-2 -m-2", // Add padding to highlight area
+                      ],
                   )}
                   style={{
                     scrollMarginTop: "80px", // Ensure proper scroll positioning
@@ -402,6 +424,7 @@ export function ContextualChatWindow({
                     channelId={channelId as Id<"channels">}
                     channel={channel}
                     onRegisterElement={registerMessageElement}
+                    onReply={handleReply}
                   />
                 </div>
               );
@@ -410,7 +433,7 @@ export function ContextualChatWindow({
             {/* Loading indicator for newer messages */}
             {loadingNewer && messages.length > 0 && (
               <div className="flex justify-center py-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="absolute bottom-2 inset-x-0 flex items-center gap-2 text-sm text-muted-foreground">
                   <Skeleton className="w-4 h-4 rounded-full" />
                   Loading newer messages...
                 </div>
@@ -418,25 +441,25 @@ export function ContextualChatWindow({
             )}
 
             {/* Load More Newer Messages Button */}
-            {showLoadMoreButtons && hasMoreNewer && (
-              <div className="flex justify-center py-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLoadNewer}
-                  disabled={loadingNewer}
-                  className="text-xs gap-1"
-                >
-                  {loadingNewer ? (
-                    <Skeleton className="w-4 h-4 rounded-full" />
-                  ) : (
-                    <ArrowDown className="w-3 h-3" />
-                  )}
-                  {loadingNewer ? "Loading..." : "Load newer messages"}
-                </Button>
-              </div>
-            )}
-
+            {/* {showLoadMoreButtons && hasMoreNewer && ( */}
+            {/*   <div className="flex justify-center py-2"> */}
+            {/*     <Button */}
+            {/*       variant="outline" */}
+            {/*       size="sm" */}
+            {/*       onClick={handleLoadNewer} */}
+            {/*       disabled={loadingNewer} */}
+            {/*       className="text-xs gap-1" */}
+            {/*     > */}
+            {/*       {loadingNewer ? ( */}
+            {/*         <Skeleton className="w-4 h-4 rounded-full" /> */}
+            {/*       ) : ( */}
+            {/*         <ArrowDown className="w-3 h-3" /> */}
+            {/*       )} */}
+            {/*       {loadingNewer ? "Loading..." : "Load newer messages"} */}
+            {/*     </Button> */}
+            {/*   </div> */}
+            {/* )} */}
+            {/**/}
             {/* Scroll target */}
             <div ref={bottomRef} className="h-px" />
           </div>
@@ -483,7 +506,13 @@ export function ContextualChatWindow({
 
       {/* Message Input */}
       <div className="border-t bg-background/95 backdrop-blur-sm px-4 py-3">
-        <MessageInput userId={userId} channel={channelId} adminControlled />
+        <MessageInput
+          userId={userId}
+          channel={channelId}
+          adminControlled={adminControlled}
+          replyingTo={replyingTo}
+          onCancelReply={handleCancelReply}
+        />
       </div>
     </div>
   );

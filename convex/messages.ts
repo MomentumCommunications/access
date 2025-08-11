@@ -27,12 +27,14 @@ export const createMessage = mutation({
     message: v.string(),
     author: v.id("users"),
     channel: v.union(v.id("channels"), v.string()),
+    replyToId: v.optional(v.id("messages")),
   },
   handler: async (ctx, args) => {
     const newMessageId = await ctx.db.insert("messages", {
       author: args.author,
       body: args.message,
       channel: args.channel,
+      replyToId: args.replyToId,
     });
     return newMessageId;
   },
@@ -98,6 +100,34 @@ export const getOlderMessages = query({
 
     const messages = await q.take(args.limit);
     return messages.reverse();
+  },
+});
+
+export const getReplyData = query({
+  args: { id: v.id("messages") },
+  handler: async (ctx, args) => {
+    const message = await ctx.db.get(args.id);
+
+    if (!message) {
+      return null;
+    }
+
+    if (!message.replyToId) {
+      return null;
+    }
+
+    const repliedMessage = await ctx.db.get(message.replyToId);
+
+    if (!repliedMessage) {
+      return null;
+    }
+
+    const author = await ctx.db.get(repliedMessage.author);
+
+    return {
+      repliedMessage,
+      author,
+    };
   },
 });
 
@@ -542,7 +572,7 @@ export const searchMessages = query({
 
       // Filter messages that contain the search term
       const filtered = channelMessages.filter((msg) =>
-        msg.body.toLowerCase().includes(searchTerm)
+        msg.body.toLowerCase().includes(searchTerm),
       );
 
       matchingMessages.push(...filtered);
@@ -553,18 +583,20 @@ export const searchMessages = query({
       .sort((a, b) => {
         const aBody = a.body.toLowerCase();
         const bBody = b.body.toLowerCase();
-        
+
         // Prioritize exact word matches
-        const aExactMatch = aBody.includes(` ${searchTerm} `) || 
-                           aBody.startsWith(`${searchTerm} `) || 
-                           aBody.endsWith(` ${searchTerm}`);
-        const bExactMatch = bBody.includes(` ${searchTerm} `) || 
-                           bBody.startsWith(`${searchTerm} `) || 
-                           bBody.endsWith(` ${searchTerm}`);
-        
+        const aExactMatch =
+          aBody.includes(` ${searchTerm} `) ||
+          aBody.startsWith(`${searchTerm} `) ||
+          aBody.endsWith(` ${searchTerm}`);
+        const bExactMatch =
+          bBody.includes(` ${searchTerm} `) ||
+          bBody.startsWith(`${searchTerm} `) ||
+          bBody.endsWith(` ${searchTerm}`);
+
         if (aExactMatch && !bExactMatch) return -1;
         if (!aExactMatch && bExactMatch) return 1;
-        
+
         // Then sort by creation time (newest first)
         return b._creationTime - a._creationTime;
       })
@@ -575,7 +607,7 @@ export const searchMessages = query({
       sortedMessages.map(async (message) => {
         const channel = await ctx.db.get(message.channel as Id<"channels">);
         const author = await ctx.db.get(message.author);
-        
+
         let channelInfo = null;
         if (channel) {
           if (channel.isDM) {
@@ -617,8 +649,8 @@ export const searchMessages = query({
           authorName: author?.displayName || author?.name || "Unknown",
           // Highlight the search term in the message body
           highlightedBody: message.body.replace(
-            new RegExp(`(${searchTerm})`, 'gi'),
-            '<mark>$1</mark>'
+            new RegExp(`(${searchTerm})`, "gi"),
+            "<mark>$1</mark>",
           ),
         };
       }),

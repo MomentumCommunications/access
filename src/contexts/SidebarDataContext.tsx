@@ -78,7 +78,10 @@ export function SidebarDataProvider({ children }: { children: ReactNode }) {
 export function useSidebarDataContext() {
   const context = useContext(SidebarDataContext);
   if (!context) {
-    throw new Error("useSidebarDataContext must be used within a SidebarDataProvider");
+    throw new Error(
+      "useSidebarDataContext must be used within a SidebarDataProvider",
+    );
   }
   return context;
 }
+

@@ -193,7 +193,7 @@ export function MessageComponent({
         <div
           ref={messageRef}
           id={message._id}
-          className="flex p-2 flex-col gap-2 align-bottom hover:bg-muted/50 duration-100 flex-1 min-w-0 lg:p-4 rounded ease-in-out"
+          className="flex p-1 flex-col gap-2 align-bottom hover:bg-muted/50 duration-100 flex-1 min-w-0 lg:p-4 rounded ease-in-out"
         >
           {/* display the reply */}
           {replyLoading && <Skeleton className="h-3 w-1/2" />}

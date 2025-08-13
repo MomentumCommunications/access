@@ -527,6 +527,33 @@ export const getUnreadMessages = query({
   },
 });
 
+// Query for ChatWindow - gets recent messages with pagination support
+export const getChatMessages = query({
+  args: {
+    channelId: v.union(v.id("channels"), v.string()),
+    limit: v.optional(v.number()),
+    beforeTime: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 50;
+    
+    let query = ctx.db
+      .query("messages")
+      .withIndex("byChannel", (q) => q.eq("channel", args.channelId))
+      .order("desc");
+
+    // If beforeTime is provided, get messages before that timestamp
+    if (args.beforeTime) {
+      query = query.filter((q) => q.lt(q.field("_creationTime"), args.beforeTime));
+    }
+
+    const messages = await query.take(limit);
+    
+    // Return in chronological order (oldest first for UI display)
+    return messages.reverse();
+  },
+});
+
 export const searchMessages = query({
   args: {
     query: v.string(),

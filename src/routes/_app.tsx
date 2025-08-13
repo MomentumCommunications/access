@@ -7,6 +7,8 @@ import { SidebarProvider } from "~/components/ui/sidebar";
 import { AppSidebar } from "~/components/app-sidebar";
 import { SidebarDataProvider } from "~/contexts/SidebarDataContext";
 import { Header } from "~/components/header";
+import { useUnreadCounts } from "~/hooks/useUnreadCounts";
+import { useDocumentTitle } from "~/hooks/useDocumentTitle";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayoutComponent,
@@ -55,6 +57,22 @@ function AppLayoutComponent() {
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
+  });
+
+  // Get unread counts and update document title
+  const {
+    publicChannelUnreads,
+    privateChannelUnreads,
+    dmUnreads,
+    isLoading: unreadLoading,
+  } = useUnreadCounts(convexUser?._id);
+
+  // Update document title with unread count
+  useDocumentTitle({
+    publicChannelUnreads,
+    privateChannelUnreads,
+    dmUnreads,
+    isLoading: unreadLoading,
   });
 
   return (

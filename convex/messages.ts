@@ -527,6 +527,60 @@ export const getUnreadMessages = query({
   },
 });
 
+// Get total unread message count (efficient - no message details)
+export const getTotalUnreadCount = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Get all channels the user has access to
+    const publicChannels = await ctx.db
+      .query("channels")
+      .withIndex("byIsPrivateNotDM", (q) =>
+        q.eq("isPrivate", false).eq("isDM", false),
+      )
+      .collect();
+
+    const channelMembers = await ctx.db
+      .query("channelMembers")
+      .withIndex("byUser", (q) => q.eq("user", args.userId))
+      .collect();
+
+    const accessibleChannelIds = [
+      ...publicChannels.map((c) => c._id),
+      ...channelMembers.map((cm) => cm.channel),
+    ];
+
+    // Get all reads for this user across all channels
+    const userReads = await ctx.db
+      .query("messageReads")
+      .withIndex("byUser", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    const readMessageIds = new Set(userReads.map((read) => read.messageId));
+
+    // Count unread messages from accessible channels
+    let totalUnreadCount = 0;
+
+    for (const channelId of accessibleChannelIds) {
+      const channelMessages = await ctx.db
+        .query("messages")
+        .withIndex("byChannel", (q) => q.eq("channel", channelId))
+        .filter((q) => q.neq(q.field("author"), args.userId)) // Exclude user's own messages
+        .collect(); // Get all messages (no limit for counting)
+
+      // Count unread messages in this channel
+      const channelUnreadCount = channelMessages.filter(
+        (msg) => !readMessageIds.has(msg._id),
+      ).length;
+
+      totalUnreadCount += channelUnreadCount;
+    }
+
+    return totalUnreadCount;
+  },
+});
+
 // Query for ChatWindow - gets recent messages with pagination support
 export const getChatMessages = query({
   args: {

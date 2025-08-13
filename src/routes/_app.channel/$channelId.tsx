@@ -194,7 +194,7 @@ function RouteComponent() {
             channelId={channelId}
             targetMessageId={messageId}
             isLoading={messagesLoading}
-            channel={{ isDM: true }}
+            channel={{ isDM: false }}
             adminControlled={false}
             disableHighlight={disableHighlight}
           />

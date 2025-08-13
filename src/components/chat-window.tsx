@@ -51,6 +51,10 @@ export function ChatWindow({
   const [hasScrolledToTarget, setHasScrolledToTarget] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
 
+  function backToChannel(channelId: Id<"channels">) {
+    window.location.href = `/channel/${channelId}`;
+  }
+
   // Initialize read tracking
   const { registerMessageElement } = useMessageReadTracking({
     messages,
@@ -267,6 +271,7 @@ export function ChatWindow({
     setReplyingTo(undefined);
   }, []);
 
+  // Keyboard shortcuts
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "j" && (e.metaKey || e.ctrlKey)) {
@@ -383,7 +388,7 @@ export function ChatWindow({
         </ScrollArea>
 
         {/* Jump to new messages button */}
-        {hasNewMessages && (
+        {hasNewMessages && disableHighlight && (
           <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10">
             <Button
               onClick={() => scrollToBottom("smooth")}
@@ -392,6 +397,20 @@ export function ChatWindow({
             >
               <ArrowDown className="w-4 h-4 mr-2" />
               Jump to new messages
+            </Button>
+          </div>
+        )}
+
+        {/* Back to present button for new because I'm afaid of the confilcts with the load newer messages */}
+        {!disableHighlight && (
+          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10">
+            <Button
+              onClick={() => backToChannel(channelId)}
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg border-0 text-sm px-4 py-2 h-auto"
+              size="sm"
+            >
+              <ArrowDown className="w-4 h-4 mr-2" />
+              Back to present
             </Button>
           </div>
         )}

@@ -127,16 +127,17 @@ function ReactionSubmenuItems({
 
   return (
     <>
-      {REACTION_EMOJIS.map(({ emoji, name, label }) => (
-        <MenuItemComponent
-          key={name}
-          onClick={() => handleReactionClick(name)}
-          className="text-base"
-        >
-          <span className="mr-2">{emoji}</span>
-          {label}
-        </MenuItemComponent>
-      ))}
+      <div className="grid grid-cols-2 gap-2 p-4">
+        {REACTION_EMOJIS.map(({ emoji, name }) => (
+          <MenuItemComponent
+            key={name}
+            onClick={() => handleReactionClick(name)}
+            className="text-xl"
+          >
+            <span>{emoji}</span>
+          </MenuItemComponent>
+        ))}
+      </div>
     </>
   );
 }
@@ -249,7 +250,12 @@ export function ReactionPicker({
   if (isMobile || mode === "drawer") {
     return (
       <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerTrigger asChild>{trigger || defaultTrigger}</DrawerTrigger>
+        <DrawerTrigger asChild>
+          <Button variant="ghost" size="sm">
+            <SmileIcon className="h-4 mr-2 text-muted-foreground" />
+            React
+          </Button>
+        </DrawerTrigger>
         <DrawerContent>
           <DrawerHeader>
             <DrawerTitle>Choose a reaction</DrawerTitle>

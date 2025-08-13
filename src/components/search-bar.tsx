@@ -28,6 +28,7 @@ import {
   PopoverTrigger,
 } from "~/components/ui/popover";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { cn } from "~/lib/utils";
 
 export function SearchBar() {
   const [open, setOpen] = React.useState(false);
@@ -124,7 +125,12 @@ export function SearchBar() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full lg:w-[600px] -translate-y-10 p-0 data-[state=open]:animate-none">
+      <PopoverContent
+        className={cn(
+          "lg:w-[600px] -translate-y-10 p-0 data-[state=open]:animate-none",
+          isMobile && "w-dvw",
+        )}
+      >
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search channels and messages..."
@@ -149,11 +155,6 @@ export function SearchBar() {
                   >
                     <Hash className="h-4 w-4" />
                     <span>{getDisplayName(channel)}</span>
-                    {channel.description && (
-                      <span className="text-xs text-muted-foreground ml-auto truncate">
-                        {channel.description}
-                      </span>
-                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -171,11 +172,6 @@ export function SearchBar() {
                   >
                     <LockIcon className="h-4 w-4" />
                     <span>{getDisplayName(channel)}</span>
-                    {channel.description && (
-                      <span className="text-xs text-muted-foreground ml-auto truncate">
-                        {channel.description}
-                      </span>
-                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>

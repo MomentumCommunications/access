@@ -40,6 +40,19 @@ export const getUserByClerkId = query({
   },
 });
 
+export const addUserDescription = mutation({
+  args: {
+    description: v.optional(v.string()),
+    user: v.optional(v.id("users")),
+  },
+  handler: async (ctx, { description, user }) => {
+    if (user === undefined) {
+      return;
+    }
+    await ctx.db.patch(user, { description });
+  },
+});
+
 export const getUsersByChannel = query({
   args: { channel: v.optional(v.id("channels")) },
   handler: async (ctx, { channel }) => {

@@ -1,7 +1,7 @@
 import AuthorInfo from "./author-info";
 import { ImageComponent } from "./image-component";
 import { MessageReactions } from "./message-reactions";
-import { ReactionPicker } from "./reaction-picker";
+import { ReactionSubmenu } from "./reaction-picker";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -17,7 +17,6 @@ import {
   MoreHorizontal,
   Trash2,
   Check,
-  SmileIcon,
   PencilLine,
   Trash,
   Reply,
@@ -55,6 +54,7 @@ import {
 } from "~/components/ui/context-menu";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Skeleton } from "./ui/skeleton";
+import { toast } from "sonner";
 
 function DeleteMessage({
   message,
@@ -70,6 +70,8 @@ function DeleteMessage({
 
   const deleteMessage = () => {
     deleteFunction({ id: message._id });
+
+    toast("Message deleted");
   };
 
   const defaultTrigger = (
@@ -146,6 +148,11 @@ export function MessageComponent({
     };
   }, [message._id, onRegisterElement]);
 
+  function handleCopyText(text: string) {
+    navigator.clipboard.writeText(text);
+    toast("Copied to clipboard");
+  }
+
   const handleCopyMessageLink = useCallback(async () => {
     try {
       const isDM = channel?.isDM ?? false;
@@ -156,6 +163,7 @@ export function MessageComponent({
       );
       await navigator.clipboard.writeText(messageLink);
       setLinkCopied(true);
+      toast("Message link copied to clipboard");
       setTimeout(() => setLinkCopied(false), 2000); // Reset after 2 seconds
     } catch (error) {
       console.error("Failed to copy message link:", error);
@@ -163,6 +171,21 @@ export function MessageComponent({
   }, [channelId, message._id, channel?.isDM]);
 
   const isAuthorOrAdmin = message.author === userId || user?.role === "admin";
+
+  function formatTime(date: number) {
+    const today = format(new Date(), "yyyy-MM-dd");
+    const yesterday = format(
+      new Date(Date.now() - 24 * 60 * 60 * 1000),
+      "yyyy-MM-dd",
+    );
+    const dateObj = format(new Date(date), "yyyy-MM-dd");
+    if (dateObj === today) {
+      return format(date, "h:mm a");
+    } else if (dateObj === yesterday) {
+      return "Yesterday at " + format(date, "h:mm a");
+    }
+    return format(date, "M/d/yyyy h:mm a");
+  }
 
   return (
     <ContextMenu>
@@ -200,7 +223,7 @@ export function MessageComponent({
             <Dot className="flex-shrink-0 w-4 h-4 text-muted-foreground" />
             <div className="flex flex-row gap-2 items-center">
               <p className="text-xs text-muted-foreground">
-                {format(new Date(message._creationTime), "M/d/yy h:mma")}
+                {formatTime(message._creationTime)}
               </p>
               <div className="flex flex-row gap-2">
                 <DropdownMenu>
@@ -221,24 +244,15 @@ export function MessageComponent({
                           Reply
                         </DropdownMenuItem>
                       )}
-                      <ReactionPicker
+                      <ReactionSubmenu
                         messageId={message._id}
                         userId={userId}
-                        trigger={
-                          <DropdownMenuItem
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            <SmileIcon />
-                            Add Reaction
-                          </DropdownMenuItem>
-                        }
+                        mode="dropdown"
                       />
                       {!isImage && (
                         <>
                           <DropdownMenuItem
-                            onClick={() =>
-                              navigator.clipboard.writeText(message.body)
-                            }
+                            onClick={() => handleCopyText(message.body)}
                           >
                             <ClipboardIcon />
                             Copy Text
@@ -297,21 +311,14 @@ export function MessageComponent({
             Reply
           </ContextMenuItem>
         )}
-        <ReactionPicker
+        <ReactionSubmenu
           messageId={message._id}
           userId={userId}
-          trigger={
-            <ContextMenuItem onSelect={(e) => e.preventDefault()}>
-              <SmileIcon className="mr-2 h-4 w-4" />
-              Add Reaction
-            </ContextMenuItem>
-          }
+          mode="context"
         />
         {!isImage && (
           <>
-            <ContextMenuItem
-              onClick={() => navigator.clipboard.writeText(message.body)}
-            >
+            <ContextMenuItem onClick={() => handleCopyText(message.body)}>
               <ClipboardIcon className="mr-2 h-4 w-4" />
               Copy Text
             </ContextMenuItem>

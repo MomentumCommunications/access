@@ -15,6 +15,18 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "~/components/ui/drawer";
+import {
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuItem,
+} from "~/components/ui/dropdown-menu";
+import {
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuItem,
+} from "~/components/ui/context-menu";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { SmileIcon } from "lucide-react";
 
@@ -31,6 +43,7 @@ const REACTION_EMOJIS = [
   { emoji: "🎉", name: "party", label: "party" },
   { emoji: "🤔", name: "thinking", label: "thinking" },
   { emoji: "👏", name: "clap", label: "clap" },
+  { emoji: "🫠", name: "melting_face", label: "melting face" },
 ];
 
 interface ReactionPickerProps {
@@ -38,9 +51,14 @@ interface ReactionPickerProps {
   userId: Id<"users">;
   trigger?: React.ReactNode;
   onReactionSelect?: () => void;
+  mode?: "popover" | "dropdown" | "context" | "drawer";
 }
 
-function ReactionGrid({ messageId, userId, onReactionSelect }: {
+function ReactionGrid({
+  messageId,
+  userId,
+  onReactionSelect,
+}: {
   messageId: Id<"messages">;
   userId: Id<"users">;
   onReactionSelect?: () => void;
@@ -78,7 +96,123 @@ function ReactionGrid({ messageId, userId, onReactionSelect }: {
   );
 }
 
-export function ReactionPicker({ messageId, userId, trigger, onReactionSelect }: ReactionPickerProps) {
+function ReactionSubmenuItems({
+  messageId,
+  userId,
+  onReactionSelect,
+  mode,
+}: {
+  messageId: Id<"messages">;
+  userId: Id<"users">;
+  onReactionSelect?: () => void;
+  mode: "dropdown" | "context";
+}) {
+  const addReaction = useMutation(api.reactions.addReaction);
+
+  const handleReactionClick = async (reactionName: string) => {
+    try {
+      await addReaction({
+        messageId,
+        userId,
+        reaction: reactionName,
+      });
+      onReactionSelect?.();
+    } catch (error) {
+      console.error("Failed to add reaction:", error);
+    }
+  };
+
+  const MenuItemComponent =
+    mode === "dropdown" ? DropdownMenuItem : ContextMenuItem;
+
+  return (
+    <>
+      {REACTION_EMOJIS.map(({ emoji, name, label }) => (
+        <MenuItemComponent
+          key={name}
+          onClick={() => handleReactionClick(name)}
+          className="text-base"
+        >
+          <span className="mr-2">{emoji}</span>
+          {label}
+        </MenuItemComponent>
+      ))}
+    </>
+  );
+}
+
+export function ReactionSubmenu({
+  messageId,
+  userId,
+  trigger,
+  onReactionSelect,
+  mode,
+}: {
+  messageId: Id<"messages">;
+  userId: Id<"users">;
+  trigger?: React.ReactNode;
+  onReactionSelect?: () => void;
+  mode: "dropdown" | "context";
+}) {
+  const isMobile = useIsMobile();
+
+  // On mobile, always use drawer regardless of mode
+  if (isMobile) {
+    return (
+      <ReactionPicker
+        messageId={messageId}
+        userId={userId}
+        trigger={trigger}
+        onReactionSelect={onReactionSelect}
+        mode="drawer"
+      />
+    );
+  }
+
+  if (mode === "dropdown") {
+    return (
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>
+          <SmileIcon className="h-4 -ml-1 mr-1 text-muted-foreground" />
+          <span>Add Reaction</span>
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent sideOffset={2} alignOffset={-5}>
+          <ReactionSubmenuItems
+            messageId={messageId}
+            userId={userId}
+            onReactionSelect={onReactionSelect}
+            mode={mode}
+          />
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+    );
+  }
+
+  return (
+    <ContextMenuSub>
+      <ContextMenuSubTrigger>
+        <SmileIcon className="mr-4 h-4 w-4 text-muted-foreground" />
+        <span>Add Reaction</span>
+      </ContextMenuSubTrigger>
+      <ContextMenuSubContent sideOffset={2} alignOffset={-5}>
+        <ReactionSubmenuItems
+          messageId={messageId}
+          userId={userId}
+          onReactionSelect={onReactionSelect}
+          mode={mode}
+        />
+      </ContextMenuSubContent>
+    </ContextMenuSub>
+  );
+}
+
+export function ReactionPicker({
+  messageId,
+  userId,
+  trigger,
+  onReactionSelect,
+  mode = "popover",
+}: ReactionPickerProps) {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
 
@@ -93,17 +227,29 @@ export function ReactionPicker({ messageId, userId, trigger, onReactionSelect }:
 
   const defaultTrigger = (
     <Button variant="ghost" size="sm">
-      <SmileIcon className="h-4 w-4" />
+      <SmileIcon className="h-4 mr-1 text-muted-foreground" />
       React
     </Button>
   );
 
-  if (isMobile) {
+  // Handle sub-menu modes
+  if (mode === "dropdown" || mode === "context") {
+    return (
+      <ReactionSubmenu
+        messageId={messageId}
+        userId={userId}
+        trigger={trigger}
+        onReactionSelect={onReactionSelect}
+        mode={mode}
+      />
+    );
+  }
+
+  // Force drawer mode if mobile or explicitly requested
+  if (isMobile || mode === "drawer") {
     return (
       <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerTrigger asChild>
-          {trigger || defaultTrigger}
-        </DrawerTrigger>
+        <DrawerTrigger asChild>{trigger || defaultTrigger}</DrawerTrigger>
         <DrawerContent>
           <DrawerHeader>
             <DrawerTitle>Choose a reaction</DrawerTitle>
@@ -118,13 +264,12 @@ export function ReactionPicker({ messageId, userId, trigger, onReactionSelect }:
     );
   }
 
+  // Default popover mode
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        {trigger || defaultTrigger}
-      </PopoverTrigger>
-      <PopoverContent 
-        className="w-80 p-0" 
+      <PopoverTrigger asChild>{trigger || defaultTrigger}</PopoverTrigger>
+      <PopoverContent
+        className="w-80 p-0"
         align="start"
         side="bottom"
         sideOffset={4}

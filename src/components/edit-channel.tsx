@@ -110,6 +110,7 @@ export function EditChannel({ channel }: { channel: Channel }) {
 const formSchema = z.object({
   name: z.string().min(2).max(50),
   description: z.string().min(2).max(1000),
+  isPrivate: z.boolean(),
   adminControlled: z.boolean(),
 });
 
@@ -123,6 +124,7 @@ function EditChannelForm({ channel }: { channel: Channel }) {
     defaultValues: {
       name: channel.name,
       description: channel.description,
+      isPrivate: channel.isPrivate,
       adminControlled: channel.adminControlled,
     },
   });
@@ -132,6 +134,7 @@ function EditChannelForm({ channel }: { channel: Channel }) {
       id: channel._id,
       name: values.name,
       description: values.description,
+      isPrivate: values.isPrivate,
       adminControlled: values.adminControlled,
     });
 
@@ -173,6 +176,21 @@ function EditChannelForm({ channel }: { channel: Channel }) {
                 <Textarea {...field} rows={rowCount} />
               </FormControl>
               <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="isPrivate"
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <FormLabel>Private</FormLabel>
             </FormItem>
           )}
         />

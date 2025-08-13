@@ -1,4 +1,5 @@
 import { Id } from "convex/_generated/dataModel";
+import { format, isToday, isYesterday, isSameDay } from "date-fns";
 
 export type Message = {
   _id: Id<"messages">;
@@ -211,4 +212,66 @@ export function parseMessageLink(
   } catch {
     return null;
   }
+}
+
+/**
+ * Groups messages by date, returning an array of date groups
+ */
+export interface MessageDateGroup {
+  date: Date;
+  dateLabel: string;
+  messages: Message[];
+}
+
+export function groupMessagesByDate(messages: Message[]): MessageDateGroup[] {
+  if (messages.length === 0) return [];
+
+  const groups: MessageDateGroup[] = [];
+  let currentGroup: MessageDateGroup | null = null;
+
+  for (const message of messages) {
+    const messageDate = new Date(message._creationTime);
+
+    // Check if we need to start a new group
+    if (!currentGroup || !isSameDay(currentGroup.date, messageDate)) {
+      // Finish the previous group
+      if (currentGroup) {
+        groups.push(currentGroup);
+      }
+
+      // Start a new group
+      currentGroup = {
+        date: messageDate,
+        dateLabel: formatDateSeparator(messageDate),
+        messages: [message],
+      };
+    } else {
+      // Add to current group
+      currentGroup.messages.push(message);
+    }
+  }
+
+  // Don't forget the last group
+  if (currentGroup) {
+    groups.push(currentGroup);
+  }
+
+  return groups;
+}
+
+/**
+ * Formats a date for display in date separators
+ * Returns "Today", "Yesterday", or a formatted date
+ */
+export function formatDateSeparator(date: Date): string {
+  if (isToday(date)) {
+    return "Today";
+  }
+  
+  if (isYesterday(date)) {
+    return "Yesterday";
+  }
+
+  // For other dates, show the full date
+  return format(date, "EEEE, MMMM d, yyyy");
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { Id } from "convex/_generated/dataModel";
 import { MessageComponent } from "./message-component";
 import { MessageInput } from "./message-input";
@@ -7,8 +7,9 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
 import { Alert, AlertDescription } from "./ui/alert";
 import { cn } from "~/lib/utils";
-import { Message } from "~/lib/message-utils";
+import { Message, groupMessagesByDate } from "~/lib/message-utils";
 import { ArrowDown } from "lucide-react";
+import { DateSeparator } from "./date-separator";
 import { Button } from "./ui/button";
 import { useMessageReadTracking } from "~/hooks/useMessageReadTracking";
 
@@ -71,6 +72,11 @@ export function ContextualChatWindow({
     scrollContainerRef,
     enabled: true,
   });
+
+  // Group messages by date for separators
+  const messageGroups = useMemo(() => {
+    return groupMessagesByDate(messages);
+  }, [messages]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -531,15 +537,15 @@ export function ContextualChatWindow({
             )}
 
             {/* Empty state */}
-            {messages.length === 0 && !isLoading && (
-              <div className="h-full flex items-center justify-center">
-                <Alert className="max-w-sm mx-auto">
-                  <AlertDescription className="text-center">
-                    This message could not be found or loaded.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            )}
+            {/* {messages.length === 0 && !isLoading && ( */}
+            {/*   <div className="h-full flex items-center justify-center"> */}
+            {/*     <Alert className="max-w-sm mx-auto"> */}
+            {/*       <AlertDescription className="text-center"> */}
+            {/*         This is the beginning of the conversation. */}
+            {/*       </AlertDescription> */}
+            {/*     </Alert> */}
+            {/*   </div> */}
+            {/* )} */}
 
             {/* Loading skeleton for initial load */}
             {isLoading && messages.length === 0 && (
@@ -557,41 +563,52 @@ export function ContextualChatWindow({
               </div>
             )}
 
-            {/* Messages, there was an unused index varible that may be useful one day */}
-            {messages.map((message) => {
-              const isTargetMessage = message._id === targetMessageId;
-              return (
-                <div
-                  key={message._id}
-                  ref={isTargetMessage ? targetMessageRef : undefined}
-                  data-message-id={message._id}
-                  className={cn(
-                    isTargetMessage &&
-                      !disableHighlight && [
-                        "relative",
-                        "animate-pulse-highlight", // We'll define this in CSS
-                        "before:absolute before:inset-0 before:-z-10",
-                        "before:bg-yellow-200/20 dark:before:bg-yellow-500/10",
-                        "before:rounded-lg before:border before:border-yellow-300/30",
-                        "before:shadow-sm",
-                        "p-2 -m-2", // Add padding to highlight area
-                      ],
-                  )}
-                  style={{
-                    scrollMarginTop: "80px", // Ensure proper scroll positioning
-                  }}
-                >
-                  <MessageComponent
-                    message={message}
-                    userId={userId}
-                    channelId={channelId as Id<"channels">}
-                    channel={channel}
-                    onRegisterElement={registerMessageElement}
-                    onReply={handleReply}
-                  />
-                </div>
-              );
-            })}
+            {/* Messages grouped by date */}
+            <div className="space-y-0 md:space-y-4">
+              <p>This is the beginning of the conversation.</p>
+            </div>
+            {messageGroups.map((group) => (
+              <div key={`group-${group.date.toISOString()}`}>
+                {/* Date separator */}
+                <DateSeparator dateLabel={group.dateLabel} />
+
+                {/* Messages in this date group */}
+                {group.messages.map((message) => {
+                  const isTargetMessage = message._id === targetMessageId;
+                  return (
+                    <div
+                      key={message._id}
+                      ref={isTargetMessage ? targetMessageRef : undefined}
+                      data-message-id={message._id}
+                      className={cn(
+                        isTargetMessage &&
+                          !disableHighlight && [
+                            "relative",
+                            "animate-pulse-highlight", // We'll define this in CSS
+                            "before:absolute before:inset-0 before:-z-10",
+                            "before:bg-yellow-200/20 dark:before:bg-yellow-500/10",
+                            "before:rounded-lg before:border before:border-yellow-300/30",
+                            "before:shadow-sm",
+                            "p-2 -m-2", // Add padding to highlight area
+                          ],
+                      )}
+                      style={{
+                        scrollMarginTop: "80px", // Ensure proper scroll positioning
+                      }}
+                    >
+                      <MessageComponent
+                        message={message}
+                        userId={userId}
+                        channelId={channelId as Id<"channels">}
+                        channel={channel}
+                        onRegisterElement={registerMessageElement}
+                        onReply={handleReply}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
 
             {/* Loading indicator for newer messages */}
             {loadingNewer && messages.length > 0 && (

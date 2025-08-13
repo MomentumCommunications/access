@@ -144,7 +144,7 @@ export function MessageReactions({ messageId, userId }: MessageReactionsProps) {
           variant="outline"
           size="sm"
           className={cn(
-            "h-6 px-2 text-xs border border-muted gap-1 hover:bg-accent",
+            "h-6 px-2 text-md border border-muted gap-1 hover:bg-accent",
             userReaction === reaction.reactionName &&
               "border-muted-foreground bg-muted dark:bg-muted hover:bg-blue-100",
           )}
@@ -158,4 +158,3 @@ export function MessageReactions({ messageId, userId }: MessageReactionsProps) {
     </div>
   );
 }
-

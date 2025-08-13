@@ -314,7 +314,7 @@ function RouteComponent() {
 
   return (
     <div className="h-[calc(100vh-54px)] flex flex-col">
-      <div className="flex align-middle flex-row py-2 px-4 justify-between">
+      <div className="flex align-middle flex-row py-2 px-2 md:px-4 justify-between">
         <div className="flex flex-row gap-2 items-center align-middle">
           {channel?.isPrivate ? (
             <LockIcon color="#ce2128" className="size-5 md:size-6" />

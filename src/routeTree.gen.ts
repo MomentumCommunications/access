@@ -13,12 +13,14 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
 import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppSearchRouteImport } from './routes/_app.search'
 import { Route as AppHomeRouteImport } from './routes/_app.home'
+import { Route as AppHelpRouteImport } from './routes/_app.help'
+import { Route as AppAccountRouteImport } from './routes/_app.account'
 import { Route as AppChannelIndexRouteImport } from './routes/_app.channel/index'
 import { Route as AppDmDmIdRouteImport } from './routes/_app.dm/$dmId'
 import { Route as AppChannelChannelIdRouteImport } from './routes/_app.channel/$channelId'
-import { Route as AppChannelGeneralIndexRouteImport } from './routes/_app.channel/general/index'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -39,6 +41,11 @@ const SignInSplatRoute = SignInSplatRouteImport.update({
   path: '/sign-in/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSearchRoute = AppSearchRouteImport.update({
   id: '/search',
   path: '/search',
@@ -47,6 +54,16 @@ const AppSearchRoute = AppSearchRouteImport.update({
 const AppHomeRoute = AppHomeRouteImport.update({
   id: '/home',
   path: '/home',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHelpRoute = AppHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAccountRoute = AppAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => AppRoute,
 } as any)
 const AppChannelIndexRoute = AppChannelIndexRouteImport.update({
@@ -64,82 +81,89 @@ const AppChannelChannelIdRoute = AppChannelChannelIdRouteImport.update({
   path: '/channel/$channelId',
   getParentRoute: () => AppRoute,
 } as any)
-const AppChannelGeneralIndexRoute = AppChannelGeneralIndexRouteImport.update({
-  id: '/channel/general/',
-  path: '/channel/general/',
-  getParentRoute: () => AppRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AppAccountRoute
+  '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
   '/search': typeof AppSearchRoute
+  '/settings': typeof AppSettingsRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/channel/$channelId': typeof AppChannelChannelIdRoute
   '/dm/$dmId': typeof AppDmDmIdRoute
   '/channel': typeof AppChannelIndexRoute
-  '/channel/general': typeof AppChannelGeneralIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AppAccountRoute
+  '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
   '/search': typeof AppSearchRoute
+  '/settings': typeof AppSettingsRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/channel/$channelId': typeof AppChannelChannelIdRoute
   '/dm/$dmId': typeof AppDmDmIdRoute
   '/channel': typeof AppChannelIndexRoute
-  '/channel/general': typeof AppChannelGeneralIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/_app/account': typeof AppAccountRoute
+  '/_app/help': typeof AppHelpRoute
   '/_app/home': typeof AppHomeRoute
   '/_app/search': typeof AppSearchRoute
+  '/_app/settings': typeof AppSettingsRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
   '/_app/channel/$channelId': typeof AppChannelChannelIdRoute
   '/_app/dm/$dmId': typeof AppDmDmIdRoute
   '/_app/channel/': typeof AppChannelIndexRoute
-  '/_app/channel/general/': typeof AppChannelGeneralIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
+    | '/help'
     | '/home'
     | '/search'
+    | '/settings'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/channel/$channelId'
     | '/dm/$dmId'
     | '/channel'
-    | '/channel/general'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account'
+    | '/help'
     | '/home'
     | '/search'
+    | '/settings'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/channel/$channelId'
     | '/dm/$dmId'
     | '/channel'
-    | '/channel/general'
   id:
     | '__root__'
     | '/'
     | '/_app'
+    | '/_app/account'
+    | '/_app/help'
     | '/_app/home'
     | '/_app/search'
+    | '/_app/settings'
     | '/sign-in/$'
     | '/sign-up/$'
     | '/_app/channel/$channelId'
     | '/_app/dm/$dmId'
     | '/_app/channel/'
-    | '/_app/channel/general/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -179,6 +203,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/search': {
       id: '/_app/search'
       path: '/search'
@@ -191,6 +222,20 @@ declare module '@tanstack/react-router' {
       path: '/home'
       fullPath: '/home'
       preLoaderRoute: typeof AppHomeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/help': {
+      id: '/_app/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof AppHelpRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/account': {
+      id: '/_app/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AppAccountRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/channel/': {
@@ -214,32 +259,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChannelChannelIdRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/channel/general/': {
-      id: '/_app/channel/general/'
-      path: '/channel/general'
-      fullPath: '/channel/general'
-      preLoaderRoute: typeof AppChannelGeneralIndexRouteImport
-      parentRoute: typeof AppRoute
-    }
   }
 }
 
 interface AppRouteChildren {
+  AppAccountRoute: typeof AppAccountRoute
+  AppHelpRoute: typeof AppHelpRoute
   AppHomeRoute: typeof AppHomeRoute
   AppSearchRoute: typeof AppSearchRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppChannelChannelIdRoute: typeof AppChannelChannelIdRoute
   AppDmDmIdRoute: typeof AppDmDmIdRoute
   AppChannelIndexRoute: typeof AppChannelIndexRoute
-  AppChannelGeneralIndexRoute: typeof AppChannelGeneralIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAccountRoute: AppAccountRoute,
+  AppHelpRoute: AppHelpRoute,
   AppHomeRoute: AppHomeRoute,
   AppSearchRoute: AppSearchRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppChannelChannelIdRoute: AppChannelChannelIdRoute,
   AppDmDmIdRoute: AppDmDmIdRoute,
   AppChannelIndexRoute: AppChannelIndexRoute,
-  AppChannelGeneralIndexRoute: AppChannelGeneralIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

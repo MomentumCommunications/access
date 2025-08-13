@@ -3,7 +3,9 @@ import { memo, useCallback } from "react";
 import {
   ChevronsRight,
   ChevronUp,
+  Cog,
   Hash,
+  HelpCircle,
   Home,
   Lock,
   MessageSquare,
@@ -257,6 +259,21 @@ const AppSidebarComponent = memo(() => {
               </CollapsibleContent>
             </SidebarGroup>
           </Collapsible>
+          <SidebarGroup>
+            <SidebarGroupLabel>Etc</SidebarGroupLabel>
+            <SidebarMenuButton asChild>
+              <a href="/settings">
+                <Cog />
+                <span>Settings</span>
+              </a>
+            </SidebarMenuButton>
+            <SidebarMenuButton asChild>
+              <a href="/help">
+                <HelpCircle />
+                <span>Help</span>
+              </a>
+            </SidebarMenuButton>
+          </SidebarGroup>
         </SignedIn>
         <SignedOut>
           <SidebarGroup>

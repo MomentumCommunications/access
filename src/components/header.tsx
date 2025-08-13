@@ -1,5 +1,4 @@
 import { UserButton } from "@clerk/tanstack-react-start";
-import { ModeToggle } from "./mode-toggle";
 import { InboxButton } from "./inbox-button";
 import { Separator } from "./ui/separator";
 import { SidebarTrigger } from "./ui/sidebar";
@@ -15,8 +14,7 @@ export function Header() {
         <SearchBar />
         <div className="px-2 flex items-center space-x-2">
           <InboxButton />
-          <ModeToggle />
-          <UserButton />
+          <UserButton userProfileMode="navigation" userProfileUrl="/account" />
         </div>
       </div>
       <Separator />

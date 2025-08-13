@@ -79,20 +79,25 @@ export function SearchBar() {
     }
   };
 
+  // Helper function to get display name with fallbacks
+  const getDisplayName = (item: { displayName?: string; name?: string }) => {
+    return item.displayName || item.name || "Untitled";
+  };
+
   // Filter channels based on search input
   const filteredPublicChannels =
     channels?.publicChannels?.filter((channel) =>
-      channel.displayName.toLowerCase().includes(searchValue.toLowerCase()),
+      getDisplayName(channel).toLowerCase().includes(searchValue.toLowerCase()),
     ) || [];
 
   const filteredPrivateChannels =
     channels?.privateChannels?.filter((channel) =>
-      channel.displayName.toLowerCase().includes(searchValue.toLowerCase()),
+      getDisplayName(channel).toLowerCase().includes(searchValue.toLowerCase()),
     ) || [];
 
   const filteredDMs =
     channels?.dms?.filter((dm) =>
-      dm.displayName.toLowerCase().includes(searchValue.toLowerCase()),
+      getDisplayName(dm).toLowerCase().includes(searchValue.toLowerCase()),
     ) || [];
 
   const hasChannelResults =
@@ -107,18 +112,19 @@ export function SearchBar() {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="md:w-1/5 lg:w-[700px] justify-start text-muted-foreground"
+          className="md:w-fit lg:w-[600px] justify-start text-muted-foreground"
         >
           <SearchIcon className="h-4 w-4" />
-          Search channels and messages...
+          Search...
           {!isMobile && (
-            <kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-              <span className="text-xs">{isMac ? "⌘" : "Ctrl"}</span>F
+            <kbd className="ml-auto align-baseline pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+              <span className="text-xs">{isMac ? "⌘" : "Ctrl+"}</span>
+              <span>F</span>
             </kbd>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full md:w-1/5 lg:w-[700px] -translate-y-10 p-0 data-[state=open]:animate-none">
+      <PopoverContent className="w-full lg:w-[600px] -translate-y-10 p-0 data-[state=open]:animate-none">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search channels and messages..."
@@ -137,12 +143,12 @@ export function SearchBar() {
                 {filteredPublicChannels.map((channel) => (
                   <CommandItem
                     key={channel._id}
-                    value={channel.displayName}
+                    value={getDisplayName(channel)}
                     onSelect={() => handleChannelSelect(channel._id, false)}
                     className="flex items-center gap-2"
                   >
                     <Hash className="h-4 w-4" />
-                    <span>{channel.displayName}</span>
+                    <span>{getDisplayName(channel)}</span>
                     {channel.description && (
                       <span className="text-xs text-muted-foreground ml-auto truncate">
                         {channel.description}
@@ -159,12 +165,12 @@ export function SearchBar() {
                 {filteredPrivateChannels.map((channel) => (
                   <CommandItem
                     key={channel._id}
-                    value={channel.displayName}
+                    value={getDisplayName(channel)}
                     onSelect={() => handleChannelSelect(channel._id, false)}
                     className="flex items-center gap-2"
                   >
                     <LockIcon className="h-4 w-4" />
-                    <span>{channel.displayName}</span>
+                    <span>{getDisplayName(channel)}</span>
                     {channel.description && (
                       <span className="text-xs text-muted-foreground ml-auto truncate">
                         {channel.description}
@@ -181,12 +187,12 @@ export function SearchBar() {
                 {filteredDMs.map((dm) => (
                   <CommandItem
                     key={dm._id}
-                    value={dm.displayName}
+                    value={getDisplayName(dm)}
                     onSelect={() => handleChannelSelect(dm._id, true)}
                     className="flex items-center gap-2"
                   >
                     <MessageSquare className="h-4 w-4" />
-                    <span>{dm.displayName}</span>
+                    <span>{getDisplayName(dm)}</span>
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -213,4 +219,3 @@ export function SearchBar() {
     </Popover>
   );
 }
-

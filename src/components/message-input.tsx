@@ -1,7 +1,7 @@
 import { Button } from "./ui/button";
 import { SendIcon, X } from "lucide-react";
 import { Textarea } from "./ui/textarea";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Id } from "convex/_generated/dataModel";
 import { useConvexMutation, convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
@@ -46,8 +46,19 @@ export function MessageInput({
   };
 
   const [message, setMessage] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const textRowCount = message.split("\n").length;
+
+  // Focus textarea when replying starts
+  useEffect(() => {
+    if (replyingTo) {
+      // Small delay to ensure the reply UI has rendered
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+    }
+  }, [replyingTo]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +116,7 @@ export function MessageInput({
       <form className="flex flex-row gap-2" onSubmit={handleSubmit}>
         <Textarea
           autoFocus
+          ref={textareaRef}
           rows={textRowCount}
           className="w-full"
           name="message"

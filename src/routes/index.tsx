@@ -14,8 +14,9 @@ function PublicHome() {
   }
 
   // If user is not signed in, redirect to sign-in
+  // This is redundant but I may change this app to require sign-in
   if (user.isLoaded && !user.isSignedIn) {
-    return <Navigate to="/sign-in/$" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   // Loading state
@@ -25,4 +26,3 @@ function PublicHome() {
     </div>
   );
 }
-

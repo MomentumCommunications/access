@@ -246,10 +246,14 @@ export const editChannel = mutation({
     id: v.id("channels"),
     name: v.string(),
     description: v.string(),
+    isPrivate: v.boolean(),
     adminControlled: v.boolean(),
   },
-  handler: async (ctx, { id, name, description, adminControlled }) => {
-    await ctx.db.patch(id, { name, description, adminControlled });
+  handler: async (
+    ctx,
+    { id, name, description, isPrivate, adminControlled },
+  ) => {
+    await ctx.db.patch(id, { name, description, isPrivate, adminControlled });
   },
 });
 

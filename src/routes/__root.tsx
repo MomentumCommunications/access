@@ -11,6 +11,7 @@ import { ThemeProvider } from "~/components/theme-provider";
 import { ClerkProvider } from "@clerk/tanstack-react-start";
 import { shadcn } from "@clerk/themes";
 import { getGlobalClients } from "~/lib/query-client";
+import { Toaster } from "sonner";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -51,7 +52,7 @@ export const Route = createRootRouteWithContext<{
 function RootComponent() {
   // Get the global QueryClient to provide at the root level
   const { queryClient } = getGlobalClients();
-  
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
@@ -95,6 +96,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       </head>
       <body className="md:overscroll-none">
         {children}
+        <Toaster />
         <Scripts />
       </body>
     </html>

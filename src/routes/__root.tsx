@@ -12,7 +12,7 @@ import { ClerkProvider } from "@clerk/tanstack-react-start";
 import { shadcn } from "@clerk/themes";
 import { getGlobalClients } from "~/lib/query-client";
 import { Toaster } from "sonner";
-import { PWAHandler } from "~/components/pwa-handler";
+// import { PWAHandler } from "~/components/pwa-handler"; // Disabled for Netlify compatibility
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -148,7 +148,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
       </head>
       <body className="md:overscroll-none">
         {children}
-        <PWAHandler />
+        {/* <PWAHandler /> */}
         <Toaster />
         <Scripts />
       </body>

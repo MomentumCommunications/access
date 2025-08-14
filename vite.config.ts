@@ -28,67 +28,21 @@ export default defineConfig({
       target: "netlify",
     }),
     tailwindcss(),
-    VitePWA({
-      registerType: "autoUpdate",
-      includeAssets: ["favicon.png", "icons/*.png"],
-      manifest: false, // We're using our own manifest.json
-      workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        skipWaiting: true,
-        maximumFileSizeToCacheInBytes: 3000000, // 3MB limit
-        runtimeCaching: [
-          // Cache Google Fonts
-          {
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
-            handler: "StaleWhileRevalidate",
-            options: {
-              cacheName: "google-fonts-stylesheets",
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\//,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "google-fonts-webfonts",
-              expiration: {
-                maxEntries: 30,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
-              },
-            },
-          },
-          // Cache images
-          {
-            urlPattern: /\.(?:png|gif|jpg|jpeg|svg|webp)$/,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "images",
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
-              },
-            },
-          },
-          // Cache Convex API calls with network-first strategy
-          {
-            urlPattern: /https:\/\/.*\.convex\.cloud\//,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "convex-api",
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 5, // 5 minutes
-              },
-              networkTimeoutSeconds: 3,
-            },
-          },
-        ],
-      },
-      devOptions: {
-        enabled: false, // Disable in development to avoid validation issues
-      },
-    }),
+    // Temporarily disable PWA plugin due to TanStack Start compatibility issues
+    // VitePWA({
+    //   registerType: "autoUpdate",
+    //   includeAssets: ["favicon.png", "icons/*.png"],
+    //   manifest: false,
+    //   workbox: {
+    //     globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+    //     cleanupOutdatedCaches: true,
+    //     clientsClaim: true,
+    //     skipWaiting: true,
+    //   },
+    //   devOptions: {
+    //     enabled: false,
+    //   },
+    // }),
   ],
   build: {
     target: "es2020", // Modern target for better compression

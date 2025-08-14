@@ -26,6 +26,7 @@ export default defineConfig({
     tsConfigPaths(),
     tanstackStart({
       target: "netlify",
+      ssr: true,
     }),
     tailwindcss(),
     // Temporarily disable PWA plugin due to TanStack Start compatibility issues

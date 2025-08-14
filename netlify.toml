@@ -7,6 +7,17 @@
   NPM_VERSION = "10"
   NODE_OPTIONS = "--max-old-space-size=4096"
 
+# Environment variables needed in Netlify UI (Site settings > Environment variables):
+# 
+# Required for client-side:
+# - VITE_CONVEX_URL (from your Convex dashboard)
+# - VITE_CLERK_PUBLISHABLE_KEY (from Clerk dashboard)
+#
+# Required for server-side:
+# - CLERK_SECRET_KEY (from Clerk dashboard - for server-side auth)
+# - CLERK_FRONTEND_API_URL (from Clerk dashboard - for Convex auth integration)
+# - CLERK_WEBHOOK_SECRET (from Clerk dashboard - for webhook validation)
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -35,7 +46,4 @@
   [headers.values]
     Cache-Control = "public, max-age=86400"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# TanStack Start with Netlify target handles routing automatically

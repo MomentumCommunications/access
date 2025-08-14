@@ -49,78 +49,16 @@ export default defineConfig({
     rollupOptions: {
       output: {
         format: "es", // Ensure ES modules format
-        manualChunks: {
-          // Split large vendor libraries into separate chunks
-          clerk: ["@clerk/tanstack-react-start", "@clerk/themes"],
-          radix: [
-            "@radix-ui/react-accordion",
-            "@radix-ui/react-alert-dialog",
-            "@radix-ui/react-avatar",
-            "@radix-ui/react-checkbox",
-            "@radix-ui/react-collapsible",
-            "@radix-ui/react-context-menu",
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-dropdown-menu",
-            "@radix-ui/react-label",
-            "@radix-ui/react-popover",
-            "@radix-ui/react-radio-group",
-            "@radix-ui/react-scroll-area",
-            "@radix-ui/react-select",
-            "@radix-ui/react-separator",
-            "@radix-ui/react-slot",
-            "@radix-ui/react-switch",
-            "@radix-ui/react-tabs",
-            "@radix-ui/react-tooltip",
-          ],
-          tanstack: [
-            "@tanstack/react-query",
-            "@tanstack/react-router",
-            "@tanstack/react-router-with-query",
-          ],
-          convex: ["convex", "@convex-dev/react-query"],
-          markdown: ["react-markdown", "remark-gfm"],
-          date: ["date-fns", "date-fns-tz"],
-          "ui-utils": [
-            "clsx",
-            "class-variance-authority",
-            "tailwind-merge",
-            "cmdk",
-            "vaul",
-            "sonner",
-          ],
-        },
-        // Optimize chunk loading with magic comments
-        chunkFileNames: (chunkInfo) => {
-          const facadeModuleId = chunkInfo.facadeModuleId
-            ? chunkInfo.facadeModuleId
-                .split("/")
-                .pop()
-                ?.replace(/\.[^/.]+$/, "")
-            : "chunk";
-          return `assets/${facadeModuleId}-[hash].js`;
-        },
+        // Disable manual chunks to avoid circular dependency issues during build
+        // manualChunks: undefined,
+        // Simplify chunk file naming
+        chunkFileNames: "assets/[name]-[hash].js",
         // Optimize compression
         compact: true,
       },
     },
-    // Enable aggressive minification
-    minify: "terser",
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true,
-        pure_funcs: ["console.log", "console.info", "console.warn"],
-        unsafe_comps: true,
-        unsafe_math: true,
-        passes: 2,
-      },
-      mangle: {
-        safari10: true,
-      },
-      format: {
-        comments: false,
-      },
-    },
+    // Use safer minification for deployment compatibility
+    minify: "esbuild",
     sourcemap: false, // Disable sourcemaps in production for smaller builds
     reportCompressedSize: false, // Skip gzip size reporting for faster builds
     chunkSizeWarningLimit: 500, // Lower chunk size warning
@@ -136,6 +74,8 @@ export default defineConfig({
       "@tanstack/react-query",
       "@tanstack/react-router",
     ], // Pre-bundle these for better compatibility
+    // Force exclude problematic packages that might cause circular deps
+    exclude: ["@tanstack/start-server-core"],
   },
   // Improve tree shaking
   esbuild: {

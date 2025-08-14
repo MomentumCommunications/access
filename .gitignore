@@ -64,3 +64,5 @@ temp/
 .netlify/
 dist-ssr/
 
+# docs
+docs/

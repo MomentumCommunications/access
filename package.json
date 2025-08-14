@@ -7,7 +7,9 @@
     "dev": "vite dev",
     "build": "vite build",
     "lint": "eslint .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy": "npm run build && wrangler deploy",
+    "cf-typegen": "wrangler types --env-interface Env"
   },
   "keywords": [],
   "author": "",

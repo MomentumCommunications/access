@@ -120,6 +120,7 @@ export function MessageInput({
           rows={textRowCount}
           className="w-full"
           name="message"
+          maxLength={2500}
           disabled={disabledConditions}
           value={message}
           placeholder={

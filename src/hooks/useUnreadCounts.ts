@@ -96,11 +96,11 @@ export function useUnreadCounts(userId?: Id<"users">) {
           );
           const isDM = dms?.some((d) => String(d?._id) === channelIdStr);
 
-          if (process.env.NODE_ENV === "development" && count > 0) {
-            console.log(
-              `Channel ${channelIdStr} has ${count} unread messages (public: ${isPublic}, private: ${isPrivate}, dm: ${isDM})`,
-            );
-          }
+          // if (process.env.NODE_ENV === "development" && count > 0) {
+          //   console.log(
+          //     `Channel ${channelIdStr} has ${count} unread messages (public: ${isPublic}, private: ${isPrivate}, dm: ${isDM})`,
+          //   );
+          // }
 
           if (isPublic) {
             publicUnreads[channelIdStr] = count;

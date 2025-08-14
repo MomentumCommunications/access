@@ -196,7 +196,7 @@ export function ChatWindow({
     const clientHeight = scrollViewport.clientHeight;
 
     const isAtTop = scrollTop < 100;
-    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 200;
 
     // Update bottom position state
     setIsAtBottom(isNearBottom);
@@ -342,7 +342,7 @@ export function ChatWindow({
             {messageGroups.map((group) => (
               <div
                 key={`group-${group.date.toISOString()}`}
-                className="space-y-3"
+                className="space-y-2"
               >
                 {/* Date separator */}
                 <DateSeparator dateLabel={group.dateLabel} />

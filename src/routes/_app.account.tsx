@@ -7,7 +7,6 @@ import { BookOpenText } from "lucide-react";
 import { useForm } from "react-hook-form";
 import z from "zod";
 import { Button } from "~/components/ui/button";
-import { Label } from "~/components/ui/label";
 import { Separator } from "~/components/ui/separator";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Textarea } from "~/components/ui/textarea";
@@ -37,8 +36,6 @@ function RouteComponent() {
     ClerkId: user.user?.id,
   });
 
-  console.log(convexUser);
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -55,8 +52,6 @@ function RouteComponent() {
     });
 
     toast("Description updated");
-
-    console.log(values);
   }
 
   return (

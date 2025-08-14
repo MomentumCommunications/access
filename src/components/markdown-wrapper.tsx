@@ -41,7 +41,15 @@ export function Markdown({ content }: { content: string }) {
               className="bg-slate-800/30 p-1 rounded w-min text-red-500"
             />
           ),
-          img: ({ ...props }) => <img {...props} className="rounded-lg" />,
+          img: ({ ...props }) => (
+            <img 
+              {...props} 
+              className="rounded-lg max-w-full h-auto" 
+              loading="lazy"
+              width={props.width || "600"}
+              height={props.height || "400"}
+            />
+          ),
           blockquote: ({ ...props }) => (
             <blockquote
               {...props}

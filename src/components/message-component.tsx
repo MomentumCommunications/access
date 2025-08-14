@@ -55,6 +55,7 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Skeleton } from "./ui/skeleton";
 import { toast } from "sonner";
+import { useIsMobile } from "~/hooks/use-mobile";
 
 function DeleteMessage({
   message,
@@ -125,6 +126,7 @@ export function MessageComponent({
   const isImage = message.format === "image";
   const [linkCopied, setLinkCopied] = useState(false);
   const messageRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   const user = useConvexQuery(api.users.getUserById, {
     id: userId,
@@ -226,66 +228,68 @@ export function MessageComponent({
                 {formatTime(message._creationTime)}
               </p>
               <div className="flex flex-row gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="z-10 cursor-pointer w-4 h-[22px]"
-                    >
-                      <MoreHorizontal />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuGroup>
-                      {onReply && (
-                        <DropdownMenuItem onClick={() => onReply(message)}>
-                          <Reply className="w-4 h-4" />
-                          Reply
-                        </DropdownMenuItem>
-                      )}
-                      <ReactionSubmenu
-                        messageId={message._id}
-                        userId={userId}
-                        mode="dropdown"
-                      />
-                      {!isImage && (
-                        <>
-                          <DropdownMenuItem
-                            onClick={() => handleCopyText(message.body)}
-                          >
-                            <ClipboardIcon />
-                            Copy Text
+                {!isMobile && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="z-10 cursor-pointer w-4 h-[22px]"
+                      >
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuGroup>
+                        {onReply && (
+                          <DropdownMenuItem onClick={() => onReply(message)}>
+                            <Reply className="w-4 h-4" />
+                            Reply
                           </DropdownMenuItem>
-                          {message.author === userId && (
-                            <EditMessage
-                              message={message}
-                              trigger={
-                                <DropdownMenuItem>
-                                  <PencilLine className="w-4 h-4" />
-                                  Edit
-                                </DropdownMenuItem>
-                              }
-                            />
-                          )}
-                        </>
-                      )}
-                      <DropdownMenuItem onClick={handleCopyMessageLink}>
-                        {linkCopied ? (
-                          <Check className="w-4 h-4" />
-                        ) : (
-                          <LinkIcon />
                         )}
-                        <span>
-                          {linkCopied ? "Link Copied!" : "Copy Message Link"}
-                        </span>
-                      </DropdownMenuItem>
-                      {isAuthorOrAdmin && (
-                        <DeleteMessage message={message} userId={userId} />
-                      )}
-                    </DropdownMenuGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                        <ReactionSubmenu
+                          messageId={message._id}
+                          userId={userId}
+                          mode="dropdown"
+                        />
+                        {!isImage && (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => handleCopyText(message.body)}
+                            >
+                              <ClipboardIcon />
+                              Copy Text
+                            </DropdownMenuItem>
+                            {message.author === userId && (
+                              <EditMessage
+                                message={message}
+                                trigger={
+                                  <DropdownMenuItem>
+                                    <PencilLine className="w-4 h-4" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                }
+                              />
+                            )}
+                          </>
+                        )}
+                        <DropdownMenuItem onClick={handleCopyMessageLink}>
+                          {linkCopied ? (
+                            <Check className="w-4 h-4" />
+                          ) : (
+                            <LinkIcon />
+                          )}
+                          <span>
+                            {linkCopied ? "Link Copied!" : "Copy Message Link"}
+                          </span>
+                        </DropdownMenuItem>
+                        {isAuthorOrAdmin && (
+                          <DeleteMessage message={message} userId={userId} />
+                        )}
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             </div>
           </div>

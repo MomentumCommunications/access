@@ -1,5 +1,6 @@
 # dependencies
 node_modules
+node_modules/
 /.pnp
 .pnp.js
 
@@ -29,4 +30,37 @@ npm-debug.log*
 .tanstack/
 CLAUDE.md
 .claude/
+
+# PWA and build artifacts
+sw.js
+workbox-*.js
+registerSW.js
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Cache directories
+.cache/
+.parcel-cache/
+
+# Deployment and hosting
+.vercel/
+.netlify/
+dist-ssr/
 

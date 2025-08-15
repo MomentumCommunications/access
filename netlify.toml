@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build"
+  command = "npx convex deploy --cmd 'npm run build'"
   publish = ".tanstack/start/build/client-dist"
 
 [build.environment]

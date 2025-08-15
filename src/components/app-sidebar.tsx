@@ -9,6 +9,7 @@ import {
   Home,
   Lock,
   MessageSquare,
+  Plus,
 } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import {
@@ -221,6 +222,13 @@ const AppSidebarComponent = memo(() => {
                   <NewChannel userId={convexUser._id} />
                 )}
                 <SidebarMenu>
+                  {publicChannels?.length === 0 && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton disabled>
+                        no public channels
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
                   {isPublicChannelsLoading ? (
                     <SidebarMenuSkeleton />
                   ) : (
@@ -234,6 +242,13 @@ const AppSidebarComponent = memo(() => {
                     </>
                   ) : (
                     privateChannels?.map(renderPrivateChannel)
+                  )}
+                  {privateChannels?.length === 0 && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton disabled>
+                        no private channels
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   )}
                 </SidebarMenu>
               </CollapsibleContent>
@@ -254,6 +269,11 @@ const AppSidebarComponent = memo(() => {
                     <SidebarMenuSkeleton />
                   ) : (
                     dms?.map(renderDMChannel)
+                  )}
+                  {dms?.length === 0 && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton disabled>no DMs</SidebarMenuButton>
+                    </SidebarMenuItem>
                   )}
                 </SidebarMenu>
               </CollapsibleContent>

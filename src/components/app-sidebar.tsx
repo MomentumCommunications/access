@@ -9,7 +9,6 @@ import {
   Home,
   Lock,
   MessageSquare,
-  Plus,
 } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import {
@@ -34,6 +33,7 @@ import { NewChannel } from "./new-channel";
 import { NewDm } from "./new-dm";
 import { channelNameOrFallback } from "~/lib/utils";
 import { useSidebarDataContext } from "~/contexts/SidebarDataContext";
+import { Link } from "@tanstack/react-router";
 
 // Memoized components for individual sidebar items
 const PublicChannelItem = memo<{
@@ -192,7 +192,11 @@ const AppSidebarComponent = memo(() => {
           <SidebarMenuItem>
             <SidebarMenuButton className="hover:bg-transparent" asChild>
               <div className="text-nowrap text-center text-lg font-semibold uppercase tracking-wide">
-                <ChevronsRight color="#ce2128" />
+                <img
+                  src="/icons/icon-120x120.png"
+                  alt="Access Momentum Logo"
+                  className="h-4 w-4 aspect-square"
+                />
                 ACCESS MOMENTUM
               </div>
             </SidebarMenuButton>
@@ -243,13 +247,7 @@ const AppSidebarComponent = memo(() => {
                   ) : (
                     privateChannels?.map(renderPrivateChannel)
                   )}
-                  {privateChannels?.length === 0 && (
-                    <SidebarMenuItem>
-                      <SidebarMenuButton disabled>
-                        no private channels
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )}
+                  {privateChannels?.length === 0 && null}
                 </SidebarMenu>
               </CollapsibleContent>
             </SidebarGroup>
@@ -282,10 +280,10 @@ const AppSidebarComponent = memo(() => {
           <SidebarGroup>
             <SidebarGroupLabel>Etc</SidebarGroupLabel>
             <SidebarMenuButton asChild>
-              <a href="/settings">
+              <Link to="/settings">
                 <Cog />
                 <span>Settings</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
             <SidebarMenuButton asChild>
               <a href="/help">
@@ -300,6 +298,21 @@ const AppSidebarComponent = memo(() => {
             <SidebarGroupLabel>Chat</SidebarGroupLabel>
             <SidebarMenuButton asChild>
               <a href="/sign-in">Must be signed in to chat</a>
+            </SidebarMenuButton>
+          </SidebarGroup>
+          <SidebarGroup>
+            <SidebarGroupLabel>Etc</SidebarGroupLabel>
+            <SidebarMenuButton asChild>
+              <Link to="/settings">
+                <Cog />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+            <SidebarMenuButton asChild>
+              <a href="/help">
+                <HelpCircle />
+                <span>Help</span>
+              </a>
             </SidebarMenuButton>
           </SidebarGroup>
         </SignedOut>

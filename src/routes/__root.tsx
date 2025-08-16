@@ -37,11 +37,18 @@ export const Route = createRootRouteWithContext<{
       },
       {
         name: "description",
-        content: "Client information portal - Connect, communicate, and stay informed with Access Momentum.",
+        content:
+          "Client information portal - Connect, communicate, and stay informed with Access Momentum.",
       },
       {
         name: "theme-color",
-        content: "#ce2128",
+        media: "(prefers-color-scheme: light)",
+        content: "#E8E8E8",
+      },
+      {
+        name: "theme-color",
+        media: "(prefers-color-scheme: dark)",
+        content: "#09090B",
       },
       {
         name: "apple-mobile-web-app-capable",
@@ -71,7 +78,7 @@ export const Route = createRootRouteWithContext<{
       },
       {
         rel: "icon",
-        href: "/favicon.png",
+        href: "/favicon.ico",
       },
       {
         rel: "manifest",
@@ -79,7 +86,23 @@ export const Route = createRootRouteWithContext<{
       },
       {
         rel: "apple-touch-icon",
-        href: "/icons/icon-192x192.png",
+        sizes: "180x180",
+        href: "/icons/icon-180x180.png",
+      },
+      {
+        rel: "apple-touch-icon",
+        sizes: "167x167",
+        href: "/icons/icon-167x167.png",
+      },
+      {
+        rel: "apple-touch-icon",
+        sizes: "152x152",
+        href: "/icons/icon-152x152.png",
+      },
+      {
+        rel: "apple-touch-icon",
+        sizes: "120x120",
+        href: "/icons/icon-120x120.png",
       },
       // Preconnect to critical origins for faster loading
       {

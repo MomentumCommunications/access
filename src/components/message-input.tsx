@@ -48,7 +48,8 @@ export function MessageInput({
   const [message, setMessage] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const textRowCount = message.split("\n").length;
+  const lines = message.split("\n");
+  const textRowCount = lines.length > 10 ? 10 : lines.length;
 
   // Focus textarea when replying starts
   useEffect(() => {
@@ -113,12 +114,17 @@ export function MessageInput({
           )}
         </div>
       )}
+      {message.length > 2000 && (
+        <div className="text-sm text-right text-amber-800 dark:text-amber-500">
+          {message.length} / 2500
+        </div>
+      )}
       <form className="flex flex-row gap-2" onSubmit={handleSubmit}>
         <Textarea
           autoFocus
           ref={textareaRef}
           rows={textRowCount}
-          className="w-full"
+          className="w-full max-h-[calc(1.5em*10)] md:max-h-[calc(1.5em*15)] overflow-y-scroll resize-none"
           name="message"
           maxLength={2500}
           disabled={disabledConditions}

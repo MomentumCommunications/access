@@ -133,10 +133,19 @@ function RouteComponent() {
                     • <strong>Enter:</strong> Send message
                   </li>
                   <li>
-                    • <strong>Shift+Enter:</strong> New line in message
+                    • <strong>Shift+Enter:</strong> New line in message (mobile
+                    too)
                   </li>
                   <li>
                     • <strong>{isMac ? "⌘+F" : "Ctrl+F"}:</strong> Open search
+                  </li>
+                  <li>
+                    • <strong>{isMac ? "⌘+J" : "Ctrl+J"}:</strong> Scroll to
+                    bottom
+                  </li>
+                  <li>
+                    • <strong>Right Click:</strong> Anywhere on a message to
+                    open menu options
                   </li>
                 </ul>
               </div>
@@ -150,7 +159,7 @@ function RouteComponent() {
             <CardTitle>✏️ Text Formatting</CardTitle>
             <CardDescription>
               For now you can only style text with Markdown. Text styling
-              buttons may be added in the future
+              buttons may be added in the future.
             </CardDescription>
           </CardHeader>
           <CardContent>

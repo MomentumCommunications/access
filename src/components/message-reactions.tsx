@@ -73,7 +73,7 @@ function ReactionDetails({ reactions }: ReactionDetailsProps) {
             <UsersIcon className="h-3 w-3" />
           </Button>
         </DrawerTrigger>
-        <DrawerContent>
+        <DrawerContent className="pb-4">
           <DrawerHeader>
             <DrawerTitle>Reactions</DrawerTitle>
           </DrawerHeader>

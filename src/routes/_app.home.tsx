@@ -80,7 +80,7 @@ function Home() {
       <div className="flex h-screen flex-col gap-12 justify-center items-center">
         <div className="fixed top-12 lg:top-32 flex flex-col gap-4 items-center">
           <img
-            src="https://original-orca-979.convex.cloud/api/storage/b2424ab8-8361-4320-a463-9b96668dbeaf"
+            src="/logo_transparent.png"
             alt="Access Momentum Logo"
             height={150}
             width={150}
@@ -111,28 +111,28 @@ function Home() {
 
   return (
     <div className="flex justify-center">
-        <main className="max-w-4xl w-full p-4">
-          <div className="flex flex-col gap-4 py-4 justify-start">
-            <SignedIn>
-              <p>Hello {user?.firstName}!</p>
-            </SignedIn>
-            <SignedOut>
-              <div className="py-4">
-                <h1 className="text-4xl font-bold text-center">
-                  ACCESS MOMENTUM
-                </h1>
-              </div>
-              <SignInPrompt />
-            </SignedOut>
-          </div>
-          <div className="flex align-middle justify-between">
-            <h1 className="text-4xl font-bold">Bulletin</h1>
-            {role === "admin" && <AddBulletin />}
-          </div>
-          <Separator className="my-4 w-full" />
-          {role !== "admin" && <ProtectedContent password={commonPassword} />}
-          {role === "admin" && <AdminBulletin />}
-        </main>
-      </div>
+      <main className="max-w-4xl w-full p-4">
+        <div className="flex flex-col gap-4 py-4 justify-start">
+          <SignedIn>
+            <p>Hello {user?.firstName}!</p>
+          </SignedIn>
+          <SignedOut>
+            <div className="py-4">
+              <h1 className="text-4xl font-bold text-center">
+                ACCESS MOMENTUM
+              </h1>
+            </div>
+            <SignInPrompt />
+          </SignedOut>
+        </div>
+        <div className="flex align-middle justify-between">
+          <h1 className="text-4xl font-bold">Bulletin</h1>
+          {role === "admin" && <AddBulletin />}
+        </div>
+        <Separator className="my-4 w-full" />
+        {role !== "admin" && <ProtectedContent password={commonPassword} />}
+        {role === "admin" && <AdminBulletin />}
+      </main>
+    </div>
   );
 }

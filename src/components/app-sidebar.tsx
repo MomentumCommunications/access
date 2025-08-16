@@ -1,7 +1,6 @@
 import { SignedIn, SignedOut } from "@clerk/tanstack-react-start";
 import { memo, useCallback } from "react";
 import {
-  ChevronsRight,
   ChevronUp,
   Cog,
   Hash,
@@ -23,6 +22,7 @@ import {
   SidebarMenuItem,
   SidebarMenuSkeleton,
   SidebarMenuBadge,
+  useSidebar,
 } from "~/components/ui/sidebar";
 import {
   Collapsible,
@@ -43,13 +43,13 @@ const PublicChannelItem = memo<{
 }>(({ channel, unreadCount }) => (
   // eslint-disable-next-line react/prop-types
   <SidebarMenuItem key={channel._id}>
-    <SidebarMenuButton asChild>
+    <SidebarMenuButton asChild onClick={() => useSidebar().toggleSidebar()}>
       {/* eslint-disable-next-line react/prop-types */}
-      <a href={`/channel/${channel._id}`}>
+      <Link to="/channel/$channelId" params={{ channelId: channel._id }}>
         <Hash />
         {/* eslint-disable-next-line react/prop-types */}
         <span>{channelNameOrFallback(channel.name)}</span>
-      </a>
+      </Link>
     </SidebarMenuButton>
     {unreadCount > 0 && (
       <SidebarMenuBadge className="!opacity-100 bg-muted flex items-center justify-center text-current text-xs">
@@ -67,13 +67,13 @@ const PrivateChannelItem = memo<{
 }>(({ channel, unreadCount }) => (
   // eslint-disable-next-line react/prop-types
   <SidebarMenuItem key={channel._id}>
-    <SidebarMenuButton asChild>
+    <SidebarMenuButton asChild onClick={() => useSidebar().toggleSidebar()}>
       {/* eslint-disable-next-line react/prop-types */}
-      <a href={`/channel/${channel._id}`}>
+      <Link to="/channel/$channelId" params={{ channelId: channel._id }}>
         <Lock />
         {/* eslint-disable-next-line react/prop-types */}
         <span>{channelNameOrFallback(channel.name)}</span>
-      </a>
+      </Link>
     </SidebarMenuButton>
     {unreadCount > 0 && (
       <SidebarMenuBadge className="!opacity-100 bg-muted flex items-center justify-center text-current text-xs">
@@ -91,13 +91,13 @@ const DMItem = memo<{
 }>(({ channel, unreadCount }) => (
   // eslint-disable-next-line react/prop-types
   <SidebarMenuItem key={channel._id}>
-    <SidebarMenuButton asChild>
+    <SidebarMenuButton asChild onClick={() => useSidebar().toggleSidebar()}>
       {/* eslint-disable-next-line react/prop-types */}
-      <a href={`/dm/${channel._id}`}>
+      <Link to="/dm/$dmId" params={{ dmId: channel._id }}>
         <MessageSquare />
         {/* eslint-disable-next-line react/prop-types */}
         <span>{channel.otherMembers}</span>
-      </a>
+      </Link>
     </SidebarMenuButton>
     {unreadCount > 0 && (
       <SidebarMenuBadge className="!opacity-100 bg-muted flex items-center justify-center text-current text-xs">
@@ -195,7 +195,7 @@ const AppSidebarComponent = memo(() => {
                 <img
                   src="/icons/icon-120x120.png"
                   alt="Access Momentum Logo"
-                  className="h-4 w-4 aspect-square"
+                  className="h-4 w-4 aspect-square rounded-lg"
                 />
                 ACCESS MOMENTUM
               </div>
@@ -205,11 +205,14 @@ const AppSidebarComponent = memo(() => {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarMenuButton asChild>
-            <a href="/home">
+          <SidebarMenuButton
+            asChild
+            onClick={() => useSidebar().toggleSidebar()}
+          >
+            <Link to="/home">
               <Home />
               <span>Home</span>
-            </a>
+            </Link>
           </SidebarMenuButton>
         </SidebarGroup>
         <SignedIn>
@@ -279,7 +282,10 @@ const AppSidebarComponent = memo(() => {
           </Collapsible>
           <SidebarGroup>
             <SidebarGroupLabel>Etc</SidebarGroupLabel>
-            <SidebarMenuButton asChild>
+            <SidebarMenuButton
+              asChild
+              onClick={() => useSidebar().toggleSidebar()}
+            >
               <Link to="/settings">
                 <Cog />
                 <span>Settings</span>

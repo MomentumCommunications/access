@@ -87,7 +87,7 @@ function RouteComponent() {
                         <FormItem>
                           <FormLabel>About Me</FormLabel>
                           <FormControl>
-                            <Textarea {...field} />
+                            <Textarea {...field} className="h-64" />
                           </FormControl>
                           <FormDescription id="bio-description">
                             Characters: {field.value.length} / 1000

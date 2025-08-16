@@ -63,7 +63,7 @@ export default function AuthorInfo({ author }: { author: Id<"users"> }) {
                 <span className="text-muted-foreground">Admin</span>
               </div>
             )}
-            <div className="flex flex-col py-2 text-left w-full gap-1">
+            <div className="flex flex-col py-2 text-left px-2 w-full gap-1">
               <p className="font-bold text-foreground text-lg">{data?.name}</p>
               {data?.displayName && (
                 <p className="text-foreground text-sm">
@@ -72,9 +72,11 @@ export default function AuthorInfo({ author }: { author: Id<"users"> }) {
               )}
             </div>
             {data?.description && (
-              <div className="flex flex-col py-2">
+              <div className="flex flex-col py-2 w-full px-2">
                 <p className="font-bold text-foreground text-lg">About me</p>
-                <p className="text-foreground">{data.description}</p>
+                <p className="text-foreground whitespace-pre-wrap">
+                  {data.description}
+                </p>
               </div>
             )}
           </SheetDescription>

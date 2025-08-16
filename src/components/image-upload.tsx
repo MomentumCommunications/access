@@ -16,8 +16,10 @@ import { Input } from "./ui/input";
 
 export function ImageUpload({
   senderData,
+  disabled,
 }: {
   senderData: { authorId: Id<"users">; channel: Id<"channels"> | string };
+  disabled?: boolean;
 }) {
   const generateUploadUrl = useMutation(api.messages.generateUploadUrl);
   const sendImage = useMutation(api.messages.sendImage);
@@ -62,7 +64,11 @@ export function ImageUpload({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" className="flex items-center">
+        <Button
+          variant="outline"
+          disabled={disabled}
+          className="flex items-center"
+        >
           <Image />
         </Button>
       </DialogTrigger>

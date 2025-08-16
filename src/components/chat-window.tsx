@@ -50,6 +50,7 @@ export function ChatWindow({
   const [replyingTo, setReplyingTo] = useState<Message | undefined>();
   const [hasScrolledToTarget, setHasScrolledToTarget] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [isNearBottom, setIsNearBottom] = useState(true);
 
   function backToChannel(channelId: Id<"channels">) {
     window.location.href = `/channel/${channelId}`;
@@ -112,32 +113,51 @@ export function ChatWindow({
     [],
   );
 
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const scrollViewport = container.querySelector(
+      "[data-radix-scroll-area-viewport]",
+    ) as HTMLElement | null;
+    if (!scrollViewport) return;
+
+    const handleScroll = () => {
+      const distanceFromBottom =
+        scrollViewport.scrollHeight -
+        (scrollViewport.scrollTop + scrollViewport.clientHeight);
+
+      setIsNearBottom(distanceFromBottom <= 100); // buffer zone
+    };
+
+    scrollViewport.addEventListener("scroll", handleScroll);
+    handleScroll(); // initialize
+
+    return () => {
+      scrollViewport.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
   // Handle new messages - auto scroll if at bottom, show notification if not
   useEffect(() => {
     if (isLoading || loadingOlder) return;
 
     if (messages.length > lastSeenMessageCount && lastSeenMessageCount > 0) {
       const container = scrollContainerRef.current;
-      if (container) {
-        const scrollViewport = container.querySelector(
-          "[data-radix-scroll-area-viewport]",
-        ) as HTMLElement;
+      if (!container) return;
 
-        if (scrollViewport) {
-          const isNearBottom =
-            scrollViewport.scrollTop + scrollViewport.clientHeight >=
-            scrollViewport.scrollHeight - 100;
+      const scrollViewport = container.querySelector(
+        "[data-radix-scroll-area-viewport]",
+      ) as HTMLElement | null;
 
-          if (isNearBottom) {
-            // User is at bottom - auto scroll to show new messages
-            setTimeout(() => {
-              scrollToBottom("smooth");
-            }, 50);
-          } else {
-            // User is not at bottom - show new message notification
-            setHasNewMessages(true);
-          }
-        }
+      if (!scrollViewport) return;
+
+      if (isNearBottom) {
+        requestAnimationFrame(() => {
+          scrollToBottom("instant");
+        });
+      } else {
+        setHasNewMessages(true);
       }
     }
   }, [
@@ -147,7 +167,6 @@ export function ChatWindow({
     loadingOlder,
     scrollToBottom,
   ]);
-
   // Initialize message count when messages first load
   useEffect(() => {
     if (messages.length > 0 && lastSeenMessageCount === 0) {
@@ -196,7 +215,6 @@ export function ChatWindow({
     const clientHeight = scrollViewport.clientHeight;
 
     const isAtTop = scrollTop < 100;
-    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 200;
 
     // Update bottom position state
     setIsAtBottom(isNearBottom);

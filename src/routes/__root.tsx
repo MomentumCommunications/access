@@ -169,7 +169,7 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
           }}
         />
       </head>
-      <body className="md:overscroll-none">
+      <body className="overscroll-none">
         {children}
         {/* <PWAHandler /> */}
         <Toaster />

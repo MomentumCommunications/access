@@ -27,7 +27,7 @@ import {
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
 import { useNavigate } from "@tanstack/react-router";
-import { SidebarMenuButton } from "./ui/sidebar";
+import { SidebarMenuButton, useSidebar } from "./ui/sidebar";
 import { Plus, UserIcon } from "lucide-react";
 import { useIsMobile } from "~/hooks/use-mobile";
 import z from "zod";
@@ -112,7 +112,6 @@ const formSchema = z.object({
 });
 
 function NewDmForm({ userId }: { userId: Id<"users"> | undefined }) {
-  const navigate = useNavigate();
   const mutate = useConvexMutation(api.channels.createDm);
 
   const { data: users, isLoading } = useQuery(
@@ -155,10 +154,7 @@ function NewDmForm({ userId }: { userId: Id<"users"> | undefined }) {
     if (!userId) return;
 
     if (existingDm) {
-      navigate({
-        to: "/dm/$dm",
-        params: { dm: existingDm._id },
-      });
+      window.location.href = `/dm/${existingDm._id}`;
       document.dispatchEvent(
         new KeyboardEvent("keydown", {
           key: "Escape",
@@ -187,10 +183,7 @@ function NewDmForm({ userId }: { userId: Id<"users"> | undefined }) {
       });
 
       if (dmId) {
-        navigate({
-          to: "/dm/$dm",
-          params: { dm: dmId },
-        });
+        window.location.href = `/dm/${dmId}`;
         document.dispatchEvent(
           new KeyboardEvent("keydown", {
             key: "Escape",

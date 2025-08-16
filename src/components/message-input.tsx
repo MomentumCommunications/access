@@ -131,7 +131,7 @@ export function MessageInput({
           value={message}
           placeholder={
             disabledConditions
-              ? "You are not allowed to send messages in this channel."
+              ? "Only admins are allowed to send messages in this channel."
               : "Send a message..."
           }
           onKeyDown={(e) => {
@@ -148,7 +148,7 @@ export function MessageInput({
           <Button type="submit" disabled={!message.trim()}>
             <SendIcon />
           </Button>
-          <ImageUpload senderData={sendData} />
+          <ImageUpload senderData={sendData} disabled={disabledConditions} />
         </div>
       </form>
     </div>

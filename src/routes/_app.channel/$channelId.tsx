@@ -1,4 +1,4 @@
-import { SignedIn, SignedOut, useUser } from "@clerk/tanstack-react-start";
+import { useUser } from "@clerk/tanstack-react-start";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
@@ -23,11 +23,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
-import { SignInPrompt } from "~/components/sign-in-prompt";
 import { DeleteChannelButton } from "~/components/channel-delete-button";
 import { ManageMembers } from "~/components/manage-members";
 import { EditChannel } from "~/components/edit-channel";
-import { channelNameOrFallback } from "~/lib/utils";
+import { channelNameOrFallback, cn } from "~/lib/utils";
 import { useIsMobile } from "~/hooks/use-mobile";
 import {
   Dialog,
@@ -39,6 +38,7 @@ import {
 } from "~/components/ui/dialog";
 import { ChatWindow } from "~/components/chat-window";
 import { useChatMessages } from "~/hooks/useChatMessages";
+import Delayed from "~/components/delayed";
 
 export const Route = createFileRoute("/_app/channel/$channelId")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -89,27 +89,29 @@ function RouteComponent() {
 
   if (!user || !convexUser)
     return (
-      <div className="h-[calc(100vh-64px)] max-w-4xl mx-auto flex items-center justify-center px-4">
-        <Alert variant="default">
-          <ShieldOff />
-          <AlertTitle>Hold up!</AlertTitle>
-          <AlertDescription>
-            You must be signed in to access this channel.
-            <div className="flex gap-2 py-2">
-              <Button
-                asChild
-                variant="outline"
-                className="w-min cursor-pointer text-foreground"
-              >
-                <a href="/sign-in">Sign in</a>
-              </Button>
-              <Button asChild className="w-min cursor-pointer">
-                <a href="/sign-up">Sign up</a>
-              </Button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      </div>
+      <Delayed>
+        <div className="flex h-[calc(100vh-64px)] max-w-4xl mx-auto items-center justify-center px-4">
+          <Alert variant="default">
+            <ShieldOff />
+            <AlertTitle>Hold up!</AlertTitle>
+            <AlertDescription>
+              You must be signed in to access this channel.
+              <div className="flex gap-2 py-2">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-min cursor-pointer text-foreground"
+                >
+                  <a href="/sign-in">Sign in</a>
+                </Button>
+                <Button asChild className="w-min cursor-pointer">
+                  <a href="/sign-up">Sign up</a>
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </Delayed>
     );
 
   // Check if user has access to private channel

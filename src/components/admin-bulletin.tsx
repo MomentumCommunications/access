@@ -207,7 +207,7 @@ export function AdminBulletin() {
                     {
                       // This is not as slick as querying the groups for the exact number,
                       // but this doesn't change very often and I'll save the call to the database.
-                      bulletin.group?.length === 3 ? (
+                      bulletin.group?.length === 4 ? (
                         <Badge className="font-bold">ALL</Badge>
                       ) : (
                         bulletin.group?.map((group) => (

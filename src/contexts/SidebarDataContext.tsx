@@ -25,9 +25,6 @@ interface SidebarDataContextType {
     _id: Id<"channels">;
     otherMembers: string;
   }> | null;
-  publicChannelUnreads: Record<string, number>;
-  privateChannelUnreads: Record<string, number>;
-  dmUnreads: Record<string, number>;
   isLoading: boolean;
   // Add missing individual loading states
   isUserLoading: boolean;
@@ -35,7 +32,6 @@ interface SidebarDataContextType {
   isPrivateChannelsLoading: boolean;
   isDMsLoading: boolean;
   actions: {
-    invalidateUnreadCounts: (channelId?: Id<"channels"> | string) => void;
     invalidateChannelList: () => void;
     refreshSidebarData: () => void;
   };
@@ -62,9 +58,6 @@ export function SidebarDataProvider({ children }: { children: ReactNode }) {
     sidebarData.dms?.length,
     sidebarData.isLoading, // Use combined loading state instead of individual ones
     // Track unread counts as JSON strings for stable comparison
-    JSON.stringify(sidebarData.publicChannelUnreads),
-    JSON.stringify(sidebarData.privateChannelUnreads),
-    JSON.stringify(sidebarData.dmUnreads),
     sidebarActions,
   ]);
 
@@ -84,4 +77,3 @@ export function useSidebarDataContext() {
   }
   return context;
 }
-

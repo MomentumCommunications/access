@@ -38,9 +38,8 @@ import { Link } from "@tanstack/react-router";
 // Memoized components for individual sidebar items
 const PublicChannelItem = memo<{
   channel: { _id: Id<"channels">; name?: string; description: string };
-  unreadCount: number;
   // eslint-disable-next-line react/prop-types
-}>(({ channel, unreadCount }) => (
+}>(({ channel }) => (
   // eslint-disable-next-line react/prop-types
   <SidebarMenuItem key={channel._id}>
     <SidebarMenuButton asChild onClick={() => useSidebar().toggleSidebar()}>
@@ -51,20 +50,14 @@ const PublicChannelItem = memo<{
         <span>{channelNameOrFallback(channel.name)}</span>
       </Link>
     </SidebarMenuButton>
-    {unreadCount > 0 && (
-      <SidebarMenuBadge className="!opacity-100 bg-muted flex items-center justify-center text-current text-xs">
-        <p>{unreadCount > 99 ? "99+" : unreadCount}</p>
-      </SidebarMenuBadge>
-    )}
   </SidebarMenuItem>
 ));
 PublicChannelItem.displayName = "PublicChannelItem";
 
 const PrivateChannelItem = memo<{
   channel: { _id: Id<"channels">; name?: string; description: string };
-  unreadCount: number;
   // eslint-disable-next-line react/prop-types
-}>(({ channel, unreadCount }) => (
+}>(({ channel }) => (
   // eslint-disable-next-line react/prop-types
   <SidebarMenuItem key={channel._id}>
     <SidebarMenuButton asChild onClick={() => useSidebar().toggleSidebar()}>
@@ -75,20 +68,14 @@ const PrivateChannelItem = memo<{
         <span>{channelNameOrFallback(channel.name)}</span>
       </Link>
     </SidebarMenuButton>
-    {unreadCount > 0 && (
-      <SidebarMenuBadge className="!opacity-100 bg-muted flex items-center justify-center text-current text-xs">
-        <p>{unreadCount > 99 ? "99+" : unreadCount}</p>
-      </SidebarMenuBadge>
-    )}
   </SidebarMenuItem>
 ));
 PrivateChannelItem.displayName = "PrivateChannelItem";
 
 const DMItem = memo<{
   channel: { _id: Id<"channels">; otherMembers: string };
-  unreadCount: number;
   // eslint-disable-next-line react/prop-types
-}>(({ channel, unreadCount }) => (
+}>(({ channel }) => (
   // eslint-disable-next-line react/prop-types
   <SidebarMenuItem key={channel._id}>
     <SidebarMenuButton asChild onClick={() => useSidebar().toggleSidebar()}>
@@ -99,11 +86,6 @@ const DMItem = memo<{
         <span>{channel.otherMembers}</span>
       </Link>
     </SidebarMenuButton>
-    {unreadCount > 0 && (
-      <SidebarMenuBadge className="!opacity-100 bg-muted flex items-center justify-center text-current text-xs">
-        <p>{unreadCount > 99 ? "99+" : unreadCount}</p>
-      </SidebarMenuBadge>
-    )}
   </SidebarMenuItem>
 ));
 DMItem.displayName = "DMItem";
@@ -117,72 +99,34 @@ const AppSidebarComponent = memo(() => {
     isPublicChannelsLoading,
     isPrivateChannelsLoading,
     isDMsLoading,
-    publicChannelUnreads,
-    privateChannelUnreads,
-    dmUnreads,
   } = useSidebarDataContext();
 
-  // // Debug logging for unread counts (remove in production)
-  // if (process.env.NODE_ENV === "development") {
-  //   console.log("Sidebar Debug:", {
-  //     publicChannelUnreads,
-  //     privateChannelUnreads,
-  //     dmUnreads,
-  //     totalPublicUnreads: Object.values(publicChannelUnreads).reduce(
-  //       (a, b) => a + b,
-  //       0,
-  //     ),
-  //     totalPrivateUnreads: Object.values(privateChannelUnreads).reduce(
-  //       (a, b) => a + b,
-  //       0,
-  //     ),
-  //     totalDmUnreads: Object.values(dmUnreads).reduce((a, b) => a + b, 0),
-  //   });
-  // }
-  //
   // Memoize the channel rendering functions to prevent unnecessary re-renders
   const renderPublicChannel = useCallback(
     (channel: NonNullable<typeof publicChannels>[number]) => {
       if (!channel?._id) return null;
-      const unreadCount = publicChannelUnreads[String(channel._id)] || 0;
 
-      return (
-        <PublicChannelItem
-          key={channel._id}
-          channel={channel}
-          unreadCount={unreadCount}
-        />
-      );
+      return <PublicChannelItem key={channel._id} channel={channel} />;
     },
-    [publicChannelUnreads],
+    [],
   );
 
   const renderPrivateChannel = useCallback(
     (channel: NonNullable<typeof privateChannels>[number]) => {
       if (!channel?._id) return null;
-      const unreadCount = privateChannelUnreads[String(channel._id)] || 0;
 
-      return (
-        <PrivateChannelItem
-          key={channel._id}
-          channel={channel}
-          unreadCount={unreadCount}
-        />
-      );
+      return <PrivateChannelItem key={channel._id} channel={channel} />;
     },
-    [privateChannelUnreads],
+    [],
   );
 
   const renderDMChannel = useCallback(
     (channel: NonNullable<typeof dms>[number]) => {
       if (!channel?._id) return null;
-      const unreadCount = dmUnreads[String(channel._id)] || 0;
 
-      return (
-        <DMItem key={channel._id} channel={channel} unreadCount={unreadCount} />
-      );
+      return <DMItem key={channel._id} channel={channel} />;
     },
-    [dmUnreads],
+    [],
   );
 
   return (

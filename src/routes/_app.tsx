@@ -84,7 +84,7 @@ function AppLayoutComponent() {
     <SidebarDataProvider>
       <SidebarProvider>
         <MemoizedAppSidebar />
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col overscroll-contain">
           <MemoizedHeader />
           <Outlet />
         </div>
@@ -92,4 +92,3 @@ function AppLayoutComponent() {
     </SidebarDataProvider>
   );
 }
-

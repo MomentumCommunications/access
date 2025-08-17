@@ -41,6 +41,15 @@ export function ProtectedContent({ password }: { password: string }) {
               key={bulletin._id}
               className="p-4 mb-4 border border-muted rounded"
             >
+              {bulletin.image && (
+                <div className="flex w-full pb-4 justify-center">
+                  <img
+                    src={bulletin.image}
+                    alt={bulletin.title}
+                    className="w-full rounded"
+                  />
+                </div>
+              )}
               <div className="flex flex-col gap-2">
                 {bulletin.date && (
                   <p className="align-baseline">

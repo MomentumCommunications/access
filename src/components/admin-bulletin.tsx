@@ -1,4 +1,4 @@
-import { convexQuery } from "@convex-dev/react-query";
+import { convexQuery, useConvexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
 import { format } from "date-fns";
@@ -189,23 +189,35 @@ export function AdminBulletin() {
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2 items-center">
-                  {bulletin.hidden && (
-                    <EyeOff className="text-muted-foreground" />
-                  )}
-                  <p
-                    className={cn(
-                      "font-bold text-xl",
-                      bulletin.hidden && "text-muted-foreground",
+                <div className="flex flex-col w-full items-start gap-2 items-center">
+                  <div className="flex gap-2">
+                    {bulletin.hidden && (
+                      <EyeOff className="text-muted-foreground" />
                     )}
-                  >
-                    {bulletin.title}
-                  </p>
-                  {bulletin.group?.map((group) => (
-                    <Badge key={group} className="font-bold">
-                      {group.toUpperCase()}
-                    </Badge>
-                  ))}
+                    <p
+                      className={cn(
+                        "font-bold text-xl",
+                        bulletin.hidden && "text-muted-foreground",
+                      )}
+                    >
+                      {bulletin.title}
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    {
+                      // This is not as slick as querying the groups for the exact number,
+                      // but this doesn't change very often and I'll save the call to the database.
+                      bulletin.group?.length === 3 ? (
+                        <Badge className="font-bold">ALL</Badge>
+                      ) : (
+                        bulletin.group?.map((group) => (
+                          <Badge key={group} className="font-bold">
+                            {group.toUpperCase()}
+                          </Badge>
+                        ))
+                      )
+                    }
+                  </div>
                 </div>
               </div>
               <AccordionItem value={bulletin._id}>

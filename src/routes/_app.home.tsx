@@ -110,8 +110,8 @@ function Home() {
   }
 
   return (
-    <div className="flex justify-center">
-      <main className="max-w-4xl w-full p-4">
+    <div className="flex justify-center overscroll-contain">
+      <main className="max-w-3xl w-full p-4">
         <div className="flex flex-col gap-4 py-4 justify-start">
           <SignedIn>
             <p>Hello {user?.firstName}!</p>

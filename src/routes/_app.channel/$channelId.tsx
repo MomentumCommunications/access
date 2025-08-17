@@ -4,7 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
-import { Cog, DotIcon, Hash, Info, LockIcon, OctagonMinus } from "lucide-react";
+import {
+  Cog,
+  DotIcon,
+  Hash,
+  Info,
+  LockIcon,
+  OctagonMinus,
+  ShieldOff,
+} from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import {
@@ -77,7 +85,32 @@ function RouteComponent() {
   const disableHighlight = search.messageId === undefined;
 
   // Don't render anything while loading essential data
-  if (!user || !convexUser || !channel) return null;
+  if (!channel) return null;
+
+  if (!user || !convexUser)
+    return (
+      <div className="h-[calc(100vh-64px)] max-w-4xl mx-auto flex items-center justify-center px-4">
+        <Alert variant="default">
+          <ShieldOff />
+          <AlertTitle>Hold up!</AlertTitle>
+          <AlertDescription>
+            You must be signed in to access this channel.
+            <div className="flex gap-2 py-2">
+              <Button
+                asChild
+                variant="outline"
+                className="w-min cursor-pointer text-foreground"
+              >
+                <a href="/sign-in">Sign in</a>
+              </Button>
+              <Button asChild className="w-min cursor-pointer">
+                <a href="/sign-up">Sign up</a>
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
 
   // Check if user has access to private channel
   if (
@@ -169,21 +202,6 @@ function RouteComponent() {
 
       {/* Main Content Area */}
       <div className="flex-1 w-full h-full min-h-0 relative">
-        <SignedOut>
-          <div className="h-full flex items-center justify-center px-4">
-            <div className="text-center space-y-4">
-              <Alert className="max-w-sm">
-                <OctagonMinus color="red" />
-                <AlertDescription>
-                  You must be signed in to view this conversation.
-                </AlertDescription>
-              </Alert>
-              <SignInPrompt />
-            </div>
-          </div>
-        </SignedOut>
-
-        {/* Chat Window */}
         {user && convexUser && (
           <ChatWindow
             messages={messages}

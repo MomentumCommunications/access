@@ -119,7 +119,11 @@ export function MessageInput({
           {message.length} / 2500
         </div>
       )}
-      <form className="flex flex-row gap-2" onSubmit={handleSubmit}>
+      <form
+        className="flex items-center flex-row gap-2"
+        onSubmit={handleSubmit}
+      >
+        <ImageUpload senderData={sendData} disabled={disabledConditions} />
         <Textarea
           autoFocus
           ref={textareaRef}
@@ -148,7 +152,6 @@ export function MessageInput({
           <Button type="submit" disabled={!message.trim()}>
             <SendIcon />
           </Button>
-          <ImageUpload senderData={sendData} disabled={disabledConditions} />
         </div>
       </form>
     </div>

@@ -7,7 +7,7 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { Button } from "./ui/button";
-import { Image } from "lucide-react";
+import { Plus } from "lucide-react";
 import { api } from "convex/_generated/api";
 import { useMutation } from "convex/react";
 import { FormEvent, useRef, useState } from "react";
@@ -67,9 +67,9 @@ export function ImageUpload({
         <Button
           variant="outline"
           disabled={disabled}
-          className="flex items-center"
+          className="flex has-[>svg]:px-2 rounded-full p-0 items-center"
         >
-          <Image />
+          <Plus />
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -80,7 +80,7 @@ export function ImageUpload({
         <form onSubmit={handleSendImage} className="flex gap-2 justify-between">
           <Input
             type="file"
-            accept="image/*"
+            accept="image/*, application/pdf"
             ref={imageInput}
             onChange={(event) => setSelectedImage(event.target.files![0])}
             disabled={selectedImage !== null}

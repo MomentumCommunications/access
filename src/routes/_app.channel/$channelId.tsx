@@ -26,7 +26,7 @@ import {
 import { DeleteChannelButton } from "~/components/channel-delete-button";
 import { ManageMembers } from "~/components/manage-members";
 import { EditChannel } from "~/components/edit-channel";
-import { channelNameOrFallback, cn } from "~/lib/utils";
+import { channelNameOrFallback } from "~/lib/utils";
 import { useIsMobile } from "~/hooks/use-mobile";
 import {
   Dialog,

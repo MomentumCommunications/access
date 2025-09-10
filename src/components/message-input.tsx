@@ -149,7 +149,7 @@ export function MessageInput({
           onChange={(e) => setMessage(e.target.value)}
         />
         <div className="flex flex-col gap-2">
-          <Button type="submit" disabled={!message.trim()}>
+          <Button type="submit" size={"icon"} disabled={!message.trim()}>
             <SendIcon />
           </Button>
         </div>

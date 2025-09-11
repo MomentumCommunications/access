@@ -9,7 +9,8 @@ import { SidebarDataProvider } from "~/contexts/SidebarDataContext";
 import { Header } from "~/components/header";
 import { useUnreadCounts } from "~/hooks/useUnreadCounts";
 import { useDocumentTitle } from "~/hooks/useDocumentTitle";
-import { memo } from "react";
+import { memo, Suspense } from "react";
+import { SidebarSkeleton } from "~/components/SidebarSkeleton";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayoutComponent,
@@ -19,52 +20,19 @@ export const Route = createFileRoute("/_app")({
 const MemoizedAppSidebar = memo(AppSidebar);
 const MemoizedHeader = memo(Header);
 
-function AppLayoutComponent() {
+// Separate component for sidebar data loading
+const SidebarWithData = memo(() => {
   const user = useUser();
 
-  // Pre-fetch all sidebar data at layout level to ensure it's cached
+  // Only load essential user data immediately
   const { data: convexUser } = useQuery({
     ...convexQuery(api.users.getUserByClerkId, { ClerkId: user.user?.id }),
     enabled: !!user.user?.id,
-    staleTime: Infinity,
-    gcTime: Infinity,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 60 * 60 * 1000, // 1 hour
   });
 
-  // Pre-fetch channel data with longer stale times for better performance
-  useQuery({
-    ...convexQuery(api.channels.getPublicChannels, {}),
-    enabled: !!convexUser,
-    staleTime: 60 * 60 * 1000, // 1 hour
-    gcTime: Infinity,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
-  });
-
-  useQuery({
-    ...convexQuery(api.channels.getChannelsByUser, { user: convexUser?._id }),
-    enabled: !!convexUser?._id,
-    staleTime: 60 * 60 * 1000, // 1 hour
-    gcTime: Infinity,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
-  });
-
-  useQuery({
-    ...convexQuery(api.channels.getDMsByUser, { user: convexUser?._id }),
-    enabled: !!convexUser?._id,
-    staleTime: 30 * 60 * 1000, // 30 minutes
-    gcTime: Infinity,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: true,
-  });
-
-  // Get unread counts and update document title
+  // Lazy load unread counts for document title
   const {
     publicChannelUnreads,
     privateChannelUnreads,
@@ -80,15 +48,22 @@ function AppLayoutComponent() {
     isLoading: unreadLoading,
   });
 
+  return <MemoizedAppSidebar />;
+});
+SidebarWithData.displayName = "SidebarWithData";
+
+function AppLayoutComponent() {
   return (
-    <SidebarDataProvider>
-      <SidebarProvider>
-        <MemoizedAppSidebar />
+    <SidebarProvider>
+      <SidebarDataProvider>
+        <Suspense fallback={<SidebarSkeleton />}>
+          <SidebarWithData />
+        </Suspense>
         <div className="flex flex-1 flex-col overscroll-contain">
           <MemoizedHeader />
           <Outlet />
         </div>
-      </SidebarProvider>
-    </SidebarDataProvider>
+      </SidebarDataProvider>
+    </SidebarProvider>
   );
 }

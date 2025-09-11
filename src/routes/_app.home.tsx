@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { useEffect, useState } from "react";
-import { AddBulletin } from "~/components/add-bulletin";
+import { LazyAddBulletin } from "~/components/lazy/AdminComponents";
 import { AdminBulletin } from "~/components/admin-bulletin";
 import { ProtectedContent } from "~/components/protected-content";
 import { SignInPrompt } from "~/components/sign-in-prompt";
@@ -127,7 +127,7 @@ function Home() {
         </div>
         <div className="flex align-middle justify-between">
           <h1 className="text-4xl font-bold">Bulletin</h1>
-          {role === "admin" && <AddBulletin />}
+          {role === "admin" && <LazyAddBulletin />}
         </div>
         <Separator className="my-4 w-full" />
         {role !== "admin" && <ProtectedContent password={commonPassword} />}

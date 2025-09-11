@@ -449,7 +449,7 @@ export function ChatWindow({
       </div>
 
       {/* Message Input */}
-      <div className="bg-background/95 backdrop-blur-sm px-3 pt-3 pb-4 md:pb-3 md:px-4">
+      <div className="bg-background/95 backdrop-blur-sm px-3 pt-3 pb-6 md:pb-3 md:px-4">
         <MessageInput
           userId={userId}
           channel={channelId}

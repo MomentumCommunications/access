@@ -412,6 +412,55 @@ export const getUnreadMessageCount = query({
   },
 });
 
+export const getBatchedUnreadCounts = query({
+  args: {
+    channelIds: v.array(v.union(v.id("channels"), v.string())),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Get all user's read messages in one query
+    const allUserReads = await ctx.db
+      .query("messageReads")
+      .withIndex("byUserId", (q) => q.eq("userId", args.userId))
+      .collect();
+    
+    // Create a map of channelId -> Set of read message IDs
+    const readMessagesByChannel = new Map<string, Set<Id<"messages">>>();
+    for (const read of allUserReads) {
+      const channelKey = String(read.channelId);
+      if (!readMessagesByChannel.has(channelKey)) {
+        readMessagesByChannel.set(channelKey, new Set());
+      }
+      readMessagesByChannel.get(channelKey)!.add(read.messageId);
+    }
+    
+    // Get unread counts for each channel
+    const unreadCounts: Record<string, number> = {};
+    
+    for (const channelId of args.channelIds) {
+      const channelKey = String(channelId);
+      
+      // Get all messages in this channel
+      const messages = await ctx.db
+        .query("messages")
+        .withIndex("byChannel", (q) => q.eq("channel", channelId))
+        .collect();
+      
+      // Get read messages for this channel
+      const readMessages = readMessagesByChannel.get(channelKey) || new Set();
+      
+      // Count unread messages
+      const unreadCount = messages.filter(
+        (msg) => !readMessages.has(msg._id)
+      ).length;
+      
+      unreadCounts[channelKey] = unreadCount;
+    }
+    
+    return unreadCounts;
+  },
+});
+
 export const getUnreadMessages = query({
   args: {
     userId: v.id("users"),

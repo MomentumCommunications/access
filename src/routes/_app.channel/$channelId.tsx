@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { DeleteChannelButton } from "~/components/channel-delete-button";
-import { ManageMembers } from "~/components/manage-members";
+import { LazyManageMembers } from "~/components/lazy/AdminComponents";
 import { EditChannel } from "~/components/edit-channel";
 import { channelNameOrFallback } from "~/lib/utils";
 import { useIsMobile } from "~/hooks/use-mobile";
@@ -36,7 +36,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import { ChatWindow } from "~/components/chat-window";
+import LazyChatWindow from "~/components/lazy/ChatWindow";
 import { useChatMessages } from "~/hooks/useChatMessages";
 import Delayed from "~/components/delayed";
 
@@ -193,7 +193,7 @@ function RouteComponent() {
               </DropdownMenuItem>
               {channel?.isPrivate && (
                 <DropdownMenuItem asChild>
-                  <ManageMembers channelId={channel._id} />
+                  <LazyManageMembers channelId={channel._id} />
                 </DropdownMenuItem>
               )}
               <DeleteChannelButton channelId={channel._id} />
@@ -205,7 +205,7 @@ function RouteComponent() {
       {/* Main Content Area */}
       <div className="flex-1 w-full h-full min-h-0 relative">
         {user && convexUser && (
-          <ChatWindow
+          <LazyChatWindow
             messages={messages}
             onLoadOlder={loadOlderMessages}
             hasMoreOlder={hasMoreOlder}

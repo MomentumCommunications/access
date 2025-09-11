@@ -7,7 +7,7 @@ import { Id } from "convex/_generated/dataModel";
 import { MessageSquare, OctagonMinus } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { SignInPrompt } from "~/components/sign-in-prompt";
-import { ChatWindow } from "~/components/chat-window";
+import LazyChatWindow from "~/components/lazy/ChatWindow";
 import { useChatMessages } from "~/hooks/useChatMessages";
 
 export const Route = createFileRoute("/_app/dm/$dmId")({
@@ -107,7 +107,7 @@ function RouteComponent() {
 
         {/* Chat Window */}
         {user && convexUser && (
-          <ChatWindow
+          <LazyChatWindow
             messages={messages}
             onLoadOlder={loadOlderMessages}
             hasMoreOlder={hasMoreOlder}

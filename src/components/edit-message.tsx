@@ -34,7 +34,6 @@ import {
   FormLabel,
   FormMessage,
 } from "./ui/form";
-import { ScrollArea } from "./ui/scroll-area";
 import { PencilLine } from "lucide-react";
 
 type Message = {
@@ -51,7 +50,6 @@ type Message = {
 
 export function EditMessage({
   message,
-  trigger,
 }: {
   message: Message;
   trigger?: React.ReactNode;
@@ -60,8 +58,8 @@ export function EditMessage({
   const isMobile = useIsMobile();
 
   const defaultTrigger = (
-    <Button variant="ghost" size="sm">
-      <PencilLine className="h-4 w-4" />
+    <Button variant="ghost" size="sm" className="w-full justify-start">
+      <PencilLine className="h-4 w-4 text-muted-foreground mr-1" />
       Edit
     </Button>
   );
@@ -69,7 +67,7 @@ export function EditMessage({
   if (!isMobile) {
     return (
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>
+        <DialogTrigger asChild>{defaultTrigger}</DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Message</DialogTitle>
@@ -83,19 +81,19 @@ export function EditMessage({
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>{trigger || defaultTrigger}</DrawerTrigger>
+      <DrawerTrigger asChild>{defaultTrigger}</DrawerTrigger>
       <DrawerContent>
-        <ScrollArea className="px-2">
-          <DrawerHeader className="text-left">
-            <DrawerTitle>Edit Message</DrawerTitle>
-          </DrawerHeader>
+        <DrawerHeader className="text-left">
+          <DrawerTitle>Edit Message</DrawerTitle>
+        </DrawerHeader>
+        <div className="px-4">
           <EditMessageForm message={message} />
-          <DrawerFooter className="pt-2">
-            <DrawerClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DrawerClose>
-          </DrawerFooter>
-        </ScrollArea>
+        </div>
+        <DrawerFooter className="pt-2">
+          <DrawerClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DrawerClose>
+        </DrawerFooter>
       </DrawerContent>
     </Drawer>
   );

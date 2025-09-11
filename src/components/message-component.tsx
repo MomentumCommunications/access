@@ -263,15 +263,7 @@ export function MessageComponent({
                           Copy Text
                         </DropdownMenuItem>
                         {message.author === userId && (
-                          <EditMessage
-                            message={message}
-                            trigger={
-                              <DropdownMenuItem>
-                                <PencilLine className="w-4 h-4" />
-                                Edit
-                              </DropdownMenuItem>
-                            }
-                          />
+                          <EditMessage message={message} />
                         )}
                       </>
                     )}

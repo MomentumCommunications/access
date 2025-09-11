@@ -9,6 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "~/components/ui/popover";
+import { useAppBadge } from "~/hooks/useAppBadge";
 
 function formatTimeAgo(timestamp: number) {
   const now = Date.now();
@@ -108,6 +109,10 @@ export function InboxButton() {
   const displayedCount = unreadMessages?.length || 0;
   const actualTotalCount = totalUnreadCount || 0;
 
+  // Use the app badge hook to automatically manage the app icon badge
+  // Always pass a number to ensure stable hook execution
+  const { isSupported: isBadgeSupported } = useAppBadge(actualTotalCount);
+
   const handleMessageClick = (message: UnreadMessageItemProps["message"]) => {
     if (message.channelInfo?.isDM && message.channelInfo.dmId) {
       window.location.href = `/dm/${message.channelInfo.dmId}`;
@@ -131,10 +136,20 @@ export function InboxButton() {
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <div className="p-4 border-b">
-          <h4 className="font-semibold">Unread Messages</h4>
-          <p className="text-sm text-muted-foreground">
-            {actualTotalCount} unread message{actualTotalCount !== 1 ? "s" : ""}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-semibold">Unread Messages</h4>
+              <p className="text-sm text-muted-foreground">
+                {actualTotalCount} unread message{actualTotalCount !== 1 ? "s" : ""}
+              </p>
+            </div>
+            {isBadgeSupported && actualTotalCount > 0 && (
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                App badge active
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="max-h-96 overflow-y-auto">

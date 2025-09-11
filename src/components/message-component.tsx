@@ -39,7 +39,11 @@ import {
 } from "./ui/alert-dialog";
 import { format } from "date-fns";
 import { Markdown } from "./markdown-wrapper";
-import { generateShareableMessageLink, Message } from "~/lib/message-utils";
+import {
+  generateShareableMessageLink,
+  Message,
+  formatHoverTime,
+} from "~/lib/message-utils";
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
   convexQuery,
@@ -55,7 +59,6 @@ import {
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Skeleton } from "./ui/skeleton";
 import { toast } from "sonner";
-import { useIsMobile } from "~/hooks/use-mobile";
 
 function DeleteMessage({
   message,
@@ -115,6 +118,8 @@ export function MessageComponent({
   channel,
   onRegisterElement,
   onReply,
+  isFirstInGroup = true,
+  showTimestampOnHover = false,
 }: {
   message: Message;
   userId: Id<"users">;
@@ -122,11 +127,13 @@ export function MessageComponent({
   channel?: { isDM: boolean };
   onRegisterElement?: (messageId: string, element: Element | null) => void;
   onReply?: (message: Message) => void;
+  isFirstInGroup?: boolean;
+  showTimestampOnHover?: boolean;
 }) {
   const isImage = message.format === "image";
   const [linkCopied, setLinkCopied] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const messageRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
 
   const user = useConvexQuery(api.users.getUserById, {
     id: userId,
@@ -195,12 +202,14 @@ export function MessageComponent({
         <div
           ref={messageRef}
           id={message._id}
-          className="flex p-1 flex-col gap-2 align-bottom hover:bg-muted/50 duration-100 flex-1 min-w-0 lg:p-4 rounded ease-in-out"
+          className={`message-group-item ${isFirstInGroup ? "first" : "subsequent"} flex p-1 flex-col gap-2 align-bottom hover:bg-muted/50 duration-100 flex-1 min-w-0 lg:p-2 rounded ease-in-out`}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
         >
-          {/* display the reply */}
-          {replyLoading && <Skeleton className="h-3 w-1/2" />}
+          {/* display the reply - only show on first message in group */}
+          {isFirstInGroup && replyLoading && <Skeleton className="h-3 w-1/2" />}
 
-          {replyData && (
+          {isFirstInGroup && replyData && (
             <div className="flex flex-row gap-2 items-center pl-4 w-min">
               <CornerUpRight className="flex-shrink-0 w-4 h-4 translate-y-0.5 text-muted-foreground" />
               <img
@@ -220,17 +229,102 @@ export function MessageComponent({
             </div>
           )}
 
-          <div className="flex flex-row items-center align-middle gap-2 justify-between">
-            <div className="flex flex-row gap-2 items-center">
-              <AuthorInfo author={message.author} />
-              <Dot className="flex-shrink-0 w-4 h-4 text-muted-foreground" />
+          {/* Author info - only show on first message in group */}
+          {isFirstInGroup && (
+            <div className="flex flex-row items-center align-middle gap-2 justify-between">
               <div className="flex flex-row gap-2 items-center">
-                <p className="text-xs text-muted-foreground">
-                  {formatTime(message._creationTime)}
-                </p>
+                <AuthorInfo author={message.author} />
+                <Dot className="flex-shrink-0 w-4 h-4 text-muted-foreground" />
+                <div className="flex flex-row gap-2 items-center">
+                  <p className="text-xs text-muted-foreground">
+                    {formatTime(message._creationTime)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-row gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="z-10 cursor-pointer w-4 h-[22px]"
+                    >
+                      <MoreHorizontal />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuGroup>
+                      {onReply && (
+                        <DropdownMenuItem onClick={() => onReply(message)}>
+                          <Reply className="w-4 h-4" />
+                          Reply
+                        </DropdownMenuItem>
+                      )}
+                      <ReactionSubmenu
+                        messageId={message._id}
+                        userId={userId}
+                        mode="dropdown"
+                      />
+                      {!isImage && (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => handleCopyText(message.body)}
+                          >
+                            <ClipboardIcon />
+                            Copy Text
+                          </DropdownMenuItem>
+                          {message.author === userId && (
+                            <EditMessage message={message} />
+                          )}
+                        </>
+                      )}
+                      <DropdownMenuItem onClick={handleCopyMessageLink}>
+                        {linkCopied ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          <LinkIcon />
+                        )}
+                        <span>
+                          {linkCopied ? "Link Copied!" : "Copy Message Link"}
+                        </span>
+                      </DropdownMenuItem>
+                      {isAuthorOrAdmin && (
+                        <DeleteMessage message={message} userId={userId} />
+                      )}
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
-            <div className="flex flex-row gap-2">
+          )}
+
+          {/* Grouped message layout - show hover timestamp for subsequent messages */}
+          <div className="relative">
+            {!isFirstInGroup && showTimestampOnHover && (
+              <div className="message-hover-timestamp absolute left-0 top-0 -translate-x-2 text-xs text-white">
+                {formatHoverTime(message._creationTime)}
+              </div>
+            )}
+
+            <div
+              className={`text-sm whitespace-pre-wrap ${isFirstInGroup ? "pl-10" : "pl-10"}`}
+            >
+              {isImage ? (
+                <ImageComponent storageId={message.body as Id<"_storage">} />
+              ) : (
+                <Markdown content={message.body} />
+              )}
+              {message.edited && (
+                <div className="pt-2">
+                  <p className="text-xs text-muted-foreground">(edited)</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Actions dropdown for grouped messages */}
+          {!isFirstInGroup && (
+            <div className="message-actions absolute right-1 top-1 lg:right-2 lg:top-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -284,19 +378,8 @@ export function MessageComponent({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          </div>
-          <div className="text-sm whitespace-pre-wrap pl-10">
-            {isImage ? (
-              <ImageComponent storageId={message.body as Id<"_storage">} />
-            ) : (
-              <Markdown content={message.body} />
-            )}
-            {message.edited && (
-              <div className="pt-2">
-                <p className="text-xs text-muted-foreground">(edited)</p>
-              </div>
-            )}
-          </div>
+          )}
+
           <MessageReactions messageId={message._id} userId={userId} />
         </div>
       </ContextMenuTrigger>

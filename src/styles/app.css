@@ -176,3 +176,51 @@
 .animate-pulse-highlight {
   animation: pulse-highlight 2s ease-out;
 }
+
+/* Message grouping styles */
+
+/* Hover timestamp for grouped messages */
+.message-hover-timestamp {
+  opacity: 0;
+  transition: opacity 150ms ease-in-out;
+  pointer-events: none;
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.dark .message-hover-timestamp {
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+/* Show timestamp on message hover */
+.message-group-item:hover .message-hover-timestamp {
+  opacity: 1;
+}
+
+/* Smooth transitions for message actions */
+.message-actions {
+  opacity: 0;
+  transition: opacity 150ms ease-in-out;
+}
+
+.message-group-item:hover .message-actions {
+  opacity: 1;
+}
+
+/* Subtle spacing for consecutive messages */
+/* .message-group { */
+/* Tighter spacing within a group looks like the llm didn't finish this, might use later  */
+/* } */
+
+.message-group-item.subsequent {
+  margin-top: 2px; /* Reduced from default spacing */
+}
+
+.message-group-item.first {
+  margin-top: 8px; /* Normal spacing for first message in group */
+}

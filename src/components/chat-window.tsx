@@ -5,7 +5,7 @@ import { MessageInput } from "./message-input";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
 import { cn } from "~/lib/utils";
-import { Message, groupMessagesByDate } from "~/lib/message-utils";
+import { Message, groupMessagesByDate, MessageDateGroup, MessageGroup, MessageInGroup } from "~/lib/message-utils";
 import { ArrowDown } from "lucide-react";
 import { DateSeparator } from "./date-separator";
 import { Button } from "./ui/button";
@@ -357,47 +357,58 @@ export function ChatWindow({
                 This is the start of the conversation.
               </h2>
             </div>
-            {messageGroups.map((group) => (
+            {messageGroups.map((dateGroup) => (
               <div
-                key={`group-${group.date.toISOString()}`}
+                key={`date-group-${dateGroup.date.toISOString()}`}
                 className="space-y-2"
               >
                 {/* Date separator */}
-                <DateSeparator dateLabel={group.dateLabel} />
+                <DateSeparator dateLabel={dateGroup.dateLabel} />
 
-                {/* Messages in this date group */}
-                {group.messages.map((message) => {
-                  const isTargetMessage = message._id === actualTargetMessageId;
-                  const shouldHighlight = isTargetMessage && !disableHighlight;
-                  return (
-                    <div
-                      key={message._id}
-                      ref={isTargetMessage ? targetMessageRef : undefined}
-                      data-message-id={message._id}
-                      className={cn(
-                        shouldHighlight && [
-                          "relative",
-                          "animate-pulse-highlight", // We'll define this in CSS
-                          "before:absolute before:inset-0 before:-z-10",
-                          "before:shadow-sm",
-                          "p-2 -m-2", // Add padding to highlight area
-                        ],
-                      )}
-                      style={{
-                        scrollMarginTop: "80px",
-                      }}
-                    >
-                      <MessageComponent
-                        message={message}
-                        userId={userId}
-                        channelId={channelId}
-                        channel={channel}
-                        onRegisterElement={registerMessageElement}
-                        onReply={handleReply}
-                      />
-                    </div>
-                  );
-                })}
+                {/* Message groups within this date */}
+                {dateGroup.messages.map((messageGroup, groupIndex) => (
+                  <div
+                    key={`message-group-${messageGroup.author}-${messageGroup.startTime}`}
+                    className="message-group space-y-1"
+                  >
+                    {/* Messages in this author group */}
+                    {messageGroup.messages.map((messageInGroup, messageIndex) => {
+                      const message = messageInGroup.message;
+                      const isTargetMessage = message._id === actualTargetMessageId;
+                      const shouldHighlight = isTargetMessage && !disableHighlight;
+                      return (
+                        <div
+                          key={message._id}
+                          ref={isTargetMessage ? targetMessageRef : undefined}
+                          data-message-id={message._id}
+                          className={cn(
+                            shouldHighlight && [
+                              "relative",
+                              "animate-pulse-highlight", // We'll define this in CSS
+                              "before:absolute before:inset-0 before:-z-10",
+                              "before:shadow-sm",
+                              "p-2 -m-2", // Add padding to highlight area
+                            ],
+                          )}
+                          style={{
+                            scrollMarginTop: "80px",
+                          }}
+                        >
+                          <MessageComponent
+                            message={message}
+                            userId={userId}
+                            channelId={channelId}
+                            channel={channel}
+                            onRegisterElement={registerMessageElement}
+                            onReply={handleReply}
+                            isFirstInGroup={messageInGroup.isFirstInGroup}
+                            showTimestampOnHover={messageInGroup.showTimestamp}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             ))}
             {/* Scroll target */}

@@ -220,20 +220,50 @@ export function parseMessageLink(
 export interface MessageDateGroup {
   date: Date;
   dateLabel: string;
-  messages: Message[];
+  messages: MessageGroup[];
 }
 
-export function groupMessagesByDate(messages: Message[]): MessageDateGroup[] {
+/**
+ * Represents a group of consecutive messages from the same author
+ */
+export interface MessageGroup {
+  author: Id<"users">;
+  messages: MessageInGroup[];
+  startTime: number;
+  endTime: number;
+}
+
+/**
+ * A message within a group, with additional grouping metadata
+ */
+export interface MessageInGroup {
+  message: Message;
+  isFirstInGroup: boolean;
+  showTimestamp: boolean; // For hover timestamp display
+}
+
+/**
+ * Time threshold for breaking message groups (5 minutes in milliseconds)
+ */
+const MESSAGE_GROUP_TIME_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Groups consecutive messages from the same author within a date group
+ */
+export function groupConsecutiveMessages(messages: Message[]): MessageGroup[] {
   if (messages.length === 0) return [];
 
-  const groups: MessageDateGroup[] = [];
-  let currentGroup: MessageDateGroup | null = null;
+  const groups: MessageGroup[] = [];
+  let currentGroup: MessageGroup | null = null;
 
   for (const message of messages) {
-    const messageDate = new Date(message._creationTime);
+    const shouldStartNewGroup =
+      !currentGroup ||
+      currentGroup.author !== message.author ||
+      message._creationTime - currentGroup.endTime >
+        MESSAGE_GROUP_TIME_THRESHOLD;
 
-    // Check if we need to start a new group
-    if (!currentGroup || !isSameDay(currentGroup.date, messageDate)) {
+    if (shouldStartNewGroup) {
       // Finish the previous group
       if (currentGroup) {
         groups.push(currentGroup);
@@ -241,19 +271,80 @@ export function groupMessagesByDate(messages: Message[]): MessageDateGroup[] {
 
       // Start a new group
       currentGroup = {
-        date: messageDate,
-        dateLabel: formatDateSeparator(messageDate),
-        messages: [message],
+        author: message.author,
+        messages: [
+          {
+            message,
+            isFirstInGroup: true,
+            showTimestamp: false,
+          },
+        ],
+        startTime: message._creationTime,
+        endTime: message._creationTime,
       };
     } else {
       // Add to current group
-      currentGroup.messages.push(message);
+      currentGroup.messages.push({
+        message,
+        isFirstInGroup: false,
+        showTimestamp: true, // Subsequent messages can show timestamp on hover
+      });
+      currentGroup.endTime = message._creationTime;
     }
   }
 
   // Don't forget the last group
   if (currentGroup) {
     groups.push(currentGroup);
+  }
+
+  return groups;
+}
+
+export function groupMessagesByDate(messages: Message[]): MessageDateGroup[] {
+  if (messages.length === 0) return [];
+
+  const groups: MessageDateGroup[] = [];
+  let currentDateGroup: {
+    date: Date;
+    dateLabel: string;
+    messages: Message[];
+  } | null = null;
+
+  // First, group by date (existing logic)
+  for (const message of messages) {
+    const messageDate = new Date(message._creationTime);
+
+    // Check if we need to start a new date group
+    if (!currentDateGroup || !isSameDay(currentDateGroup.date, messageDate)) {
+      // Finish the previous group
+      if (currentDateGroup) {
+        groups.push({
+          date: currentDateGroup.date,
+          dateLabel: currentDateGroup.dateLabel,
+          messages: groupConsecutiveMessages(currentDateGroup.messages),
+        });
+      }
+
+      // Start a new date group
+      currentDateGroup = {
+        date: messageDate,
+        dateLabel: formatDateSeparator(messageDate),
+        messages: [message],
+      };
+    } else {
+      // Add to current date group
+      currentDateGroup.messages.push(message);
+    }
+  }
+
+  // Don't forget the last group
+  if (currentDateGroup) {
+    groups.push({
+      date: currentDateGroup.date,
+      dateLabel: currentDateGroup.dateLabel,
+      messages: groupConsecutiveMessages(currentDateGroup.messages),
+    });
   }
 
   return groups;
@@ -267,11 +358,19 @@ export function formatDateSeparator(date: Date): string {
   if (isToday(date)) {
     return "Today";
   }
-  
+
   if (isYesterday(date)) {
     return "Yesterday";
   }
 
   // For other dates, show the full date
   return format(date, "EEEE, MMMM d, yyyy");
+}
+
+/**
+ * Formats a timestamp for hover display in grouped messages
+ * Returns time in "h:mm a" format (e.g., "3:45 PM")
+ */
+export function formatHoverTime(timestamp: number): string {
+  return format(new Date(timestamp), "h:mm");
 }

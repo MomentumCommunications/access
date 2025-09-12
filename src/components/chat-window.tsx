@@ -4,8 +4,14 @@ import { MessageComponent } from "./message-component";
 import { MessageInput } from "./message-input";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
-import { cn } from "~/lib/utils";
-import { Message, groupMessagesByDate, MessageDateGroup, MessageGroup, MessageInGroup } from "~/lib/message-utils";
+import { channelNameOrFallback, cn } from "~/lib/utils";
+import {
+  Message,
+  groupMessagesByDate,
+  MessageDateGroup,
+  MessageGroup,
+  MessageInGroup,
+} from "~/lib/message-utils";
 import { ArrowDown } from "lucide-react";
 import { DateSeparator } from "./date-separator";
 import { Button } from "./ui/button";
@@ -22,7 +28,7 @@ interface ChatWindowProps {
   targetMessageId?: Id<"messages">;
   isLoading: boolean;
   className?: string;
-  channel?: { isDM: boolean };
+  channel?: { name: string; description: string; isDM: boolean };
   adminControlled?: boolean;
   disableHighlight?: boolean;
 }
@@ -127,7 +133,7 @@ export function ChatWindow({
         scrollViewport.scrollHeight -
         (scrollViewport.scrollTop + scrollViewport.clientHeight);
 
-      setIsNearBottom(distanceFromBottom <= 100); // buffer zone
+      setIsNearBottom(distanceFromBottom <= 200); // buffer zone
     };
 
     scrollViewport.addEventListener("scroll", handleScroll);
@@ -137,6 +143,10 @@ export function ChatWindow({
       scrollViewport.removeEventListener("scroll", handleScroll);
     };
   }, []);
+
+  if (hasNewMessages) {
+    console.log(messages.length, lastSeenMessageCount);
+  }
 
   // Handle new messages - auto scroll if at bottom, show notification if not
   useEffect(() => {
@@ -353,9 +363,12 @@ export function ChatWindow({
 
             {/* Messages grouped by date */}
             <div className="space-y-2 space-x-8">
-              <h2 className="text-lg font-semibold">
-                This is the start of the conversation.
+              <h2 className="text-2xl lg:text-5xl font-semibold">
+                {channelNameOrFallback(channel?.name)}
               </h2>
+              {channel?.description && (
+                <p className="text-lg">{channel.description}</p>
+              )}
             </div>
             {messageGroups.map((dateGroup) => (
               <div
@@ -369,44 +382,50 @@ export function ChatWindow({
                 {dateGroup.messages.map((messageGroup, groupIndex) => (
                   <div
                     key={`message-group-${messageGroup.author}-${messageGroup.startTime}`}
-                    className="message-group space-y-1"
+                    className="message-group"
                   >
                     {/* Messages in this author group */}
-                    {messageGroup.messages.map((messageInGroup, messageIndex) => {
-                      const message = messageInGroup.message;
-                      const isTargetMessage = message._id === actualTargetMessageId;
-                      const shouldHighlight = isTargetMessage && !disableHighlight;
-                      return (
-                        <div
-                          key={message._id}
-                          ref={isTargetMessage ? targetMessageRef : undefined}
-                          data-message-id={message._id}
-                          className={cn(
-                            shouldHighlight && [
-                              "relative",
-                              "animate-pulse-highlight", // We'll define this in CSS
-                              "before:absolute before:inset-0 before:-z-10",
-                              "before:shadow-sm",
-                              "p-2 -m-2", // Add padding to highlight area
-                            ],
-                          )}
-                          style={{
-                            scrollMarginTop: "80px",
-                          }}
-                        >
-                          <MessageComponent
-                            message={message}
-                            userId={userId}
-                            channelId={channelId}
-                            channel={channel}
-                            onRegisterElement={registerMessageElement}
-                            onReply={handleReply}
-                            isFirstInGroup={messageInGroup.isFirstInGroup}
-                            showTimestampOnHover={messageInGroup.showTimestamp}
-                          />
-                        </div>
-                      );
-                    })}
+                    {messageGroup.messages.map(
+                      (messageInGroup, messageIndex) => {
+                        const message = messageInGroup.message;
+                        const isTargetMessage =
+                          message._id === actualTargetMessageId;
+                        const shouldHighlight =
+                          isTargetMessage && !disableHighlight;
+                        return (
+                          <div
+                            key={message._id}
+                            ref={isTargetMessage ? targetMessageRef : undefined}
+                            data-message-id={message._id}
+                            className={cn(
+                              shouldHighlight && [
+                                "relative",
+                                "animate-pulse-highlight", // We'll define this in CSS
+                                "before:absolute before:inset-0 before:-z-10",
+                                "before:shadow-sm",
+                                "p-2 -m-2", // Add padding to highlight area
+                              ],
+                            )}
+                            style={{
+                              scrollMarginTop: "80px",
+                            }}
+                          >
+                            <MessageComponent
+                              message={message}
+                              userId={userId}
+                              channelId={channelId}
+                              channel={channel}
+                              onRegisterElement={registerMessageElement}
+                              onReply={handleReply}
+                              isFirstInGroup={messageInGroup.isFirstInGroup}
+                              showTimestampOnHover={
+                                messageInGroup.showTimestamp
+                              }
+                            />
+                          </div>
+                        );
+                      },
+                    )}
                   </div>
                 ))}
               </div>

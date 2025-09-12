@@ -79,12 +79,25 @@ function DeleteButton({
   );
 }
 
+function togglePastBulletins() {
+  const pastBulletins = document.getElementById("past-bulletins");
+  pastBulletins?.classList.toggle("hidden");
+}
+
 export function AdminBulletin() {
   const {
     data: bulletins,
     isLoading,
     isError,
   } = useQuery(convexQuery(api.bulletins.getAllBulletins, {}));
+
+  const pastBulletins = bulletins?.filter(
+    (bulletin) => new Date(bulletin?.date) < Date.now(),
+  );
+
+  const futureBulletins = bulletins?.filter(
+    (bulletin) => new Date(bulletin?.date) > Date.now(),
+  );
 
   const hideFunction = useMutation(api.bulletins.hideBulletin);
 
@@ -106,14 +119,153 @@ export function AdminBulletin() {
 
   return (
     <>
+      <div className="flex justify-end">
+        <Button
+          id="past-bulletins-toggle"
+          variant="link"
+          className="text-xs px-0"
+          onClick={togglePastBulletins}
+        >
+          Toggle past events
+        </Button>
+      </div>
+      <div id="past-bulletins" className="hidden">
+        <h2 className="text-2xl font-bold mb-4">Past Events</h2>
+        <Accordion
+          type="single"
+          collapsible
+          className="w-full"
+          defaultValue={pastBulletins?.[0]?._id}
+        >
+          {pastBulletins &&
+            pastBulletins.map((bulletin) => (
+              <div
+                key={bulletin._id}
+                className="p-4 mb-4 border border-muted rounded"
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2">
+                    {bulletin.image && (
+                      <img
+                        src={bulletin.image}
+                        alt={bulletin.title}
+                        className="w-full md:w-1/3 rounded"
+                      />
+                    )}
+                    <div className="flex justify-between">
+                      {bulletin.date && (
+                        <p
+                          className={cn(
+                            "align-baseline",
+                            bulletin.hidden && "text-muted-foreground",
+                          )}
+                        >
+                          {format(
+                            toZonedTime(new Date(bulletin.date), "utc"),
+                            "iii ⋅ MMMM d, yyyy",
+                          )}
+                        </p>
+                      )}
+                      <div className="z-10 ml-auto">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              className="h-8 w-8 p-0 cursor-pointer"
+                            >
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem asChild>
+                              <EditBulletin bulletin={bulletin} />
+                            </DropdownMenuItem>
+                            {!bulletin.hidden && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  hideBulletin(bulletin._id);
+                                }}
+                              >
+                                <EyeOff />
+                                <span>Hide</span>
+                              </DropdownMenuItem>
+                            )}
+                            {bulletin.hidden && (
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  unhideBulletin(bulletin._id);
+                                }}
+                              >
+                                <Eye />
+                                <span>Unhide</span>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild>
+                              <DeleteButton
+                                id={bulletin._id}
+                                postTitle={bulletin.title}
+                              />
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col w-full items-start gap-2 items-center">
+                    <div className="flex gap-2">
+                      {bulletin.hidden && (
+                        <EyeOff className="text-muted-foreground" />
+                      )}
+                      <p
+                        className={cn(
+                          "font-bold text-xl",
+                          bulletin.hidden && "text-muted-foreground",
+                        )}
+                      >
+                        {bulletin.title}
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      {
+                        // This is not as slick as querying the groups for the exact number,
+                        // but this doesn't change very often and I'll save the call to the database.
+                        bulletin.group?.length === 4 ? (
+                          <Badge className="font-bold">ALL</Badge>
+                        ) : (
+                          bulletin.group?.map((group) => (
+                            <Badge key={group} className="font-bold">
+                              {group.toUpperCase()}
+                            </Badge>
+                          ))
+                        )
+                      }
+                    </div>
+                  </div>
+                </div>
+                <AccordionItem value={bulletin._id}>
+                  <AccordionTrigger className="text-sm">
+                    Details
+                  </AccordionTrigger>
+                  <AccordionContent className="bg-muted p-4 rounded">
+                    <Markdown content={bulletin.body} />
+                  </AccordionContent>
+                </AccordionItem>
+              </div>
+            ))}
+        </Accordion>
+      </div>
+      <h2 className="text-2xl font-bold mb-4">Upcoming Events</h2>
       <Accordion
         type="single"
         collapsible
         className="w-full"
-        defaultValue={bulletins?.[0]?._id}
+        defaultValue={futureBulletins?.[0]?._id}
       >
-        {bulletins &&
-          bulletins.map((bulletin) => (
+        {futureBulletins &&
+          futureBulletins.map((bulletin) => (
             <div
               key={bulletin._id}
               className="p-4 mb-4 border border-muted rounded"

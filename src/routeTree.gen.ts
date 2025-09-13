@@ -17,6 +17,7 @@ import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppSearchRouteImport } from './routes/_app.search'
 import { Route as AppHomeRouteImport } from './routes/_app.home'
 import { Route as AppHelpRouteImport } from './routes/_app.help'
+import { Route as AppDirectoryRouteImport } from './routes/_app.directory'
 import { Route as AppAccountRouteImport } from './routes/_app.account'
 import { Route as AppChannelIndexRouteImport } from './routes/_app.channel/index'
 import { Route as AppDmDmIdRouteImport } from './routes/_app.dm/$dmId'
@@ -61,6 +62,11 @@ const AppHelpRoute = AppHelpRouteImport.update({
   path: '/help',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDirectoryRoute = AppDirectoryRouteImport.update({
+  id: '/directory',
+  path: '/directory',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAccountRoute = AppAccountRouteImport.update({
   id: '/account',
   path: '/account',
@@ -85,6 +91,7 @@ const AppChannelChannelIdRoute = AppChannelChannelIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AppAccountRoute
+  '/directory': typeof AppDirectoryRoute
   '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
   '/search': typeof AppSearchRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AppAccountRoute
+  '/directory': typeof AppDirectoryRoute
   '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
   '/search': typeof AppSearchRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/_app/account': typeof AppAccountRoute
+  '/_app/directory': typeof AppDirectoryRoute
   '/_app/help': typeof AppHelpRoute
   '/_app/home': typeof AppHomeRoute
   '/_app/search': typeof AppSearchRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/directory'
     | '/help'
     | '/home'
     | '/search'
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
+    | '/directory'
     | '/help'
     | '/home'
     | '/search'
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/_app/account'
+    | '/_app/directory'
     | '/_app/help'
     | '/_app/home'
     | '/_app/search'
@@ -231,6 +243,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppHelpRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/directory': {
+      id: '/_app/directory'
+      path: '/directory'
+      fullPath: '/directory'
+      preLoaderRoute: typeof AppDirectoryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/account': {
       id: '/_app/account'
       path: '/account'
@@ -264,6 +283,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAccountRoute: typeof AppAccountRoute
+  AppDirectoryRoute: typeof AppDirectoryRoute
   AppHelpRoute: typeof AppHelpRoute
   AppHomeRoute: typeof AppHomeRoute
   AppSearchRoute: typeof AppSearchRoute
@@ -275,6 +295,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAccountRoute: AppAccountRoute,
+  AppDirectoryRoute: AppDirectoryRoute,
   AppHelpRoute: AppHelpRoute,
   AppHomeRoute: AppHomeRoute,
   AppSearchRoute: AppSearchRoute,

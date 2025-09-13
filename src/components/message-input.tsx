@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
 import { ImageUpload } from "./image-upload";
 import { useUser } from "@clerk/tanstack-react-start";
+import { useIsMobile } from "~/hooks/use-mobile";
 
 type ReplyingTo = {
   _id: Id<"messages">;
@@ -30,6 +31,7 @@ export function MessageInput({
   onCancelReply?: () => void;
 }) {
   const user = useUser();
+  const isMobile = useIsMobile();
 
   const { data: convexUser } = useQuery({
     ...convexQuery(api.users.getUserByClerkId, { ClerkId: user?.user?.id }),
@@ -140,7 +142,7 @@ export function MessageInput({
           }
           onKeyDown={(e) => {
             // Submit on Enter (without Shift)
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (e.key === "Enter" && !e.shiftKey && !isMobile) {
               e.preventDefault();
               handleSubmit(e);
             }

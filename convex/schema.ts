@@ -10,8 +10,10 @@ export default defineSchema({
     name: v.string(),
     displayName: v.optional(v.string()),
     email: v.optional(v.array(v.string())),
-    role: v.optional(v.union(v.literal("admin"), v.literal("user"))),
-    group: v.optional(v.id("groups")),
+    role: v.optional(
+      v.union(v.literal("admin"), v.literal("staff"), v.literal("member")),
+    ),
+    group: v.optional(v.array(v.id("groups"))),
     image: v.optional(v.string()),
     description: v.optional(v.string()),
     // this the Clerk ID, stored in the subject JWT field
@@ -22,6 +24,7 @@ export default defineSchema({
     description: v.string(),
     password: v.string(),
     info: v.optional(v.string()),
+    document: v.optional(v.string()),
   }).index("byPassword", ["password"]),
   groupMembers: defineTable({
     group: v.id("groups"),

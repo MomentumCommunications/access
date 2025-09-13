@@ -36,6 +36,7 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Markdown } from "./markdown-wrapper";
+import { Separator } from "./ui/separator";
 
 function DeleteButton({
   id,
@@ -92,10 +93,12 @@ export function AdminBulletin() {
   } = useQuery(convexQuery(api.bulletins.getAllBulletins, {}));
 
   const pastBulletins = bulletins?.filter(
+    // @ts-expect-error ts(2349)
     (bulletin) => new Date(bulletin?.date) < Date.now(),
   );
 
   const futureBulletins = bulletins?.filter(
+    // @ts-expect-error ts(2349)
     (bulletin) => new Date(bulletin?.date) > Date.now(),
   );
 
@@ -119,7 +122,7 @@ export function AdminBulletin() {
 
   return (
     <>
-      <div className="flex justify-end">
+      <div className="flex justify-end flex-row h-6 items-center gap-2">
         <Button
           id="past-bulletins-toggle"
           variant="link"
@@ -127,6 +130,10 @@ export function AdminBulletin() {
           onClick={togglePastBulletins}
         >
           Toggle past events
+        </Button>
+        <Separator orientation="vertical" className="h-full" />
+        <Button variant="link" className="text-xs px-0" asChild>
+          <a href="/directory">Directory</a>
         </Button>
       </div>
       <div id="past-bulletins" className="hidden">

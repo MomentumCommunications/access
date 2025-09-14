@@ -96,13 +96,16 @@ export const getUrlForImage = query({
 export const getUrlForDocument = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, { storageId }) => {
+    if (!storageId) {
+      return null;
+    }
     const url = await ctx.storage.getUrl(storageId);
     return url;
   },
 });
 
 export const getGroupDocuments = query({
-  args: { groupIds: v.optional(v.array(v.id("groups"))) },
+  args: { groupIds: v.array(v.id("groups")) },
   handler: async (ctx, { groupIds }) => {
     if (!groupIds) {
       return [];

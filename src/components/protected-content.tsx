@@ -45,6 +45,7 @@ export function ProtectedContent({ password }: { password: string }) {
             type="application/pdf"
             width="100%"
             height="600px"
+            className="bg-white"
           />
           <Button asChild variant="link">
             <a href={document} target="_blank" rel="noopener noreferrer">

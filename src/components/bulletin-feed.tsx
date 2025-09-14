@@ -21,14 +21,13 @@ export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
 
   // Fetch group documents with URLs in one query
   const { data: groupDocuments } = useQuery(
-    convexQuery(api.etcFunctions.getGroupDocuments, { groupIds: groups })
+    convexQuery(api.etcFunctions.getGroupDocuments, { groupIds: groups }),
   );
 
   const futureBulletins = bulletins?.filter(
     // @ts-expect-error ts(2349)
     (bulletin) => new Date(bulletin?.date) > Date.now(),
   );
-
 
   // const { data: group } = useQuery(
   //   convexQuery(api.etcFunctions.getGroupByPassword, { password }),
@@ -47,19 +46,21 @@ export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
         <div className="mb-6 space-y-4">
           {groupDocuments.map((groupDoc) => (
             <div key={groupDoc.groupId} className="border rounded-lg p-4">
-              <h3 className="text-lg font-semibold mb-2">{groupDoc.groupName} Document</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                {groupDoc.groupName} Document
+              </h3>
               <embed
-                src={groupDoc.documentUrl}
+                src={groupDoc.documentUrl!}
                 type="application/pdf"
                 width="100%"
                 height="600px"
-                className="rounded border"
+                className="rounded border bg-white"
               />
             </div>
           ))}
         </div>
       )}
-      
+
       {/* Bulletins */}
       <Accordion
         type="single"

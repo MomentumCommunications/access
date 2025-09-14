@@ -138,7 +138,7 @@ function RouteComponent() {
   }
 
   return (
-    <div className="h-[calc(100dvh-54px)] flex flex-col">
+    <div className="h-[calc(100lvh-54px)] flex flex-col">
       <div className="flex align-middle flex-row py-2 px-2 md:px-4 justify-between">
         <div className="flex flex-row gap-2 items-center align-middle">
           {channel?.isPrivate ? (

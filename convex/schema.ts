@@ -24,7 +24,8 @@ export default defineSchema({
     description: v.string(),
     password: v.string(),
     info: v.optional(v.string()),
-    document: v.optional(v.string()),
+    color: v.optional(v.string()),
+    document: v.optional(v.id("_storage")),
   }).index("byPassword", ["password"]),
   groupMembers: defineTable({
     group: v.id("groups"),
@@ -38,9 +39,11 @@ export default defineSchema({
     date: v.optional(v.string()),
     author: v.optional(v.string()),
     group: v.optional(v.array(v.string())),
+    groups: v.optional(v.array(v.id("groups"))),
     reactions: v.optional(v.id("reactions")),
     hidden: v.optional(v.boolean()),
-  }).index("byGroup", ["group"]),
+  }).index("byGroup", ["group"])
+    .index("byGroups", ["groups"]),
   messages: defineTable({
     body: v.string(),
     date: v.optional(v.string()),

@@ -9,13 +9,15 @@ export const createBulletin = mutation({
     date: v.optional(v.string()),
     body: v.string(),
     image: v.optional(v.string()),
+    groups: v.optional(v.array(v.id("groups"))),
   },
   handler: async (ctx, args) => {
     const newBulletinId = await ctx.db.insert("bulletin", {
       title: args.title,
       body: args.body,
       pinned: false,
-      group: args.team,
+      group: args.team, // Keep old field for backward compatibility
+      groups: args.groups, // New field with group IDs
       date: args.date,
       image: args.image,
     });
@@ -41,6 +43,7 @@ export const getAllBulletins = query({
         body: b.body,
         pinned: b.pinned,
         group: b.group,
+        groups: b.groups,
         date: b.date,
         image: b.image,
         hidden: b.hidden,
@@ -79,7 +82,7 @@ export const getBulletinsByPassword = query({
       .collect();
 
     const filteredBulletins = bulletins.filter((b) =>
-      b.group?.includes(thisGroup.name),
+      b.groups?.includes(thisGroup._id),
     );
 
     const sortedBulletins = filteredBulletins.sort((a, b) => {
@@ -102,6 +105,22 @@ export const getBulletinsByGroup = query({
     const bulletins = await ctx.db.query("bulletin").collect();
 
     return bulletins.filter((b) => b.group?.includes(args.group));
+  },
+});
+
+export const getBulletinsByGroups = query({
+  args: { groups: v.array(v.id("groups")) },
+  handler: async (ctx, args) => {
+    const bulletins = await ctx.db.query("bulletin").collect();
+    const filteredBulletins = bulletins.filter((b) => {
+      // Check new groups field first, fallback to old group field if needed
+      if (b.groups) {
+        return args.groups.some((groupId) => b.groups?.includes(groupId));
+      }
+      // Legacy fallback - this won't work well but maintains compatibility
+      return args.groups.some((group) => b.group?.includes(group));
+    });
+    return filteredBulletins;
   },
 });
 
@@ -138,13 +157,15 @@ export const editBulletin = mutation({
     body: v.string(),
     date: v.string(),
     group: v.array(v.string()),
+    groups: v.optional(v.array(v.id("groups"))),
   },
   handler: async (ctx, args) => {
     return await ctx.db.patch(args.id, {
       title: args.title,
       body: args.body,
       date: args.date,
-      group: args.group,
+      group: args.group, // Keep old field for backward compatibility
+      groups: args.groups, // New field with group IDs
     });
   },
 });

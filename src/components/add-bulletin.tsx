@@ -86,7 +86,7 @@ export function AddBulletin() {
 const formSchema = z.object({
   post: z.string().min(2).max(50),
   body: z.string().min(2).max(1000),
-  group: z.array(z.string()),
+  groups: z.array(z.string()), // Group IDs now
   date: z.string(),
 });
 
@@ -106,7 +106,7 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
     defaultValues: {
       post: "",
       body: "",
-      group: [],
+      groups: [],
       date: "",
     },
   });
@@ -117,10 +117,21 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
 
     const title = values.post;
     const body = values.body;
-    const team = values.group;
+    const team = values.groups; // This now contains group IDs
     const date = values.date;
 
-    const newBulletinId = await mutationFn({ title, body, team, date });
+    // Convert group IDs to group names for backward compatibility
+    const groupNames =
+      groups?.filter((g) => values.groups.includes(g._id)).map((g) => g.name) ||
+      [];
+
+    const newBulletinId = await mutationFn({
+      title,
+      body,
+      team: groupNames, // Keep old format for now
+      date,
+      groups: values.groups, // Pass group IDs to new field
+    });
 
     {
       if (selectedImage) {
@@ -201,7 +212,7 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
           />
           <FormField
             control={form.control}
-            name="group"
+            name="groups"
             render={() => (
               <FormItem>
                 <FormLabel>Group</FormLabel>
@@ -209,7 +220,7 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
                   <FormField
                     key={group._id}
                     control={form.control}
-                    name="group"
+                    name="groups"
                     render={({ field }) => (
                       <FormItem
                         key={group._id}
@@ -217,15 +228,15 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
                       >
                         <FormControl>
                           <Checkbox
-                            checked={field.value?.includes(group.name)}
+                            checked={field.value?.includes(group._id)}
                             onCheckedChange={(checked) => {
                               // Ensure field.value is always an array
                               const currentValue = field.value || [];
                               return checked
-                                ? field.onChange([...currentValue, group.name])
+                                ? field.onChange([...currentValue, group._id])
                                 : field.onChange(
                                     currentValue.filter(
-                                      (value) => value !== group.name,
+                                      (value) => value !== group._id,
                                     ),
                                   );
                             }}

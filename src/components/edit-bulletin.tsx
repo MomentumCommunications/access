@@ -40,6 +40,8 @@ import {
 } from "./ui/form";
 import { ScrollArea } from "./ui/scroll-area";
 import { PencilLine } from "lucide-react";
+import { Id } from "convex/_generated/dataModel";
+import { useEffect } from "react";
 
 export function EditBulletin({ bulletin }: { bulletin: any }) {
   const [open, setOpen] = React.useState(false);
@@ -87,7 +89,7 @@ export function EditBulletin({ bulletin }: { bulletin: any }) {
             <DrawerTitle>Edit Bulletin</DrawerTitle>
           </DrawerHeader>
           <EditBulletinForm bulletin={bulletin} />
-          <DrawerFooter className="pt-2">
+          <DrawerFooter className="pt-2 pb-8 px-0">
             <DrawerClose asChild>
               <Button variant="outline">Cancel</Button>
             </DrawerClose>
@@ -101,7 +103,7 @@ export function EditBulletin({ bulletin }: { bulletin: any }) {
 const formSchema = z.object({
   post: z.string().min(2).max(50),
   body: z.string().min(2).max(1000),
-  group: z.array(z.string()),
+  group: z.array(z.string()), // Group IDs now
   date: z.string(),
 });
 
@@ -120,18 +122,38 @@ function EditBulletinForm({ bulletin }: { bulletin: any }) {
     },
   });
 
+  // Update form values when groups data is loaded
+  useEffect(() => {
+    if (groups && bulletin) {
+      const groupIds = bulletin.groups || 
+        (groups.filter(g => bulletin.group?.includes(g.name)).map(g => g._id)) || [];
+      
+      form.reset({
+        post: bulletin.title,
+        body: bulletin.body,
+        group: groupIds,
+        date: bulletin.date,
+      });
+    }
+  }, [groups, bulletin, form]);
+
   // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const title = values.post;
     const body = values.body;
-    const group = values.group;
+    const groupIds = values.group as Id<"groups">[]; // This now contains group IDs
     const date = values.date;
+
+    // Convert group IDs to group names for backward compatibility
+    const groupNames =
+      groups?.filter((g) => groupIds.includes(g._id)).map((g) => g.name) || [];
 
     mutationFn({
       id: bulletin._id,
       title,
       body,
-      group,
+      group: groupNames, // Keep old format for backward compatibility
+      groups: groupIds, // Pass group IDs to new field
       date,
     });
 
@@ -190,7 +212,11 @@ function EditBulletinForm({ bulletin }: { bulletin: any }) {
               <FormItem>
                 <FormLabel>Body</FormLabel>
                 <FormControl>
-                  <Textarea placeholder="What's on your mind?" {...field} />
+                  <Textarea
+                    {...field}
+                    placeholder="What's on your mind?"
+                    className="min-h-32"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -214,15 +240,15 @@ function EditBulletinForm({ bulletin }: { bulletin: any }) {
                       >
                         <FormControl>
                           <Checkbox
-                            checked={field.value?.includes(group.name)}
+                            checked={field.value?.includes(group._id)}
                             onCheckedChange={(checked) => {
                               // Ensure field.value is always an array
                               const currentValue = field.value || [];
                               return checked
-                                ? field.onChange([...currentValue, group.name])
+                                ? field.onChange([...currentValue, group._id])
                                 : field.onChange(
                                     currentValue.filter(
-                                      (value) => value !== group.name,
+                                      (value) => value !== group._id,
                                     ),
                                   );
                             }}

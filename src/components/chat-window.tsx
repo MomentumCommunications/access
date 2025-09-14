@@ -362,14 +362,16 @@ export function ChatWindow({
             )}
 
             {/* Messages grouped by date */}
-            <div className="space-y-2 space-x-8">
-              <h2 className="text-2xl lg:text-5xl font-semibold">
-                {channelNameOrFallback(channel?.name)}
-              </h2>
-              {channel?.description && (
-                <p className="text-lg">{channel.description}</p>
-              )}
-            </div>
+            {!channel?.isDM && (
+              <div className="space-y-2 space-x-8">
+                <h2 className="text-2xl lg:text-5xl font-semibold">
+                  {channelNameOrFallback(channel?.name)}
+                </h2>
+                {channel?.description && (
+                  <p className="text-lg">{channel.description}</p>
+                )}
+              </div>
+            )}
             {messageGroups.map((dateGroup) => (
               <div
                 key={`date-group-${dateGroup.date.toISOString()}`}

@@ -10,8 +10,12 @@ import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
 import { CircleSlash } from "lucide-react";
 import Delayed from "~/components/delayed";
+import { EditGroup } from "~/components/edit-group";
+import { AddGroup } from "~/components/add-group";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { Dialog, DialogTrigger } from "~/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,77 +105,88 @@ function RouteComponent() {
     <div className="flex justify-center py-4 lg:py-8 items-center">
       <div className="flex flex-col gap-4 max-w-4xl justify-start px-4 w-full">
         <h1 className="text-2xl font-bold lg:text-4xl">Directory</h1>
-        {isLoading && (
-          <>
-            <Skeleton className="h-8 w-1/2" />
-            <Skeleton className="h-8 w-1/2" />
-            <Skeleton className="h-8 w-1/2" />
-          </>
-        )}
-        {users && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">Name</TableHead>
-                <TableHead className="w-[100px]">Display Name</TableHead>
-                <TableHead className="w-[100px]">Role</TableHead>
-                <TableHead className="w-[100px]">Groups</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users?.map((user) => (
-                <TableRow key={user._id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell className="font-medium">
-                    {user.displayName}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="-translate-x-3"
-                        >
-                          <span
-                            className={cn(
-                              "capitalize",
-                              !user.role && "text-muted-foreground",
-                            )}
-                          >
-                            {user.role || "Unassigned"}
-                          </span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuLabel>Role</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setRole(user._id, "admin")}
-                        >
-                          Admin
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setRole(user._id, "staff")}
-                        >
-                          Staff
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setRole(user._id, "member")}
-                        >
-                          Member
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    <UserGroups groups={groups} user={user} />
-                  </TableCell>
-                </TableRow>
+        <section>
+          <h2 className="text-xl font-bold">Groups</h2>
+          <div className="flex gap-2 py-2">
+            <AddGroup />
+            {groups &&
+              groups.map((group) => (
+                <EditGroup key={group._id} group={group} />
               ))}
-            </TableBody>
-          </Table>
-        )}
+          </div>
+        </section>
+        <section>
+          <h2 className="text-xl font-bold">People</h2>
+          {isLoading && (
+            <>
+              <Skeleton className="h-8 w-1/2" />
+              <Skeleton className="h-8 w-1/2" />
+              <Skeleton className="h-8 w-1/2" />
+            </>
+          )}
+          {users && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]">Name</TableHead>
+                  <TableHead className="w-[100px]">Display Name</TableHead>
+                  <TableHead className="w-[100px] translate-x-3">
+                    Role
+                  </TableHead>
+                  <TableHead className="w-[100px]">Groups</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users?.map((user) => (
+                  <TableRow key={user._id}>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {user.displayName}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger>
+                          <Button size="sm" variant="ghost">
+                            <span
+                              className={cn(
+                                "capitalize",
+                                !user.role && "text-muted-foreground",
+                              )}
+                            >
+                              {user.role || "Unassigned"}
+                            </span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuLabel>Role</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => setRole(user._id, "admin")}
+                          >
+                            Admin
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setRole(user._id, "staff")}
+                          >
+                            Staff
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setRole(user._id, "member")}
+                          >
+                            Member
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <UserGroups groups={groups} user={user} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </section>
       </div>
     </div>
   );

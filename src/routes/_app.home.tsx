@@ -12,6 +12,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardDescription, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
+import { BulletinFeed } from "~/components/bulletin-feed";
 
 export const Route = createFileRoute("/_app/home")({
   component: Home,
@@ -28,6 +29,10 @@ function Home() {
   );
 
   const role = userData?.role;
+
+  const userGroups = userData?.group || [];
+
+  console.log(userGroups);
 
   const { data: groups, isLoading: groupsLoading } = useQuery(
     convexQuery(api.etcFunctions.getGroups, {}),
@@ -113,9 +118,6 @@ function Home() {
     <div className="flex justify-center overscroll-contain">
       <main className="max-w-3xl w-full p-4">
         <div className="flex flex-col gap-4 py-4 justify-start">
-          <SignedIn>
-            <p>Hello {user?.firstName}!</p>
-          </SignedIn>
           <SignedOut>
             <div className="py-4">
               <h1 className="text-4xl font-bold text-center">
@@ -123,15 +125,18 @@ function Home() {
               </h1>
             </div>
             <SignInPrompt />
+            <ProtectedContent password={commonPassword} />
           </SignedOut>
         </div>
-        <div className="flex align-middle justify-between">
-          <h1 className="text-4xl font-bold">Bulletin</h1>
-          {role === "admin" && <LazyAddBulletin />}
-        </div>
-        <Separator className="my-4 w-full" />
-        {role !== "admin" && <ProtectedContent password={commonPassword} />}
-        {role === "admin" && <AdminBulletin />}
+        <SignedIn>
+          <div className="flex align-middle justify-between">
+            <h1 className="text-4xl font-bold">Bulletin</h1>
+            {role === "admin" && <LazyAddBulletin />}
+          </div>
+          <Separator className="my-4 w-full" />
+          {role !== "admin" && <BulletinFeed groups={userGroups} />}
+          {role === "admin" && <AdminBulletin />}
+        </SignedIn>
       </main>
     </div>
   );

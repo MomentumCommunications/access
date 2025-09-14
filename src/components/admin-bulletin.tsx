@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
+import { useMemo } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -37,6 +38,41 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Markdown } from "./markdown-wrapper";
 import { Separator } from "./ui/separator";
+
+// Helper component to display group badges
+function GroupBadges({
+  bulletin,
+  groups,
+}: {
+  bulletin: any;
+  groups: Array<{ _id: Id<"groups">; name: string }>;
+}) {
+  const groupNames = useMemo(() => {
+    // Prefer new groups field over old group field
+    if (bulletin.groups && bulletin.groups.length > 0) {
+      return groups
+        .filter((g) => bulletin.groups.includes(g._id))
+        .map((g) => g.name);
+    }
+    // Fallback to old group field
+    return bulletin.group || [];
+  }, [bulletin, groups]);
+
+  // Show ALL badge if all groups are selected
+  if (groupNames.length === groups.length && groups.length > 0) {
+    return <Badge className="font-bold">ALL</Badge>;
+  }
+
+  return (
+    <>
+      {groupNames.map((groupName: string) => (
+        <Badge key={groupName} className="font-bold">
+          {groupName.toUpperCase()}
+        </Badge>
+      ))}
+    </>
+  );
+}
 
 function DeleteButton({
   id,
@@ -92,6 +128,10 @@ export function AdminBulletin() {
     isError,
   } = useQuery(convexQuery(api.bulletins.getAllBulletins, {}));
 
+  const { data: groups } = useQuery(
+    convexQuery(api.etcFunctions.getGroups, {}),
+  );
+
   const pastBulletins = bulletins?.filter(
     // @ts-expect-error ts(2349)
     (bulletin) => new Date(bulletin?.date) < Date.now(),
@@ -136,7 +176,7 @@ export function AdminBulletin() {
           <a href="/directory">Directory</a>
         </Button>
       </div>
-      <div id="past-bulletins" className="hidden">
+      <div id="past-bulletins" className="hidden py-6">
         <h2 className="text-2xl font-bold mb-4">Past Events</h2>
         <Accordion
           type="single"
@@ -236,19 +276,7 @@ export function AdminBulletin() {
                       </p>
                     </div>
                     <div className="flex gap-1">
-                      {
-                        // This is not as slick as querying the groups for the exact number,
-                        // but this doesn't change very often and I'll save the call to the database.
-                        bulletin.group?.length === 4 ? (
-                          <Badge className="font-bold">ALL</Badge>
-                        ) : (
-                          bulletin.group?.map((group) => (
-                            <Badge key={group} className="font-bold">
-                              {group.toUpperCase()}
-                            </Badge>
-                          ))
-                        )
-                      }
+                      <GroupBadges bulletin={bulletin} groups={groups || []} />
                     </div>
                   </div>
                 </div>
@@ -264,7 +292,7 @@ export function AdminBulletin() {
             ))}
         </Accordion>
       </div>
-      <h2 className="text-2xl font-bold mb-4">Upcoming Events</h2>
+      <h2 className="text-2xl font-bold mb-4 pt-6">Upcoming Events</h2>
       <Accordion
         type="single"
         collapsible
@@ -363,19 +391,7 @@ export function AdminBulletin() {
                     </p>
                   </div>
                   <div className="flex gap-1">
-                    {
-                      // This is not as slick as querying the groups for the exact number,
-                      // but this doesn't change very often and I'll save the call to the database.
-                      bulletin.group?.length === 4 ? (
-                        <Badge className="font-bold">ALL</Badge>
-                      ) : (
-                        bulletin.group?.map((group) => (
-                          <Badge key={group} className="font-bold">
-                            {group.toUpperCase()}
-                          </Badge>
-                        ))
-                      )
-                    }
+                    <GroupBadges bulletin={bulletin} groups={groups || []} />
                   </div>
                 </div>
               </div>

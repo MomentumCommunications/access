@@ -23,9 +23,13 @@ export function ProtectedContent({ password }: { password: string }) {
     convexQuery(api.etcFunctions.getGroupByPassword, { password }),
   );
 
-  const { data: groupDocuments } = useQuery(
-    convexQuery(api.etcFunctions.getGroupDocuments, { groupIds: [group?._id] }),
-  );
+  const { data: document } = useQuery({
+    ...convexQuery(api.etcFunctions.getUrlForDocument, {
+      storageId: group?.document!,
+    }),
+    enabled: !!group?.document,
+    initialData: null, // <-- avoids the "missing initialData" overload error
+  });
 
   if (isLoading) return <p>Loading...</p>;
 
@@ -34,20 +38,16 @@ export function ProtectedContent({ password }: { password: string }) {
   return (
     <>
       <h2 className="text-2xl font-bold mb-4">{group?.name.toUpperCase()}</h2>
-      {groupDocuments?.[0]?.documentUrl && (
+      {document && (
         <>
           <embed
-            src={groupDocuments?.[0]?.documentUrl}
+            src={document}
             type="application/pdf"
             width="100%"
             height="600px"
           />
           <Button asChild variant="link">
-            <a
-              href={groupDocuments?.[0]?.documentUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href={document} target="_blank" rel="noopener noreferrer">
               Open document in new tab
             </a>
           </Button>

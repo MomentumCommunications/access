@@ -36,8 +36,18 @@ export const addGroup = mutation({
     document: v.optional(v.id("_storage")),
     color: v.optional(v.string()),
   },
-  handler: async (ctx, { name, description, password, info, document, color }) => {
-    await ctx.db.insert("groups", { name, description, password, info, document, color });
+  handler: async (
+    ctx,
+    { name, description, password, info, document, color },
+  ) => {
+    await ctx.db.insert("groups", {
+      name,
+      description,
+      password,
+      info,
+      document,
+      color,
+    });
   },
 });
 
@@ -92,11 +102,14 @@ export const getUrlForDocument = query({
 });
 
 export const getGroupDocuments = query({
-  args: { groupIds: v.array(v.id("groups")) },
+  args: { groupIds: v.optional(v.array(v.id("groups"))) },
   handler: async (ctx, { groupIds }) => {
+    if (!groupIds) {
+      return [];
+    }
     const groups = await Promise.all(groupIds.map((id) => ctx.db.get(id)));
-    const groupsWithDocuments = groups.filter(group => group?.document);
-    
+    const groupsWithDocuments = groups.filter((group) => group?.document);
+
     const documentsWithUrls = await Promise.all(
       groupsWithDocuments.map(async (group) => {
         if (!group?.document) return null;
@@ -106,10 +119,10 @@ export const getGroupDocuments = query({
           groupName: group.name,
           documentUrl: url,
         };
-      })
+      }),
     );
-    
-    return documentsWithUrls.filter(doc => doc !== null);
+
+    return documentsWithUrls.filter((doc) => doc !== null);
   },
 });
 

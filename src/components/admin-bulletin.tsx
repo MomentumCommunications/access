@@ -1,4 +1,4 @@
-import { convexQuery, useConvexQuery } from "@convex-dev/react-query";
+import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
 import { format } from "date-fns";
@@ -137,9 +137,13 @@ export function AdminBulletin() {
     (bulletin) => new Date(bulletin?.date) < Date.now(),
   );
 
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() - 1);
+
   const futureBulletins = bulletins?.filter(
     // @ts-expect-error ts(2349)
-    (bulletin) => new Date(bulletin?.date) > Date.now(),
+    (bulletin) => new Date(bulletin?.date) > tomorrow,
   );
 
   const hideFunction = useMutation(api.bulletins.hideBulletin);

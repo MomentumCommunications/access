@@ -24,9 +24,13 @@ export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
     convexQuery(api.etcFunctions.getGroupDocuments, { groupIds: groups }),
   );
 
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() - 1);
+
   const futureBulletins = bulletins?.filter(
     // @ts-expect-error ts(2349)
-    (bulletin) => new Date(bulletin?.date) > Date.now(),
+    (bulletin) => new Date(bulletin?.date) > tomorrow,
   );
 
   // const { data: group } = useQuery(

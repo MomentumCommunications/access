@@ -91,8 +91,12 @@ export const getBulletinsByPassword = query({
       return dateA.getTime() - dateB.getTime();
     });
 
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() - 1);
+
     const futureBulletins = sortedBulletins.filter(
-      (b) => new Date(b.date || 0) > new Date(),
+      (b) => new Date(b.date || 0) > tomorrow,
     );
 
     return futureBulletins;

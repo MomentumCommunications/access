@@ -13,9 +13,7 @@ import Delayed from "~/components/delayed";
 import { EditGroup } from "~/components/edit-group";
 import { AddGroup } from "~/components/add-group";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Dialog, DialogTrigger } from "~/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -128,6 +126,7 @@ function RouteComponent() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[25px]">PFP</TableHead>
                   <TableHead className="w-[100px]">Name</TableHead>
                   <TableHead className="w-[100px]">Display Name</TableHead>
                   <TableHead className="w-[100px] translate-x-3">
@@ -139,6 +138,13 @@ function RouteComponent() {
               <TableBody>
                 {users?.map((user) => (
                   <TableRow key={user._id}>
+                    <TableCell className="font-medium">
+                      <img
+                        className="h-8 w-8 rounded-full"
+                        src={user.image}
+                        alt={user.name}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell className="font-medium">
                       {user.displayName}

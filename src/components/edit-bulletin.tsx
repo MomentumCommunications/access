@@ -10,17 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "~/components/ui/drawer";
 import { Input } from "~/components/ui/input";
-import { useIsMobile } from "~/hooks/use-mobile";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "convex/_generated/api";
 import { Textarea } from "./ui/textarea";
@@ -45,58 +35,28 @@ import { useEffect } from "react";
 
 export function EditBulletin({ bulletin }: { bulletin: any }) {
   const [open, setOpen] = React.useState(false);
-  const isMobile = useIsMobile();
-
-  if (!isMobile) {
-    return (
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button
-            variant="ghost"
-            className="px-0 size-8 has-[>svg]:px-2 mx-0 w-full justify-start"
-          >
-            <PencilLine />
-            Edit
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[1000px]">
-          <DialogHeader>
-            <DialogTitle>Edit Bulletin</DialogTitle>
-            <DialogDescription>
-              Make changes to &quot;{bulletin.title}&quot;
-            </DialogDescription>
-          </DialogHeader>
-          <EditBulletinForm bulletin={bulletin} />
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button
           variant="ghost"
           className="px-0 size-8 has-[>svg]:px-2 mx-0 w-full justify-start"
         >
           <PencilLine />
-          Edit Bulletin
+          Edit
         </Button>
-      </DrawerTrigger>
-      <DrawerContent>
-        <ScrollArea className="px-2">
-          <DrawerHeader className="text-left">
-            <DrawerTitle>Edit Bulletin</DrawerTitle>
-          </DrawerHeader>
-          <EditBulletinForm bulletin={bulletin} />
-          <DrawerFooter className="pt-2 pb-8 px-0">
-            <DrawerClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DrawerClose>
-          </DrawerFooter>
-        </ScrollArea>
-      </DrawerContent>
-    </Drawer>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[1000px]">
+        <DialogHeader>
+          <DialogTitle>Edit Bulletin</DialogTitle>
+          <DialogDescription>
+            Make changes to &quot;{bulletin.title}&quot;
+          </DialogDescription>
+        </DialogHeader>
+        <EditBulletinForm bulletin={bulletin} />
+      </DialogContent>
+    </Dialog>
   );
 }
 

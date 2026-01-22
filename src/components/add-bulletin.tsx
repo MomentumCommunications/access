@@ -10,17 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "~/components/ui/drawer";
 import { Input } from "~/components/ui/input";
-import { useIsMobile } from "~/hooks/use-mobile";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "convex/_generated/api";
 import { Textarea } from "./ui/textarea";
@@ -43,44 +33,22 @@ import { Id } from "convex/_generated/dataModel";
 
 export function AddBulletin() {
   const [open, setOpen] = React.useState(false);
-  const isMobile = useIsMobile();
-
-  if (!isMobile) {
-    return (
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline">Add Bulletin</Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[1000px]">
-          <DialogHeader>
-            <DialogTitle>New Bulletin</DialogTitle>
-            <DialogDescription>
-              What would you like everyone to know?
-            </DialogDescription>
-          </DialogHeader>
-          <BulletinForm />
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button variant="outline">Add Bulletin</Button>
-      </DrawerTrigger>
-      <DrawerContent>
-        <DrawerHeader className="text-left">
-          <DrawerTitle>New Bulletin</DrawerTitle>
-        </DrawerHeader>
-        <BulletinForm className="px-4" />
-        <DrawerFooter className="pt-2">
-          <DrawerClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DrawerClose>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[1000px]">
+        <DialogHeader>
+          <DialogTitle>New Bulletin</DialogTitle>
+          <DialogDescription>
+            What would you like everyone to know?
+          </DialogDescription>
+        </DialogHeader>
+        <BulletinForm />
+      </DialogContent>
+    </Dialog>
   );
 }
 

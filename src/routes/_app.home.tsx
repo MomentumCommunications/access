@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import { LazyAddBulletin } from "~/components/lazy/AdminComponents";
 import { AdminBulletin } from "~/components/admin-bulletin";
 import { ProtectedContent } from "~/components/protected-content";
-import { SignInPrompt } from "~/components/sign-in-prompt";
 import { Button } from "~/components/ui/button";
 import { Card, CardDescription, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -124,7 +123,6 @@ function Home() {
                 ACCESS MOMENTUM
               </h1>
             </div>
-            <SignInPrompt />
             <ProtectedContent password={commonPassword} />
           </SignedOut>
         </div>

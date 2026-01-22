@@ -11,6 +11,7 @@ import {
 } from "~/components/ui/accordion";
 import { Markdown } from "./markdown-wrapper";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 
 export function ProtectedContent({ password }: { password: string }) {
   const {
@@ -37,7 +38,9 @@ export function ProtectedContent({ password }: { password: string }) {
 
   return (
     <>
-      <h2 className="text-2xl font-bold mb-4">{group?.name.toUpperCase()}</h2>
+      <Badge variant={"secondary"} className="text-2xl font-bold mb-4">
+        {group?.name.toUpperCase()}
+      </Badge>
       {document && (
         <>
           <embed

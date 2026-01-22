@@ -7,7 +7,9 @@ import {
   HelpCircle,
   Home,
   Lock,
+  LogIn,
   MessageSquare,
+  UserPlus,
 } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import {
@@ -288,8 +290,17 @@ const AppSidebarComponent = memo(() => {
           <SignedOut>
             <SidebarGroup>
               <SidebarGroupLabel>Chat</SidebarGroupLabel>
+              <SidebarMenuButton asChild variant={"outline"}>
+                <a href="/sign-up">
+                  <UserPlus />
+                  <span>Sign up</span>
+                </a>
+              </SidebarMenuButton>
               <SidebarMenuButton asChild>
-                <a href="/sign-in">Must be signed in to chat</a>
+                <a href="/sign-in">
+                  <LogIn />
+                  <span>Sign in</span>
+                </a>
               </SidebarMenuButton>
             </SidebarGroup>
             <SidebarGroup>

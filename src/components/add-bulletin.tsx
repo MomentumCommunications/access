@@ -39,6 +39,7 @@ import {
   FormMessage,
 } from "./ui/form";
 import { ScrollArea } from "./ui/scroll-area";
+import { Id } from "convex/_generated/dataModel";
 
 export function AddBulletin() {
   const [open, setOpen] = React.useState(false);
@@ -50,7 +51,7 @@ export function AddBulletin() {
         <DialogTrigger asChild>
           <Button variant="outline">Add Bulletin</Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-[1000px]">
           <DialogHeader>
             <DialogTitle>New Bulletin</DialogTitle>
             <DialogDescription>
@@ -85,7 +86,7 @@ export function AddBulletin() {
 
 const formSchema = z.object({
   post: z.string().min(2).max(50),
-  body: z.string().min(2).max(1000),
+  body: z.string().min(2).max(2000),
   groups: z.array(z.string()), // Group IDs now
   date: z.string(),
 });
@@ -130,7 +131,7 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
       body,
       team: groupNames, // Keep old format for now
       date,
-      groups: values.groups, // Pass group IDs to new field
+      groups: values.groups as Id<"groups">[], // Pass group IDs to new field
     });
 
     {

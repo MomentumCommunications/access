@@ -59,7 +59,7 @@ export function EditBulletin({ bulletin }: { bulletin: any }) {
             Edit
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[1000px]">
           <DialogHeader>
             <DialogTitle>Edit Bulletin</DialogTitle>
             <DialogDescription>
@@ -102,7 +102,7 @@ export function EditBulletin({ bulletin }: { bulletin: any }) {
 
 const formSchema = z.object({
   post: z.string().min(2).max(50),
-  body: z.string().min(2).max(1000),
+  body: z.string().min(2).max(2000),
   group: z.array(z.string()), // Group IDs now
   date: z.string(),
 });
@@ -125,9 +125,13 @@ function EditBulletinForm({ bulletin }: { bulletin: any }) {
   // Update form values when groups data is loaded
   useEffect(() => {
     if (groups && bulletin) {
-      const groupIds = bulletin.groups || 
-        (groups.filter(g => bulletin.group?.includes(g.name)).map(g => g._id)) || [];
-      
+      const groupIds =
+        bulletin.groups ||
+        groups
+          .filter((g) => bulletin.group?.includes(g.name))
+          .map((g) => g._id) ||
+        [];
+
       form.reset({
         post: bulletin.title,
         body: bulletin.body,

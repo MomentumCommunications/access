@@ -62,7 +62,7 @@ export function EditBulletin({ bulletin }: { bulletin: any }) {
 
 const formSchema = z.object({
   post: z.string().min(2).max(50),
-  body: z.string().min(2).max(2000),
+  body: z.string().min(2).max(4000),
   group: z.array(z.string()), // Group IDs now
   date: z.string(),
 });

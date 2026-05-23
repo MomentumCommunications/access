@@ -64,6 +64,13 @@ export const editGroup = mutation({
   },
 });
 
+export const deleteGroup = mutation({
+  args: { group: v.id("groups") },
+  handler: async (ctx, { group }) => {
+    await ctx.db.delete(group);
+  },
+});
+
 export const setRole = mutation({
   args: {
     user: v.id("users"),

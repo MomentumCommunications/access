@@ -18,7 +18,9 @@ import { Route as AppSearchRouteImport } from './routes/_app.search'
 import { Route as AppHomeRouteImport } from './routes/_app.home'
 import { Route as AppHelpRouteImport } from './routes/_app.help'
 import { Route as AppDirectoryRouteImport } from './routes/_app.directory'
+import { Route as AppCreateBulletinRouteImport } from './routes/_app.create-bulletin'
 import { Route as AppAccountRouteImport } from './routes/_app.account'
+import { Route as AppBulletinIdRouteImport } from './routes/_app.$bulletinId'
 import { Route as AppChannelIndexRouteImport } from './routes/_app.channel/index'
 import { Route as AppDmDmIdRouteImport } from './routes/_app.dm/$dmId'
 import { Route as AppChannelChannelIdRouteImport } from './routes/_app.channel/$channelId'
@@ -67,9 +69,19 @@ const AppDirectoryRoute = AppDirectoryRouteImport.update({
   path: '/directory',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCreateBulletinRoute = AppCreateBulletinRouteImport.update({
+  id: '/create-bulletin',
+  path: '/create-bulletin',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAccountRoute = AppAccountRouteImport.update({
   id: '/account',
   path: '/account',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBulletinIdRoute = AppBulletinIdRouteImport.update({
+  id: '/$bulletinId',
+  path: '/$bulletinId',
   getParentRoute: () => AppRoute,
 } as any)
 const AppChannelIndexRoute = AppChannelIndexRouteImport.update({
@@ -90,7 +102,9 @@ const AppChannelChannelIdRoute = AppChannelChannelIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$bulletinId': typeof AppBulletinIdRoute
   '/account': typeof AppAccountRoute
+  '/create-bulletin': typeof AppCreateBulletinRoute
   '/directory': typeof AppDirectoryRoute
   '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
@@ -104,7 +118,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$bulletinId': typeof AppBulletinIdRoute
   '/account': typeof AppAccountRoute
+  '/create-bulletin': typeof AppCreateBulletinRoute
   '/directory': typeof AppDirectoryRoute
   '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
@@ -120,7 +136,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/_app/$bulletinId': typeof AppBulletinIdRoute
   '/_app/account': typeof AppAccountRoute
+  '/_app/create-bulletin': typeof AppCreateBulletinRoute
   '/_app/directory': typeof AppDirectoryRoute
   '/_app/help': typeof AppHelpRoute
   '/_app/home': typeof AppHomeRoute
@@ -136,7 +154,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$bulletinId'
     | '/account'
+    | '/create-bulletin'
     | '/directory'
     | '/help'
     | '/home'
@@ -150,7 +170,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$bulletinId'
     | '/account'
+    | '/create-bulletin'
     | '/directory'
     | '/help'
     | '/home'
@@ -165,7 +187,9 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/_app/$bulletinId'
     | '/_app/account'
+    | '/_app/create-bulletin'
     | '/_app/directory'
     | '/_app/help'
     | '/_app/home'
@@ -250,11 +274,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDirectoryRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/create-bulletin': {
+      id: '/_app/create-bulletin'
+      path: '/create-bulletin'
+      fullPath: '/create-bulletin'
+      preLoaderRoute: typeof AppCreateBulletinRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/account': {
       id: '/_app/account'
       path: '/account'
       fullPath: '/account'
       preLoaderRoute: typeof AppAccountRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/$bulletinId': {
+      id: '/_app/$bulletinId'
+      path: '/$bulletinId'
+      fullPath: '/$bulletinId'
+      preLoaderRoute: typeof AppBulletinIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/channel/': {
@@ -282,7 +320,9 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppBulletinIdRoute: typeof AppBulletinIdRoute
   AppAccountRoute: typeof AppAccountRoute
+  AppCreateBulletinRoute: typeof AppCreateBulletinRoute
   AppDirectoryRoute: typeof AppDirectoryRoute
   AppHelpRoute: typeof AppHelpRoute
   AppHomeRoute: typeof AppHomeRoute
@@ -294,7 +334,9 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppBulletinIdRoute: AppBulletinIdRoute,
   AppAccountRoute: AppAccountRoute,
+  AppCreateBulletinRoute: AppCreateBulletinRoute,
   AppDirectoryRoute: AppDirectoryRoute,
   AppHelpRoute: AppHelpRoute,
   AppHomeRoute: AppHomeRoute,

@@ -1,25 +1,14 @@
-import * as React from "react";
-
-import { cn } from "~/lib/utils";
-import { Button } from "~/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "~/components/ui/dialog";
-import { Input } from "~/components/ui/input";
 import { useConvexMutation } from "@convex-dev/react-query";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
-import { Textarea } from "./ui/textarea";
+import { Id } from "convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { useRef, useState } from "react";
-import { Checkbox } from "./ui/checkbox";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import z from "zod";
+import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -27,47 +16,13 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "./ui/form";
-import { ScrollArea } from "./ui/scroll-area";
-import { Id } from "convex/_generated/dataModel";
-import { useIsMobile } from "~/hooks/use-mobile";
-import { useNavigate } from "@tanstack/react-router";
-import { PlusIcon } from "lucide-react";
+} from "~/components/ui/form";
+import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
 
-export function AddBulletin() {
-  const [open, setOpen] = React.useState(false);
-
-  const isMobile = useIsMobile();
-  const navigate = useNavigate();
-
-  if (isMobile) {
-    return (
-      <Button
-        variant="outline"
-        onClick={() => navigate({ to: "/create-bulletin" })}
-      >
-        <PlusIcon className="h-4 w-4" />
-      </Button>
-    );
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">Add Bulletin</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>New Bulletin</DialogTitle>
-          <DialogDescription>
-            What would you like everyone to know?
-          </DialogDescription>
-        </DialogHeader>
-        <BulletinForm />
-      </DialogContent>
-    </Dialog>
-  );
-}
+export const Route = createFileRoute("/_app/$bulletinId")({
+  component: RouteComponent,
+});
 
 const formSchema = z.object({
   post: z.string().min(2).max(50),
@@ -76,7 +31,7 @@ const formSchema = z.object({
   date: z.string(),
 });
 
-function BulletinForm({ className }: React.ComponentProps<"form">) {
+function RouteComponent() {
   const groups = useQuery(api.etcFunctions.getGroups, {});
   // Get mutation function from Convex
   const mutationFn = useConvexMutation(api.bulletins.createBulletin);
@@ -149,10 +104,10 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
   }
 
   return (
-    <ScrollArea>
+    <div className="flex items-center justify-center max-w-4xl mx-auto pt-8">
       <Form {...form}>
         <form
-          className={cn("grid items-start gap-6", className)}
+          className="grid items-start gap-6"
           onSubmit={form.handleSubmit(onSubmit)}
         >
           <FormField
@@ -188,7 +143,7 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
               <FormItem>
                 <FormLabel>Body</FormLabel>
                 <FormControl>
-                  <Textarea className="min-h-[200px]" {...field} />
+                  <Textarea {...field} className="min-h-[200px]" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -246,6 +201,6 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
           <Button type="submit">Save changes</Button>
         </form>
       </Form>
-    </ScrollArea>
+    </div>
   );
 }

@@ -92,7 +92,7 @@ function DeleteButton({
       <AlertDialogTrigger asChild>
         <Button
           variant="ghost"
-          className="px-0 size-8 has-[>svg]:px-2 mx-0 w-full justify-start"
+          className="size-8 has-[>svg]:px-2 mx-0 w-full justify-start px-0"
         >
           <Trash2 color="red" />
           <span className="text-red-500">Delete</span>
@@ -166,22 +166,22 @@ export function AdminBulletin() {
 
   return (
     <>
-      <div className="flex justify-end flex-row h-6 items-center gap-2">
+      <div className="flex h-6 flex-row items-center justify-end gap-2">
         <Button
           id="past-bulletins-toggle"
           variant="link"
-          className="text-xs px-0"
+          className="px-0 text-xs"
           onClick={togglePastBulletins}
         >
           Toggle past events
         </Button>
         <Separator orientation="vertical" className="h-full" />
-        <Button variant="link" className="text-xs px-0" asChild>
+        <Button variant="link" className="px-0 text-xs" asChild>
           <a href="/directory">Directory</a>
         </Button>
       </div>
       <div id="past-bulletins" className="hidden py-6">
-        <h2 className="text-2xl font-bold mb-4">Past Events</h2>
+        <h2 className="mb-4 text-2xl font-bold">Past Events</h2>
         <Accordion
           type="single"
           collapsible
@@ -192,7 +192,7 @@ export function AdminBulletin() {
             pastBulletins.map((bulletin) => (
               <div
                 key={bulletin._id}
-                className="p-4 mb-4 border border-muted rounded"
+                className="border-muted mb-4 rounded border p-4"
               >
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-col gap-2">
@@ -200,7 +200,7 @@ export function AdminBulletin() {
                       <img
                         src={bulletin.image}
                         alt={bulletin.title}
-                        className="w-full md:w-1/3 rounded"
+                        className="w-full rounded md:w-1/3"
                       />
                     )}
                     <div className="flex justify-between">
@@ -222,7 +222,7 @@ export function AdminBulletin() {
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
-                              className="h-8 w-8 p-0 cursor-pointer"
+                              className="h-8 w-8 cursor-pointer p-0"
                             >
                               <span className="sr-only">Open menu</span>
                               <MoreHorizontal />
@@ -265,14 +265,14 @@ export function AdminBulletin() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col w-full items-start gap-2 items-center">
+                  <div className="flex w-full flex-col items-center gap-2">
                     <div className="flex gap-2">
                       {bulletin.hidden && (
                         <EyeOff className="text-muted-foreground" />
                       )}
                       <p
                         className={cn(
-                          "font-bold text-xl",
+                          "text-xl font-bold",
                           bulletin.hidden && "text-muted-foreground",
                         )}
                       >
@@ -288,7 +288,7 @@ export function AdminBulletin() {
                   <AccordionTrigger className="text-sm">
                     Details
                   </AccordionTrigger>
-                  <AccordionContent className="bg-muted p-4 rounded">
+                  <AccordionContent className="bg-muted rounded p-4">
                     <Markdown content={bulletin.body} />
                   </AccordionContent>
                 </AccordionItem>
@@ -296,7 +296,7 @@ export function AdminBulletin() {
             ))}
         </Accordion>
       </div>
-      <h2 className="text-2xl font-bold mb-4 pt-6">Upcoming Events</h2>
+      <h2 className="mb-4 pt-6 text-2xl font-bold">Upcoming Events</h2>
       <Accordion
         type="single"
         collapsible
@@ -307,7 +307,7 @@ export function AdminBulletin() {
           futureBulletins.map((bulletin) => (
             <div
               key={bulletin._id}
-              className="p-4 mb-4 border border-muted rounded"
+              className="border-muted mb-4 rounded border p-4"
             >
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col gap-2">
@@ -315,7 +315,7 @@ export function AdminBulletin() {
                     <img
                       src={bulletin.image}
                       alt={bulletin.title}
-                      className="w-full md:w-1/3 rounded"
+                      className="w-full rounded md:w-1/3"
                     />
                   )}
                   <div className="flex justify-between">
@@ -337,7 +337,7 @@ export function AdminBulletin() {
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
-                            className="h-8 w-8 p-0 cursor-pointer"
+                            className="h-8 w-8 cursor-pointer p-0"
                           >
                             <span className="sr-only">Open menu</span>
                             <MoreHorizontal />
@@ -380,14 +380,14 @@ export function AdminBulletin() {
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-col w-full items-start gap-2 items-center">
+                <div className="flex w-full flex-col items-start items-center gap-2">
                   <div className="flex gap-2">
                     {bulletin.hidden && (
                       <EyeOff className="text-muted-foreground" />
                     )}
                     <p
                       className={cn(
-                        "font-bold text-xl",
+                        "text-xl font-bold",
                         bulletin.hidden && "text-muted-foreground",
                       )}
                     >
@@ -401,7 +401,7 @@ export function AdminBulletin() {
               </div>
               <AccordionItem value={bulletin._id}>
                 <AccordionTrigger className="text-sm">Details</AccordionTrigger>
-                <AccordionContent className="bg-muted p-4 rounded">
+                <AccordionContent className="bg-muted rounded p-4">
                   <Markdown content={bulletin.body} />
                 </AccordionContent>
               </AccordionItem>

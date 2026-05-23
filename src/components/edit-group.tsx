@@ -24,9 +24,21 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useState, useRef } from "react";
 import { Progress } from "./ui/progress";
-import { FileIcon, X } from "lucide-react";
+import { FileIcon, Trash, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation } from "convex/react";
+import { Id } from "convex/_generated/dataModel";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "./ui/alert-dialog";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -34,7 +46,15 @@ const formSchema = z.object({
   color: z.string(),
 });
 
-export function EditGroup({ group }: { group: any }) {
+type Group = {
+  _id: Id<"groups">;
+  name: string;
+  info: string;
+  color: string;
+  document: string;
+};
+
+export function EditGroup({ group }: { group: Group }) {
   const editGroupMutation = useConvexMutation(api.etcFunctions.editGroup);
   const generateUploadUrl = useMutation(api.messages.generateUploadUrl);
   const [isUploading, setIsUploading] = useState(false);
@@ -220,12 +240,50 @@ export function EditGroup({ group }: { group: any }) {
                 Upload a PDF document (max 10MB) - Optional
               </FormDescription>
             </FormItem>
-            <Button type="submit" disabled={isUploading}>
-              {isUploading ? "Uploading..." : "Submit"}
-            </Button>
+            <div className="flex items-center justify-between">
+              <Button type="submit" disabled={isUploading}>
+                {isUploading ? "Uploading..." : "Submit"}
+              </Button>
+              <DeleteGroupButton group={group} />
+            </div>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function DeleteGroupButton({ group }: { group: Group }) {
+  const deleteFunction = useConvexMutation(api.etcFunctions.deleteGroup);
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive">
+          <Trash2 />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete this
+            group.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction asChild>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                deleteFunction({ group: group._id });
+              }}
+            >
+              <span className="dark:text-white">Delete</span>
+            </Button>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

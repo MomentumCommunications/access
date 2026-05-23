@@ -3,6 +3,7 @@ import { memo, useCallback, useRef } from "react";
 import {
   ChevronUp,
   Cog,
+  ExternalLink,
   Hash,
   HelpCircle,
   Home,
@@ -23,7 +24,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSkeleton,
-  SidebarMenuBadge,
   useSidebar,
 } from "~/components/ui/sidebar";
 import {
@@ -36,6 +36,7 @@ import { NewDm } from "./new-dm";
 import { channelNameOrFallback } from "~/lib/utils";
 import { useSidebarDataContext } from "~/contexts/SidebarDataContext";
 import { Link } from "@tanstack/react-router";
+import { Button } from "./ui/button";
 
 // Memoized components for individual sidebar items
 const PublicChannelItem = memo<{
@@ -320,7 +321,20 @@ const AppSidebarComponent = memo(() => {
             </SidebarGroup>
           </SignedOut>
         </SidebarContent>
-        <SidebarFooter />
+        <SidebarFooter>
+          <SidebarMenuButton asChild>
+            <Button variant={"outline"} asChild>
+              <a
+                href="https://m-avl.co/"
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                <span>Main Website</span>
+                <ExternalLink className="ml-2 h-4 w-4" />
+              </a>
+            </Button>
+          </SidebarMenuButton>
+        </SidebarFooter>
       </Sidebar>
     </div>
   );

@@ -82,11 +82,9 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
 
   // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-
     const title = values.post;
     const body = values.body;
-    const team = values.groups; // This now contains group IDs
+    // const team = values.groups; // This now contains group IDs
     const date = values.date;
 
     // Convert group IDs to group names for backward compatibility

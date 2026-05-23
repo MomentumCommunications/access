@@ -14,9 +14,9 @@ import {
 } from "~/lib/message-utils";
 import { ArrowDown } from "lucide-react";
 import { DateSeparator } from "./date-separator";
-import { Button } from "./ui/button";
 import { useMessageReadTracking } from "~/hooks/useMessageReadTracking";
 import React from "react";
+import { Button } from "./ui/button";
 
 interface ChatWindowProps {
   messages?: Message[];

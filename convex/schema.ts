@@ -42,7 +42,8 @@ export default defineSchema({
     groups: v.optional(v.array(v.id("groups"))),
     reactions: v.optional(v.id("reactions")),
     hidden: v.optional(v.boolean()),
-  }).index("byGroup", ["group"])
+  })
+    .index("byGroup", ["group"])
     .index("byGroups", ["groups"]),
   messages: defineTable({
     body: v.string(),
@@ -57,6 +58,14 @@ export default defineSchema({
   })
     .index("byChannel", ["channel"])
     .index("byReplyTo", ["replyToId"]),
+  documents: defineTable({
+    name: v.string(),
+    document: v.id("_storage"),
+  }),
+  docuBulletins: defineTable({
+    document: v.id("_storage"),
+    bulletin: v.id("bulletin"),
+  }),
   channels: defineTable({
     name: v.optional(v.string()),
     description: v.string(),

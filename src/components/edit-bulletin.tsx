@@ -32,16 +32,49 @@ import { ScrollArea } from "./ui/scroll-area";
 import { PencilLine } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import { useEffect } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useIsMobile } from "~/hooks/use-mobile";
 
-export function EditBulletin({ bulletin }: { bulletin: any }) {
+type Bulletin = {
+  _id: Id<"bulletin">;
+  title: string;
+  body: string;
+  pinned: boolean;
+  image?: string;
+  date: string;
+  author?: string;
+  group: string[];
+  groups: Id<"groups">[];
+  reactions?: Id<"reactions">;
+  hidden: boolean;
+};
+
+export function EditBulletin({ bulletin }: { bulletin: Bulletin }) {
   const [open, setOpen] = React.useState(false);
+
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
+
+  if (isMobile) {
+    return (
+      <Button
+        variant="ghost"
+        onClick={() =>
+          navigate({ to: "/$bulletinId", params: { bulletinId: bulletin._id } })
+        }
+      >
+        <PencilLine />
+        <span>Edit</span>
+      </Button>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           variant="ghost"
-          className="px-0 size-8 has-[>svg]:px-2 mx-0 w-full justify-start"
+          className="size-8 has-[>svg]:px-2 mx-0 w-full justify-start px-0"
         >
           <PencilLine />
           Edit
@@ -67,7 +100,7 @@ const formSchema = z.object({
   date: z.string(),
 });
 
-function EditBulletinForm({ bulletin }: { bulletin: any }) {
+function EditBulletinForm({ bulletin }: { bulletin: Bulletin }) {
   const groups = useQuery(api.etcFunctions.getGroups, {});
   // Get mutation function from Convex
   const mutationFn = useConvexMutation(api.bulletins.editBulletin);

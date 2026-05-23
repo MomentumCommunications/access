@@ -39,12 +39,26 @@ import {
 import { Markdown } from "./markdown-wrapper";
 import { Separator } from "./ui/separator";
 
+type Bulletin = {
+  _id: Id<"bulletin">;
+  title: string;
+  body: string;
+  pinned: boolean;
+  image: string;
+  date: string;
+  author?: string;
+  group: string[];
+  groups: Id<"groups">[];
+  reactions?: Id<"reactions">;
+  hidden: boolean;
+};
+
 // Helper component to display group badges
 function GroupBadges({
   bulletin,
   groups,
 }: {
-  bulletin: any;
+  bulletin: Bulletin;
   groups: Array<{ _id: Id<"groups">; name: string }>;
 }) {
   const groupNames = useMemo(() => {

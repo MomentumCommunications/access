@@ -100,7 +100,7 @@ function RouteComponent() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-2 px-2 pb-2">
+    <div className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-2 px-2 pb-12">
       <div className="flex w-full items-center justify-end">
         <Button variant={"link"} onClick={() => navigate({ to: "/home" })}>
           <ArrowLeft className="h-4 w-4" />

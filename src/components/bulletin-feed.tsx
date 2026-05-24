@@ -1,8 +1,6 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
-import { format } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
 import {
   Accordion,
   AccordionContent,
@@ -11,6 +9,7 @@ import {
 } from "~/components/ui/accordion";
 import { Markdown } from "./markdown-wrapper";
 import { Id } from "convex/_generated/dataModel";
+import { formatBulletinDate, getBulletinSortDate } from "~/lib/bulletin-date";
 
 export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
   const {
@@ -29,8 +28,8 @@ export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
   tomorrow.setDate(tomorrow.getDate() - 1);
 
   const futureBulletins = bulletins?.filter(
-    // @ts-expect-error ts(2349)
-    (bulletin) => new Date(bulletin?.date) > tomorrow,
+    (bulletin) =>
+      (getBulletinSortDate(bulletin)?.getTime() || 0) > tomorrow.getTime(),
   );
 
   // const { data: group } = useQuery(
@@ -90,10 +89,7 @@ export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
               <div className="flex flex-col gap-2">
                 {bulletin.date && (
                   <p className="align-baseline">
-                    {format(
-                      toZonedTime(new Date(bulletin.date), "utc"),
-                      "iii, MMMM d, yyyy",
-                    )}
+                    {formatBulletinDate(bulletin)}
                   </p>
                 )}
                 <p className="font-bold text-xl">{bulletin.title}</p>

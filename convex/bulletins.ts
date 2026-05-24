@@ -7,6 +7,7 @@ export const createBulletin = mutation({
     title: v.string(),
     team: v.array(v.string()),
     date: v.optional(v.string()),
+    endDate: v.optional(v.string()),
     body: v.string(),
     image: v.optional(v.string()),
     groups: v.optional(v.array(v.id("groups"))),
@@ -19,6 +20,7 @@ export const createBulletin = mutation({
       group: args.team, // Keep old field for backward compatibility
       groups: args.groups, // New field with group IDs
       date: args.date,
+      endDate: args.endDate,
       image: args.image,
     });
     return newBulletinId;
@@ -52,6 +54,7 @@ export const getAllBulletins = query({
         group: b.group,
         groups: b.groups,
         date: b.date,
+        endDate: b.endDate,
         image: b.image,
         hidden: b.hidden,
       };
@@ -167,16 +170,28 @@ export const editBulletin = mutation({
     title: v.string(),
     body: v.string(),
     date: v.string(),
+    endDate: v.optional(v.string()),
     group: v.array(v.string()),
     groups: v.optional(v.array(v.id("groups"))),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.patch(args.id, {
+    const updates = {
       title: args.title,
       body: args.body,
       date: args.date,
       group: args.group, // Keep old field for backward compatibility
       groups: args.groups, // New field with group IDs
+    };
+
+    if (args.endDate !== undefined) {
+      return await ctx.db.patch(args.id, {
+        ...updates,
+        endDate: args.endDate,
+      });
+    }
+
+    return await ctx.db.patch(args.id, {
+      ...updates,
     });
   },
 });

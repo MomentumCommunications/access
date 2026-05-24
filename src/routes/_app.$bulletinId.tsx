@@ -1,27 +1,15 @@
-import { useConvexMutation } from "@convex-dev/react-query";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
 import { useQuery } from "convex/react";
-import { ArrowLeft } from "lucide-react";
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import z from "zod";
+import { ArrowLeft, EyeOff } from "lucide-react";
+import { useMemo } from "react";
+import { Markdown } from "~/components/markdown-wrapper";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Checkbox } from "~/components/ui/checkbox";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "~/components/ui/form";
-import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
-import { Textarea } from "~/components/ui/textarea";
+import { formatBulletinDate } from "~/lib/bulletin-date";
+import { cn } from "~/lib/utils";
 
 type Bulletin = {
   _id: Id<"bulletin">;
@@ -30,6 +18,7 @@ type Bulletin = {
   pinned: boolean;
   image?: string;
   date?: string;
+  endDate?: string;
   author?: string;
   group?: string[];
   groups?: Id<"groups">[];
@@ -37,15 +26,13 @@ type Bulletin = {
   hidden?: boolean;
 };
 
+type Group = {
+  _id: Id<"groups">;
+  name: string;
+};
+
 export const Route = createFileRoute("/_app/$bulletinId")({
   component: RouteComponent,
-});
-
-const formSchema = z.object({
-  title: z.string().min(2).max(50),
-  body: z.string().min(2).max(2000),
-  groups: z.array(z.string()), // Group IDs now
-  date: z.string(),
 });
 
 function RouteComponent() {
@@ -53,11 +40,12 @@ function RouteComponent() {
   const bulletin = useQuery(api.bulletins.getBulletin, {
     id: bulletinId as Id<"bulletin">,
   });
+  const groups = useQuery(api.etcFunctions.getGroups, {});
   const navigate = useNavigate();
 
   if (bulletin === undefined) {
     return (
-      <div className="mx-auto flex w-full max-w-lg flex-col px-2 pb-2">
+      <div className="mx-auto flex w-full max-w-2xl flex-col px-2 pb-2">
         <p>Loading...</p>
       </div>
     );
@@ -65,192 +53,102 @@ function RouteComponent() {
 
   if (bulletin === null) {
     return (
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-2 pb-2">
-        <div className="flex w-full items-center justify-end">
-          <Button variant={"link"} onClick={() => navigate({ to: "/home" })}>
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back</span>
-          </Button>
-        </div>
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-2 pb-2">
+        <BackButton />
         <p>Bulletin not found.</p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-2 px-2 pb-12">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-2 pb-12">
+      <BackButton />
+      {bulletin.image && (
+        <img
+          src={bulletin.image}
+          alt={bulletin.title}
+          className="max-h-[420px] w-full rounded object-cover"
+        />
+      )}
+      <div className="flex flex-col gap-2">
+        {bulletin.date && (
+          <p
+            className={cn(
+              "text-muted-foreground text-sm",
+              bulletin.hidden && "text-muted-foreground/70",
+            )}
+          >
+            {formatBulletinDate(bulletin)}
+          </p>
+        )}
+        <div className="flex items-center gap-2">
+          {bulletin.hidden && <EyeOff className="text-muted-foreground h-5 w-5" />}
+          <h1
+            className={cn(
+              "text-foreground text-3xl font-bold",
+              bulletin.hidden && "text-muted-foreground",
+            )}
+          >
+            {bulletin.title}
+          </h1>
+        </div>
+        <GroupBadges bulletin={bulletin} groups={groups || []} />
+      </div>
+      <Separator className="bg-muted" />
+      <div className="bg-muted rounded p-4">
+        <Markdown content={bulletin.body} />
+      </div>
+    </div>
+  );
+
+  function BackButton() {
+    return (
       <div className="flex w-full items-center justify-end">
         <Button variant={"link"} onClick={() => navigate({ to: "/home" })}>
           <ArrowLeft className="h-4 w-4" />
           <span>Back</span>
         </Button>
       </div>
-      <div className="w-full">
-        <h1 className="text-foreground mb-4 text-3xl font-bold">
-          Edit Bulletin
-        </h1>
-        <Separator className="bg-muted mb-2" />
-      </div>
-      <EditBulletinForm bulletin={bulletin} />
-    </div>
-  );
+    );
+  }
 }
 
-function EditBulletinForm({ bulletin }: { bulletin: Bulletin }) {
-  const groups = useQuery(api.etcFunctions.getGroups, {});
-  // Get mutation function from Convex
-  const mutationFn = useConvexMutation(api.bulletins.editBulletin);
-
-  const navigate = useNavigate();
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      title: bulletin.title,
-      body: bulletin.body,
-      groups: [],
-      date: bulletin.date ?? "",
-    },
-  });
-
-  // Update form values when groups data is loaded
-  useEffect(() => {
-    if (groups && bulletin) {
-      const groupIds =
-        bulletin.groups && bulletin.groups.length > 0
-          ? bulletin.groups
-          : groups
-              .filter((g) => bulletin.group?.includes(g.name))
-              .map((g) => g._id);
-
-      form.reset({
-        title: bulletin.title,
-        body: bulletin.body,
-        groups: groupIds,
-        date: bulletin.date ?? "",
-      });
+function GroupBadges({
+  bulletin,
+  groups,
+}: {
+  bulletin: Bulletin;
+  groups: Group[];
+}) {
+  const groupNames = useMemo(() => {
+    if (bulletin.groups && bulletin.groups.length > 0) {
+      return groups
+        .filter((group) => bulletin.groups?.includes(group._id))
+        .map((group) => group.name);
     }
-  }, [groups, bulletin, form]);
 
-  // 2. Define a submit handler.
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    const title = values.title;
-    const body = values.body;
-    const groupIds = values.groups as Id<"groups">[]; // This now contains group IDs
-    const date = values.date;
+    return bulletin.group || [];
+  }, [bulletin, groups]);
 
-    // Convert group IDs to group names for backward compatibility
-    const groupNames =
-      groups?.filter((g) => groupIds.includes(g._id)).map((g) => g.name) || [];
+  if (groupNames.length === 0) {
+    return null;
+  }
 
-    await mutationFn({
-      id: bulletin._id,
-      title,
-      body,
-      group: groupNames, // Keep old format for backward compatibility
-      groups: groupIds, // Pass group IDs to new field
-      date,
-    });
-
-    navigate({ to: "/home" });
+  if (groupNames.length === groups.length && groups.length > 0) {
+    return (
+      <div className="flex flex-wrap gap-1">
+        <Badge className="font-bold">ALL</Badge>
+      </div>
+    );
   }
 
   return (
-    <Form {...form}>
-      <form
-        className="grid w-full items-start gap-6"
-        onSubmit={form.handleSubmit(onSubmit)}
-      >
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Title</FormLabel>
-              <FormControl>
-                <Input placeholder="What's on your mind?" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="date"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Date</FormLabel>
-              <FormDescription>
-                Date is set to {bulletin.date || "not set"}
-              </FormDescription>
-              <FormControl>
-                <Input type="date" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="body"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Body</FormLabel>
-              <FormControl>
-                <Textarea
-                  {...field}
-                  placeholder="What's on your mind?"
-                  className="min-h-32"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="groups"
-          render={() => (
-            <FormItem>
-              <FormLabel>Group</FormLabel>
-              {groups?.map((group) => (
-                <FormField
-                  key={group._id}
-                  control={form.control}
-                  name="groups"
-                  render={({ field }) => (
-                    <FormItem
-                      key={group._id}
-                      className="flex flex-row items-center gap-2"
-                    >
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value?.includes(group._id)}
-                          onCheckedChange={(checked) => {
-                            // Ensure field.value is always an array
-                            const currentValue = field.value || [];
-                            return checked
-                              ? field.onChange([...currentValue, group._id])
-                              : field.onChange(
-                                  currentValue.filter(
-                                    (value) => value !== group._id,
-                                  ),
-                                );
-                          }}
-                        />
-                      </FormControl>
-                      <FormLabel className="text-sm font-normal">
-                        {group.name}
-                      </FormLabel>
-                    </FormItem>
-                  )}
-                />
-              ))}
-            </FormItem>
-          )}
-        />
-        <Button type="submit">Save changes</Button>
-      </form>
-    </Form>
+    <div className="flex flex-wrap gap-1">
+      {groupNames.map((groupName) => (
+        <Badge key={groupName} className="font-bold">
+          {groupName.toUpperCase()}
+        </Badge>
+      ))}
+    </div>
   );
 }

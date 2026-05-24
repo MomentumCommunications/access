@@ -39,14 +39,14 @@ function Home() {
 
   const passwords = groups?.map((group) => group.password);
 
-  const [commonPassword, setCommonPassword] = useState<string | null>(null);
+  const [groupPassword, setGroupPassword] = useState<string | null>(null);
   const [inputPassword, setInputPassword] = useState("");
   const [checkingStorage, setCheckingStorage] = useState(true);
 
   // On mount, read stored password
   useEffect(() => {
-    const stored = localStorage.getItem("commonPassword");
-    if (stored) setCommonPassword(stored);
+    const stored = localStorage.getItem("groupPassword");
+    if (stored) setGroupPassword(stored);
     setCheckingStorage(false);
   }, []);
 
@@ -58,8 +58,8 @@ function Home() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validatePassword(inputPassword)) {
-      localStorage.setItem("commonPassword", inputPassword);
-      setCommonPassword(inputPassword);
+      localStorage.setItem("groupPassword", inputPassword);
+      setGroupPassword(inputPassword);
     } else {
       alert("Invalid password");
     }
@@ -68,7 +68,7 @@ function Home() {
   // Show loading spinner while checking localStorage or loading groups
   if (checkingStorage || groupsLoading) {
     return (
-      <div className="flex h-screen flex-col gap-12 justify-center items-center">
+      <div className="flex h-screen flex-col items-center justify-center gap-12">
         <div className="animate-pulse text-center">loading...</div>
       </div>
     ); // Replace with your spinner component
@@ -78,11 +78,11 @@ function Home() {
     return null;
   }
 
-  if (!commonPassword) {
+  if (!groupPassword) {
     // Show password input form
     return (
-      <div className="flex h-screen flex-col gap-12 justify-center items-center">
-        <div className="fixed top-12 lg:top-32 flex flex-col gap-4 items-center">
+      <div className="flex h-screen flex-col items-center justify-center gap-12">
+        <div className="fixed top-12 flex flex-col items-center gap-4 lg:top-32">
           <img
             src="/logo_transparent.png"
             alt="Access Momentum Logo"
@@ -90,11 +90,11 @@ function Home() {
             width={150}
             className="rounded-full"
           />
-          <h1 className="lg:text-4xl text-2xl font-bold text-center">
+          <h1 className="text-center text-2xl font-bold lg:text-4xl">
             ACCESS MOMENTUM
           </h1>
         </div>
-        <Card className="p-4 h-min">
+        <Card className="h-min p-4">
           <CardTitle>Enter Password</CardTitle>
           <CardDescription>
             Please enter the access password to view this page.
@@ -115,19 +115,19 @@ function Home() {
 
   return (
     <div className="flex justify-center overscroll-contain">
-      <main className="max-w-3xl w-full p-4">
-        <div className="flex flex-col gap-4 py-4 justify-start">
+      <main className="w-full max-w-3xl p-4">
+        <div className="flex flex-col justify-start gap-4 py-4">
           <SignedOut>
             <div className="py-4">
-              <h1 className="text-4xl font-bold text-center">
+              <h1 className="text-center text-4xl font-bold">
                 ACCESS MOMENTUM
               </h1>
             </div>
-            <ProtectedContent password={commonPassword} />
+            <ProtectedContent password={groupPassword} />
           </SignedOut>
         </div>
         <SignedIn>
-          <div className="flex align-middle justify-between">
+          <div className="flex justify-between align-middle">
             <h1 className="text-4xl font-bold">Bulletin</h1>
             {role === "admin" && <LazyAddBulletin />}
           </div>

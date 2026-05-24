@@ -37,6 +37,7 @@ export default defineSchema({
     pinned: v.boolean(),
     image: v.optional(v.string()),
     date: v.optional(v.string()),
+    endDate: v.optional(v.string()),
     author: v.optional(v.string()),
     group: v.optional(v.array(v.string())),
     groups: v.optional(v.array(v.id("groups"))),

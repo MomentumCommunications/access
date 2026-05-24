@@ -24,7 +24,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useState, useRef } from "react";
 import { Progress } from "./ui/progress";
-import { FileIcon, Trash, Trash2, X } from "lucide-react";
+import { FileIcon, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation } from "convex/react";
 import { Id } from "convex/_generated/dataModel";
@@ -44,6 +44,7 @@ const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
   info: z.string(),
   color: z.string(),
+  password: z.string().min(1).optional(),
 });
 
 type Group = {
@@ -51,6 +52,7 @@ type Group = {
   name: string;
   info: string;
   color: string;
+  password?: string;
   document: string;
 };
 
@@ -67,6 +69,7 @@ export function EditGroup({ group }: { group: Group }) {
     defaultValues: {
       name: group.name || "",
       info: group.info || "",
+      password: group.password || "",
       color: group.color || "#000000",
     },
   });
@@ -121,7 +124,8 @@ export function EditGroup({ group }: { group: Group }) {
         group: group._id,
         name: values.name,
         info: values.info,
-        document: documentStorageId,
+        document: documentStorageId as Id<"_storage"> | undefined,
+        password: values.password as string | undefined,
         color: values.color,
       });
 
@@ -139,7 +143,7 @@ export function EditGroup({ group }: { group: Group }) {
     <Dialog>
       <DialogTrigger>
         <Badge>
-          <span className="uppercase font-bold">{group.name}</span>
+          <span className="font-bold uppercase">{group.name}</span>
         </Badge>
       </DialogTrigger>
 
@@ -155,6 +159,19 @@ export function EditGroup({ group }: { group: Group }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -205,9 +222,9 @@ export function EditGroup({ group }: { group: Group }) {
                     disabled={isUploading}
                   />
                   {selectedDocument && (
-                    <div className="flex items-center gap-2 p-2 border rounded">
-                      <FileIcon className="w-4 h-4" />
-                      <span className="text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2 rounded border p-2">
+                      <FileIcon className="h-4 w-4" />
+                      <span className="text-muted-foreground text-sm">
                         {selectedDocument.name}
                       </span>
                       <Button
@@ -222,14 +239,14 @@ export function EditGroup({ group }: { group: Group }) {
                         }}
                         disabled={isUploading}
                       >
-                        <X className="w-4 h-4" />
+                        <X className="h-4 w-4" />
                       </Button>
                     </div>
                   )}
                   {isUploading && (
                     <div className="space-y-2">
                       <Progress value={uploadProgress} className="w-full" />
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-muted-foreground text-sm">
                         Uploading... {Math.round(uploadProgress)}%
                       </p>
                     </div>

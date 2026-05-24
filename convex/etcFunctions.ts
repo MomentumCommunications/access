@@ -55,12 +55,13 @@ export const editGroup = mutation({
   args: {
     name: v.string(),
     group: v.id("groups"),
+    password: v.optional(v.string()),
     info: v.optional(v.string()),
     document: v.optional(v.id("_storage")),
     color: v.optional(v.string()),
   },
-  handler: async (ctx, { group, name, info, document, color }) => {
-    await ctx.db.patch(group, { name, info, document, color });
+  handler: async (ctx, { group, name, password, info, document, color }) => {
+    await ctx.db.patch(group, { name, info, password, document, color });
   },
 });
 

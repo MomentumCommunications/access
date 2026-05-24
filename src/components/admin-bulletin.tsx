@@ -1,8 +1,6 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
-import { format } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
 import { useMemo } from "react";
 import {
   Accordion,
@@ -19,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { Eye, EyeOff, MoreHorizontal, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Link, MoreHorizontal, Trash2 } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { cn } from "~/lib/utils";
@@ -38,14 +36,16 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Markdown } from "./markdown-wrapper";
 import { Separator } from "./ui/separator";
+import { formatBulletinDate, getBulletinSortDate } from "~/lib/bulletin-date";
 
 type Bulletin = {
   _id: Id<"bulletin">;
   title: string;
   body: string;
   pinned: boolean;
-  image: string;
+  image?: string;
   date: string;
+  endDate?: string;
   author?: string;
   group: string[];
   groups: Id<"groups">[];
@@ -147,8 +147,7 @@ export function AdminBulletin() {
   );
 
   const pastBulletins = bulletins?.filter(
-    // @ts-expect-error ts(2349)
-    (bulletin) => new Date(bulletin?.date) < Date.now(),
+    (bulletin) => (getBulletinSortDate(bulletin)?.getTime() || 0) < Date.now(),
   );
 
   const today = new Date();
@@ -156,8 +155,8 @@ export function AdminBulletin() {
   tomorrow.setDate(tomorrow.getDate() - 1);
 
   const futureBulletins = bulletins?.filter(
-    // @ts-expect-error ts(2349)
-    (bulletin) => new Date(bulletin?.date) > tomorrow,
+    (bulletin) =>
+      (getBulletinSortDate(bulletin)?.getTime() || 0) > tomorrow.getTime(),
   );
 
   const hideFunction = useMutation(api.bulletins.hideBulletin);
@@ -225,10 +224,7 @@ export function AdminBulletin() {
                             bulletin.hidden && "text-muted-foreground",
                           )}
                         >
-                          {format(
-                            toZonedTime(new Date(bulletin.date), "utc"),
-                            "iii ⋅ MMMM d, yyyy",
-                          )}
+                          {formatBulletinDate(bulletin)}
                         </p>
                       )}
                       <div className="z-10 ml-auto">
@@ -340,10 +336,7 @@ export function AdminBulletin() {
                           bulletin.hidden && "text-muted-foreground",
                         )}
                       >
-                        {format(
-                          toZonedTime(new Date(bulletin.date), "utc"),
-                          "iii ⋅ MMMM d, yyyy",
-                        )}
+                        {formatBulletinDate(bulletin)}
                       </p>
                     )}
                     <div className="z-10 ml-auto">
@@ -358,6 +351,12 @@ export function AdminBulletin() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <a href={`/${bulletin._id}`}>
+                              <Link className="text-foreground" />
+                              Open page
+                            </a>
+                          </DropdownMenuItem>
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem asChild>
                             <EditBulletin bulletin={bulletin} />
@@ -394,7 +393,7 @@ export function AdminBulletin() {
                     </div>
                   </div>
                 </div>
-                <div className="flex w-full flex-col items-start items-center gap-2">
+                <div className="g ap-2 flex w-full flex-col items-start">
                   <div className="flex gap-2">
                     {bulletin.hidden && (
                       <EyeOff className="text-muted-foreground" />

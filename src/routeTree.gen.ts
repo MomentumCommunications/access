@@ -24,6 +24,7 @@ import { Route as AppBulletinIdRouteImport } from './routes/_app.$bulletinId'
 import { Route as AppChannelIndexRouteImport } from './routes/_app.channel/index'
 import { Route as AppDmDmIdRouteImport } from './routes/_app.dm/$dmId'
 import { Route as AppChannelChannelIdRouteImport } from './routes/_app.channel/$channelId'
+import { Route as AppBulletinIdEditRouteImport } from './routes/_app.$bulletinId.edit'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -99,10 +100,15 @@ const AppChannelChannelIdRoute = AppChannelChannelIdRouteImport.update({
   path: '/channel/$channelId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBulletinIdEditRoute = AppBulletinIdEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => AppBulletinIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/$bulletinId': typeof AppBulletinIdRoute
+  '/$bulletinId': typeof AppBulletinIdRouteWithChildren
   '/account': typeof AppAccountRoute
   '/create-bulletin': typeof AppCreateBulletinRoute
   '/directory': typeof AppDirectoryRoute
@@ -112,13 +118,14 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AppSettingsRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/$bulletinId/edit': typeof AppBulletinIdEditRoute
   '/channel/$channelId': typeof AppChannelChannelIdRoute
   '/dm/$dmId': typeof AppDmDmIdRoute
   '/channel': typeof AppChannelIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/$bulletinId': typeof AppBulletinIdRoute
+  '/$bulletinId': typeof AppBulletinIdRouteWithChildren
   '/account': typeof AppAccountRoute
   '/create-bulletin': typeof AppCreateBulletinRoute
   '/directory': typeof AppDirectoryRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AppSettingsRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/$bulletinId/edit': typeof AppBulletinIdEditRoute
   '/channel/$channelId': typeof AppChannelChannelIdRoute
   '/dm/$dmId': typeof AppDmDmIdRoute
   '/channel': typeof AppChannelIndexRoute
@@ -136,7 +144,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
-  '/_app/$bulletinId': typeof AppBulletinIdRoute
+  '/_app/$bulletinId': typeof AppBulletinIdRouteWithChildren
   '/_app/account': typeof AppAccountRoute
   '/_app/create-bulletin': typeof AppCreateBulletinRoute
   '/_app/directory': typeof AppDirectoryRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/_app/settings': typeof AppSettingsRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
+  '/_app/$bulletinId/edit': typeof AppBulletinIdEditRoute
   '/_app/channel/$channelId': typeof AppChannelChannelIdRoute
   '/_app/dm/$dmId': typeof AppDmDmIdRoute
   '/_app/channel/': typeof AppChannelIndexRoute
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/$bulletinId/edit'
     | '/channel/$channelId'
     | '/dm/$dmId'
     | '/channel'
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/$bulletinId/edit'
     | '/channel/$channelId'
     | '/dm/$dmId'
     | '/channel'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/_app/settings'
     | '/sign-in/$'
     | '/sign-up/$'
+    | '/_app/$bulletinId/edit'
     | '/_app/channel/$channelId'
     | '/_app/dm/$dmId'
     | '/_app/channel/'
@@ -316,11 +328,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChannelChannelIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/$bulletinId/edit': {
+      id: '/_app/$bulletinId/edit'
+      path: '/edit'
+      fullPath: '/$bulletinId/edit'
+      preLoaderRoute: typeof AppBulletinIdEditRouteImport
+      parentRoute: typeof AppBulletinIdRoute
+    }
   }
 }
 
+interface AppBulletinIdRouteChildren {
+  AppBulletinIdEditRoute: typeof AppBulletinIdEditRoute
+}
+
+const AppBulletinIdRouteChildren: AppBulletinIdRouteChildren = {
+  AppBulletinIdEditRoute: AppBulletinIdEditRoute,
+}
+
+const AppBulletinIdRouteWithChildren = AppBulletinIdRoute._addFileChildren(
+  AppBulletinIdRouteChildren,
+)
+
 interface AppRouteChildren {
-  AppBulletinIdRoute: typeof AppBulletinIdRoute
+  AppBulletinIdRoute: typeof AppBulletinIdRouteWithChildren
   AppAccountRoute: typeof AppAccountRoute
   AppCreateBulletinRoute: typeof AppCreateBulletinRoute
   AppDirectoryRoute: typeof AppDirectoryRoute
@@ -334,7 +365,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppBulletinIdRoute: AppBulletinIdRoute,
+  AppBulletinIdRoute: AppBulletinIdRouteWithChildren,
   AppAccountRoute: AppAccountRoute,
   AppCreateBulletinRoute: AppCreateBulletinRoute,
   AppDirectoryRoute: AppDirectoryRoute,

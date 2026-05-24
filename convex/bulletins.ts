@@ -109,7 +109,21 @@ export const getBulletinsByPassword = query({
       (b) => new Date(b.date || 0) > tomorrow,
     );
 
-    return futureBulletins;
+    return futureBulletins.map((b) => {
+      return {
+        _id: b._id,
+        _creationTime: b._creationTime,
+        title: b.title,
+        body: b.body,
+        pinned: b.pinned,
+        group: b.group,
+        groups: b.groups,
+        date: b.date,
+        endDate: b.endDate,
+        image: b.image,
+        hidden: b.hidden,
+      };
+    });
   },
 });
 
@@ -134,7 +148,21 @@ export const getBulletinsByGroups = query({
       // Legacy fallback - this won't work well but maintains compatibility
       return args.groups.some((group) => b.group?.includes(group));
     });
-    return filteredBulletins;
+    return filteredBulletins.map((b) => {
+      return {
+        _id: b._id,
+        _creationTime: b._creationTime,
+        title: b.title,
+        body: b.body,
+        pinned: b.pinned,
+        group: b.group,
+        groups: b.groups,
+        date: b.date,
+        endDate: b.endDate,
+        image: b.image,
+        hidden: b.hidden,
+      };
+    });
   },
 });
 

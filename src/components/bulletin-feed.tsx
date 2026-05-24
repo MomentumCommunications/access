@@ -48,8 +48,8 @@ export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
       {groupDocuments && groupDocuments.length > 0 && (
         <div className="mb-6 space-y-4">
           {groupDocuments.map((groupDoc) => (
-            <div key={groupDoc.groupId} className="border rounded-lg p-4">
-              <h3 className="text-lg font-semibold mb-2">
+            <div key={groupDoc.groupId} className="rounded-lg border p-4">
+              <h3 className="mb-2 text-lg font-semibold">
                 {groupDoc.groupName} Document
               </h3>
               <embed
@@ -75,10 +75,10 @@ export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
           futureBulletins?.map((bulletin) => (
             <div
               key={bulletin._id}
-              className="p-4 mb-4 border border-muted rounded"
+              className="border-muted mb-4 rounded border p-4"
             >
               {bulletin.image && (
-                <div className="flex w-full pb-4 justify-center">
+                <div className="flex w-full justify-center pb-4">
                   <img
                     src={bulletin.image}
                     alt={bulletin.title}
@@ -92,11 +92,11 @@ export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
                     {formatBulletinDate(bulletin)}
                   </p>
                 )}
-                <p className="font-bold text-xl">{bulletin.title}</p>
+                <p className="text-xl font-bold">{bulletin.title}</p>
               </div>
               <AccordionItem value={bulletin._id}>
                 <AccordionTrigger className="text-sm">Details</AccordionTrigger>
-                <AccordionContent className="bg-muted p-4 rounded">
+                <AccordionContent className="bg-muted rounded p-4">
                   <Markdown content={bulletin.body} />
                 </AccordionContent>
               </AccordionItem>

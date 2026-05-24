@@ -1,8 +1,6 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
-import { format } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
 import {
   Accordion,
   AccordionContent,
@@ -12,6 +10,7 @@ import {
 import { Markdown } from "./markdown-wrapper";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+import { formatBulletinDate } from "~/lib/bulletin-date";
 
 export function ProtectedContent({ password }: { password: string }) {
   const {
@@ -24,11 +23,13 @@ export function ProtectedContent({ password }: { password: string }) {
     convexQuery(api.etcFunctions.getGroupByPassword, { password }),
   );
 
+  const documentStorageId = group?.document;
+
   const { data: document } = useQuery({
     ...convexQuery(api.etcFunctions.getUrlForDocument, {
-      storageId: group?.document!,
+      storageId: documentStorageId,
     }),
-    enabled: !!group?.document,
+    enabled: !!documentStorageId,
     initialData: null, // <-- avoids the "missing initialData" overload error
   });
 
@@ -82,10 +83,7 @@ export function ProtectedContent({ password }: { password: string }) {
               <div className="flex flex-col gap-2">
                 {bulletin.date && (
                   <p className="align-baseline">
-                    {format(
-                      toZonedTime(new Date(bulletin.date), "utc"),
-                      "iii, MMMM d, yyyy",
-                    )}
+                    {formatBulletinDate(bulletin)}
                   </p>
                 )}
                 <p className="font-bold text-xl">{bulletin.title}</p>

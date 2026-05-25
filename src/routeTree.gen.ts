@@ -24,7 +24,7 @@ import { Route as AppBulletinIdRouteImport } from './routes/_app.$bulletinId'
 import { Route as AppChannelIndexRouteImport } from './routes/_app.channel/index'
 import { Route as AppDmDmIdRouteImport } from './routes/_app.dm/$dmId'
 import { Route as AppChannelChannelIdRouteImport } from './routes/_app.channel/$channelId'
-import { Route as AppBulletinIdEditRouteImport } from './routes/_app.$bulletinId.edit'
+import { Route as AppBulletinIdEditRouteImport } from './routes/_app.$bulletinId_.edit'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -101,14 +101,14 @@ const AppChannelChannelIdRoute = AppChannelChannelIdRouteImport.update({
   getParentRoute: () => AppRoute,
 } as any)
 const AppBulletinIdEditRoute = AppBulletinIdEditRouteImport.update({
-  id: '/edit',
-  path: '/edit',
-  getParentRoute: () => AppBulletinIdRoute,
+  id: '/$bulletinId_/edit',
+  path: '/$bulletinId/edit',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/$bulletinId': typeof AppBulletinIdRouteWithChildren
+  '/$bulletinId': typeof AppBulletinIdRoute
   '/account': typeof AppAccountRoute
   '/create-bulletin': typeof AppCreateBulletinRoute
   '/directory': typeof AppDirectoryRoute
@@ -125,7 +125,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/$bulletinId': typeof AppBulletinIdRouteWithChildren
+  '/$bulletinId': typeof AppBulletinIdRoute
   '/account': typeof AppAccountRoute
   '/create-bulletin': typeof AppCreateBulletinRoute
   '/directory': typeof AppDirectoryRoute
@@ -144,7 +144,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
-  '/_app/$bulletinId': typeof AppBulletinIdRouteWithChildren
+  '/_app/$bulletinId': typeof AppBulletinIdRoute
   '/_app/account': typeof AppAccountRoute
   '/_app/create-bulletin': typeof AppCreateBulletinRoute
   '/_app/directory': typeof AppDirectoryRoute
@@ -154,7 +154,7 @@ export interface FileRoutesById {
   '/_app/settings': typeof AppSettingsRoute
   '/sign-in/$': typeof SignInSplatRoute
   '/sign-up/$': typeof SignUpSplatRoute
-  '/_app/$bulletinId/edit': typeof AppBulletinIdEditRoute
+  '/_app/$bulletinId_/edit': typeof AppBulletinIdEditRoute
   '/_app/channel/$channelId': typeof AppChannelChannelIdRoute
   '/_app/dm/$dmId': typeof AppDmDmIdRoute
   '/_app/channel/': typeof AppChannelIndexRoute
@@ -208,7 +208,7 @@ export interface FileRouteTypes {
     | '/_app/settings'
     | '/sign-in/$'
     | '/sign-up/$'
-    | '/_app/$bulletinId/edit'
+    | '/_app/$bulletinId_/edit'
     | '/_app/channel/$channelId'
     | '/_app/dm/$dmId'
     | '/_app/channel/'
@@ -328,30 +328,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChannelChannelIdRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/$bulletinId/edit': {
-      id: '/_app/$bulletinId/edit'
-      path: '/edit'
+    '/_app/$bulletinId_/edit': {
+      id: '/_app/$bulletinId_/edit'
+      path: '/$bulletinId/edit'
       fullPath: '/$bulletinId/edit'
       preLoaderRoute: typeof AppBulletinIdEditRouteImport
-      parentRoute: typeof AppBulletinIdRoute
+      parentRoute: typeof AppRoute
     }
   }
 }
 
-interface AppBulletinIdRouteChildren {
-  AppBulletinIdEditRoute: typeof AppBulletinIdEditRoute
-}
-
-const AppBulletinIdRouteChildren: AppBulletinIdRouteChildren = {
-  AppBulletinIdEditRoute: AppBulletinIdEditRoute,
-}
-
-const AppBulletinIdRouteWithChildren = AppBulletinIdRoute._addFileChildren(
-  AppBulletinIdRouteChildren,
-)
-
 interface AppRouteChildren {
-  AppBulletinIdRoute: typeof AppBulletinIdRouteWithChildren
+  AppBulletinIdRoute: typeof AppBulletinIdRoute
   AppAccountRoute: typeof AppAccountRoute
   AppCreateBulletinRoute: typeof AppCreateBulletinRoute
   AppDirectoryRoute: typeof AppDirectoryRoute
@@ -359,13 +347,14 @@ interface AppRouteChildren {
   AppHomeRoute: typeof AppHomeRoute
   AppSearchRoute: typeof AppSearchRoute
   AppSettingsRoute: typeof AppSettingsRoute
+  AppBulletinIdEditRoute: typeof AppBulletinIdEditRoute
   AppChannelChannelIdRoute: typeof AppChannelChannelIdRoute
   AppDmDmIdRoute: typeof AppDmDmIdRoute
   AppChannelIndexRoute: typeof AppChannelIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppBulletinIdRoute: AppBulletinIdRouteWithChildren,
+  AppBulletinIdRoute: AppBulletinIdRoute,
   AppAccountRoute: AppAccountRoute,
   AppCreateBulletinRoute: AppCreateBulletinRoute,
   AppDirectoryRoute: AppDirectoryRoute,
@@ -373,6 +362,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppHomeRoute: AppHomeRoute,
   AppSearchRoute: AppSearchRoute,
   AppSettingsRoute: AppSettingsRoute,
+  AppBulletinIdEditRoute: AppBulletinIdEditRoute,
   AppChannelChannelIdRoute: AppChannelChannelIdRoute,
   AppDmDmIdRoute: AppDmDmIdRoute,
   AppChannelIndexRoute: AppChannelIndexRoute,

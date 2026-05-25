@@ -49,7 +49,7 @@ type Bulletin = {
   hidden?: boolean;
 };
 
-export const Route = createFileRoute("/_app/$bulletinId/edit")({
+export const Route = createFileRoute("/_app/$bulletinId_/edit")({
   component: RouteComponent,
 });
 

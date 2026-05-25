@@ -314,23 +314,23 @@ export function ChatWindow({
   return (
     <div
       className={cn(
-        "grid grid-rows-[1fr_auto] h-full min-h-0",
+        "grid h-full min-h-0 grid-rows-[1fr_auto]",
         "bg-background relative",
         className,
       )}
     >
       {/* Messages Area */}
-      <div className="min-h-0 relative">
+      <div className="relative min-h-0">
         <ScrollArea
           ref={scrollContainerRef}
-          className="h-full content-end grid grid-cols-1"
+          className="grid h-full grid-cols-1 content-end"
         >
-          <div className="px-4 py-4 space-y-2">
+          <div className="space-y-2 px-4 py-4">
             {/* Loading indicator for older messages */}
             {loadingOlder && (
-              <div className="absolute top-0 left-0 right-0 flex justify-center py-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Skeleton className="w-4 h-4 rounded-full" />
+              <div className="absolute left-0 right-0 top-0 flex justify-center py-4">
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                  <Skeleton className="h-4 w-4 rounded-full" />
                   Loading older messages...
                 </div>
               </div>
@@ -351,11 +351,11 @@ export function ChatWindow({
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <Skeleton className="w-8 h-8 rounded-full" />
-                      <Skeleton className="w-24 h-4" />
-                      <Skeleton className="w-16 h-4" />
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-16" />
                     </div>
-                    <Skeleton className="w-full h-16" />
+                    <Skeleton className="h-16 w-full" />
                   </div>
                 ))}
               </div>
@@ -363,8 +363,8 @@ export function ChatWindow({
 
             {/* Messages grouped by date */}
             {!channel?.isDM && (
-              <div className="space-y-2 space-x-8">
-                <h2 className="text-2xl lg:text-5xl font-semibold">
+              <div className="space-x-8 space-y-2">
+                <h2 className="text-2xl font-semibold lg:text-5xl">
                   {channelNameOrFallback(channel?.name)}
                 </h2>
                 {channel?.description && (
@@ -405,7 +405,7 @@ export function ChatWindow({
                                 "animate-pulse-highlight", // We'll define this in CSS
                                 "before:absolute before:inset-0 before:-z-10",
                                 "before:shadow-sm",
-                                "p-2 -m-2", // Add padding to highlight area
+                                "-m-2 p-2", // Add padding to highlight area
                               ],
                             )}
                             style={{
@@ -439,13 +439,13 @@ export function ChatWindow({
 
         {/* Jump to new messages button */}
         {hasNewMessages && disableHighlight && (
-          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10">
+          <div className="absolute bottom-20 left-1/2 z-10 -translate-x-1/2 transform">
             <Button
               onClick={() => scrollToBottom("smooth")}
-              className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg border-0 text-sm px-4 py-2 h-auto"
+              className="h-auto border-0 bg-blue-600 px-4 py-2 text-sm text-white shadow-lg hover:bg-blue-700"
               size="sm"
             >
-              <ArrowDown className="w-4 h-4 mr-2" />
+              <ArrowDown className="mr-2 h-4 w-4" />
               Jump to new messages
             </Button>
           </div>
@@ -453,13 +453,13 @@ export function ChatWindow({
 
         {/* Back to present button for new because I'm afaid of the confilcts with the load newer messages */}
         {!disableHighlight && (
-          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10">
+          <div className="absolute bottom-20 left-1/2 z-10 -translate-x-1/2 transform">
             <Button
               onClick={() => backToChannel(channelId)}
-              className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg border-0 text-sm px-4 py-2 h-auto"
+              className="h-auto border-0 bg-blue-600 px-4 py-2 text-sm text-white shadow-lg hover:bg-blue-700"
               size="sm"
             >
-              <ArrowDown className="w-4 h-4 mr-2" />
+              <ArrowDown className="mr-2 h-4 w-4" />
               Back to present
             </Button>
           </div>
@@ -467,21 +467,21 @@ export function ChatWindow({
 
         {/* Scroll to bottom button */}
         {shouldShowScrollButton && !hasNewMessages && (
-          <div className="absolute bottom-4 right-4 md:bottom-6 md:right-6 z-10">
+          <div className="absolute bottom-4 right-4 z-10 md:bottom-6 md:right-6">
             <Button
               onClick={() => scrollToBottom("smooth")}
               variant="secondary"
               size="icon"
               className="rounded-full shadow-lg"
             >
-              <ArrowDown className="w-4 h-4" />
+              <ArrowDown className="h-4 w-4" />
             </Button>
           </div>
         )}
       </div>
 
       {/* Message Input */}
-      <div className="bg-background/95 backdrop-blur-sm px-3 pt-3 pb-6 md:pb-3 md:px-4">
+      <div className="bg-background/95 px-3 pb-6 pt-3 backdrop-blur-sm md:px-4 md:pb-3">
         <MessageInput
           userId={userId}
           channel={channelId}

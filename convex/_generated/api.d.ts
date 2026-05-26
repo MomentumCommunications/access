@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as auth from "../auth.js";
 import type * as bulletins from "../bulletins.js";
 import type * as channels from "../channels.js";
 import type * as etcFunctions from "../etcFunctions.js";
@@ -31,6 +32,7 @@ import type * as users from "../users.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   bulletins: typeof bulletins;
   channels: typeof channels;
   etcFunctions: typeof etcFunctions;

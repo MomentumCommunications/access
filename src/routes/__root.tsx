@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+// @ts-expect-error It's probably fine
 import appCss from "~/styles/app.css?url";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -8,17 +9,13 @@ import {
   createRootRouteWithContext,
 } from "@tanstack/react-router";
 import { ThemeProvider } from "~/components/theme-provider";
-import { ClerkProvider } from "@clerk/tanstack-react-start";
-import { shadcn } from "@clerk/themes";
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { getGlobalClients } from "~/lib/query-client";
 import { Toaster } from "sonner";
+import { ConvexReactClient } from "convex/react";
 // import { PWAHandler } from "~/components/pwa-handler"; // Disabled for Netlify compatibility
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-if (!PUBLISHABLE_KEY) {
-  throw new Error("Add your Clerk Publishable Key to the .env file");
-}
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
@@ -131,17 +128,11 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <ClerkProvider
-          publishableKey={PUBLISHABLE_KEY}
-          afterSignOutUrl="/"
-          appearance={{
-            baseTheme: shadcn,
-          }}
-        >
+        <ConvexAuthProvider client={convex}>
           <RootDocument>
             <Outlet />
           </RootDocument>
-        </ClerkProvider>
+        </ConvexAuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

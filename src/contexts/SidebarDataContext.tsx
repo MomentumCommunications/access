@@ -1,16 +1,10 @@
 import { createContext, useContext, ReactNode, useMemo } from "react";
-import { Id } from "convex/_generated/dataModel";
+import { Doc, Id } from "convex/_generated/dataModel";
 import { useSidebarData } from "~/hooks/useSidebarData";
 import { useSidebarActions } from "~/hooks/useSidebarActions";
 
 interface SidebarDataContextType {
-  convexUser?: {
-    _id: Id<"users">;
-    name: string;
-    role?: "admin" | "user";
-    displayName?: string;
-    email?: string[];
-  } | null;
+  convexUser?: Doc<"users"> | null;
   publicChannels?: Array<{
     _id: Id<"channels">;
     name?: string;

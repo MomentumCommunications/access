@@ -1,4 +1,3 @@
-import { useUser } from "@clerk/tanstack-react-start";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -13,6 +12,7 @@ import { ArrowLeft, Hash, MessageSquare } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
 import { generateMessageLink } from "~/lib/message-utils";
 
 export const Route = createFileRoute("/_app/search")({
@@ -27,12 +27,7 @@ export const Route = createFileRoute("/_app/search")({
 function SearchResults() {
   const navigate = useNavigate();
   const { q: query } = useSearch({ from: "/_app/search" });
-  const { user } = useUser();
-
-  const { data: convexUser } = useQuery({
-    ...convexQuery(api.users.getUserByClerkId, { ClerkId: user?.id }),
-    enabled: !!user?.id,
-  });
+  const { data: convexUser } = useCurrentUser();
 
   const { data: searchResults, isLoading } = useQuery({
     ...convexQuery(api.messages.searchMessages, {
@@ -155,4 +150,3 @@ function SearchResults() {
     </div>
   );
 }
-

@@ -1,16 +1,13 @@
-import { SignedIn, SignedOut } from "@clerk/tanstack-react-start";
+/* eslint-disable react/prop-types */
 import { memo, useCallback, useRef } from "react";
 import {
   ChevronUp,
   Cog,
-  ExternalLink,
   Hash,
   HelpCircle,
   Home,
   Lock,
-  LogIn,
   MessageSquare,
-  UserPlus,
 } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import {
@@ -36,20 +33,20 @@ import { NewDm } from "./new-dm";
 import { channelNameOrFallback } from "~/lib/utils";
 import { useSidebarDataContext } from "~/contexts/SidebarDataContext";
 import { Link } from "@tanstack/react-router";
-import { Button } from "./ui/button";
+import { NavUser } from "./user";
 
 // Memoized components for individual sidebar items
 const PublicChannelItem = memo<{
   channel: { _id: Id<"channels">; name?: string; description: string };
-  // eslint-disable-next-line react/prop-types
 }>(({ channel }) => (
-  // eslint-disable-next-line react/prop-types
   <SidebarMenuItem key={channel._id}>
     <SidebarMenuButton asChild onClick={() => useSidebar().toggleSidebar()}>
-      {/* eslint-disable-next-line react/prop-types */}
-      <Link to="/channel/$channelId" params={{ channelId: channel._id }}>
+      <Link
+        to="/channel/$channelId"
+        params={{ channelId: channel._id }}
+        search={{ messageId: undefined }}
+      >
         <Hash />
-        {/* eslint-disable-next-line react/prop-types */}
         <span>{channelNameOrFallback(channel.name)}</span>
       </Link>
     </SidebarMenuButton>
@@ -59,15 +56,15 @@ PublicChannelItem.displayName = "PublicChannelItem";
 
 const PrivateChannelItem = memo<{
   channel: { _id: Id<"channels">; name?: string; description: string };
-  // eslint-disable-next-line react/prop-types
 }>(({ channel }) => (
-  // eslint-disable-next-line react/prop-types
   <SidebarMenuItem key={channel._id}>
     <SidebarMenuButton asChild onClick={() => useSidebar().toggleSidebar()}>
-      {/* eslint-disable-next-line react/prop-types */}
-      <Link to="/channel/$channelId" params={{ channelId: channel._id }}>
+      <Link
+        to="/channel/$channelId"
+        params={{ channelId: channel._id }}
+        search={{ messageId: undefined }}
+      >
         <Lock />
-        {/* eslint-disable-next-line react/prop-types */}
         <span>{channelNameOrFallback(channel.name)}</span>
       </Link>
     </SidebarMenuButton>
@@ -77,15 +74,15 @@ PrivateChannelItem.displayName = "PrivateChannelItem";
 
 const DMItem = memo<{
   channel: { _id: Id<"channels">; otherMembers: string };
-  // eslint-disable-next-line react/prop-types
 }>(({ channel }) => (
-  // eslint-disable-next-line react/prop-types
   <SidebarMenuItem key={channel._id}>
     <SidebarMenuButton asChild onClick={() => useSidebar().toggleSidebar()}>
-      {/* eslint-disable-next-line react/prop-types */}
-      <Link to="/dm/$dmId" params={{ dmId: channel._id }}>
+      <Link
+        to="/dm/$dmId"
+        params={{ dmId: channel._id }}
+        search={{ messageId: undefined }}
+      >
         <MessageSquare />
-        {/* eslint-disable-next-line react/prop-types */}
         <span>{channel.otherMembers}</span>
       </Link>
     </SidebarMenuButton>
@@ -204,136 +201,95 @@ const AppSidebarComponent = memo(() => {
               </Link>
             </SidebarMenuButton>
           </SidebarGroup>
-          <SignedIn>
-            <Collapsible defaultOpen className="group/collapsible">
-              <SidebarGroup>
-                <SidebarGroupLabel asChild>
-                  <CollapsibleTrigger>
-                    Chat
-                    <ChevronUp className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                  </CollapsibleTrigger>
-                </SidebarGroupLabel>
-                <CollapsibleContent>
-                  {convexUser?.role === "admin" && (
-                    <NewChannel userId={convexUser._id} />
-                  )}
-                  <SidebarMenu>
-                    {publicChannels?.length === 0 && (
-                      <SidebarMenuItem>
-                        <SidebarMenuButton disabled>
-                          no public channels
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
+          {convexUser && (
+            <>
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarGroup>
+                  <SidebarGroupLabel asChild>
+                    <CollapsibleTrigger>
+                      Chat
+                      <ChevronUp className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                    </CollapsibleTrigger>
+                  </SidebarGroupLabel>
+                  <CollapsibleContent>
+                    {convexUser.role === "admin" && (
+                      <NewChannel userId={convexUser._id} />
                     )}
-                    {isPublicChannelsLoading ? (
-                      <SidebarMenuSkeleton />
-                    ) : (
-                      publicChannels?.map(renderPublicChannel)
-                    )}
-                    {isPrivateChannelsLoading ? (
-                      <>
+                    <SidebarMenu>
+                      {publicChannels?.length === 0 && (
+                        <SidebarMenuItem>
+                          <SidebarMenuButton disabled>
+                            no public channels
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      )}
+                      {isPublicChannelsLoading ? (
                         <SidebarMenuSkeleton />
+                      ) : (
+                        publicChannels?.map(renderPublicChannel)
+                      )}
+                      {isPrivateChannelsLoading ? (
+                        <>
+                          <SidebarMenuSkeleton />
+                          <SidebarMenuSkeleton />
+                          <SidebarMenuSkeleton />
+                        </>
+                      ) : (
+                        privateChannels?.map(renderPrivateChannel)
+                      )}
+                      {privateChannels?.length === 0 && null}
+                    </SidebarMenu>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
+              <Collapsible defaultOpen className="group/collapsible">
+                <SidebarGroup>
+                  <SidebarGroupLabel asChild>
+                    <CollapsibleTrigger>
+                      Direct Messages
+                      <ChevronUp className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                    </CollapsibleTrigger>
+                  </SidebarGroupLabel>
+                  <CollapsibleContent>
+                    <NewDm userId={convexUser._id} />
+                    <SidebarMenu>
+                      {isDMsLoading ? (
                         <SidebarMenuSkeleton />
-                        <SidebarMenuSkeleton />
-                      </>
-                    ) : (
-                      privateChannels?.map(renderPrivateChannel)
-                    )}
-                    {privateChannels?.length === 0 && null}
-                  </SidebarMenu>
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
-            <Collapsible defaultOpen className="group/collapsible">
-              <SidebarGroup>
-                <SidebarGroupLabel asChild>
-                  <CollapsibleTrigger>
-                    Direct Messages
-                    <ChevronUp className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                  </CollapsibleTrigger>
-                </SidebarGroupLabel>
-                <CollapsibleContent>
-                  <NewDm userId={convexUser?._id} />
-                  <SidebarMenu>
-                    {isDMsLoading ? (
-                      <SidebarMenuSkeleton />
-                    ) : (
-                      dms?.map(renderDMChannel)
-                    )}
-                    {dms?.length === 0 && (
-                      <SidebarMenuItem>
-                        <SidebarMenuButton disabled>no DMs</SidebarMenuButton>
-                      </SidebarMenuItem>
-                    )}
-                  </SidebarMenu>
-                </CollapsibleContent>
-              </SidebarGroup>
-            </Collapsible>
-            <SidebarGroup>
-              <SidebarGroupLabel>Etc</SidebarGroupLabel>
-              <SidebarMenuButton
-                asChild
-                onClick={() => useSidebar().toggleSidebar()}
-              >
-                <Link to="/settings">
-                  <Cog />
-                  <span>Settings</span>
-                </Link>
-              </SidebarMenuButton>
-              <SidebarMenuButton asChild>
-                <a href="/help">
-                  <HelpCircle />
-                  <span>Help</span>
-                </a>
-              </SidebarMenuButton>
-            </SidebarGroup>
-          </SignedIn>
-          <SignedOut>
-            <SidebarGroup>
-              <SidebarGroupLabel>Chat</SidebarGroupLabel>
-              <SidebarMenuButton asChild variant={"outline"}>
-                <a href="/sign-up">
-                  <UserPlus />
-                  <span>Sign up</span>
-                </a>
-              </SidebarMenuButton>
-              <SidebarMenuButton asChild>
-                <a href="/sign-in">
-                  <LogIn />
-                  <span>Sign in</span>
-                </a>
-              </SidebarMenuButton>
-            </SidebarGroup>
-            <SidebarGroup>
-              <SidebarGroupLabel>Etc</SidebarGroupLabel>
-              <SidebarMenuButton asChild>
-                <Link to="/settings">
-                  <Cog />
-                  <span>Settings</span>
-                </Link>
-              </SidebarMenuButton>
-              <SidebarMenuButton asChild>
-                <a href="/help">
-                  <HelpCircle />
-                  <span>Help</span>
-                </a>
-              </SidebarMenuButton>
-            </SidebarGroup>
-          </SignedOut>
+                      ) : (
+                        dms?.map(renderDMChannel)
+                      )}
+                      {dms?.length === 0 && (
+                        <SidebarMenuItem>
+                          <SidebarMenuButton disabled>no DMs</SidebarMenuButton>
+                        </SidebarMenuItem>
+                      )}
+                    </SidebarMenu>
+                  </CollapsibleContent>
+                </SidebarGroup>
+              </Collapsible>
+            </>
+          )}
+          <SidebarGroup>
+            <SidebarGroupLabel>Etc</SidebarGroupLabel>
+            <SidebarMenuButton
+              asChild
+              onClick={() => useSidebar().toggleSidebar()}
+            >
+              <Link to="/settings">
+                <Cog />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+            <SidebarMenuButton asChild>
+              <a href="/help">
+                <HelpCircle />
+                <span>Help</span>
+              </a>
+            </SidebarMenuButton>
+          </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-          <SidebarMenuButton asChild>
-            <Button variant={"outline"} asChild>
-              <a
-                href="https://m-avl.co/"
-                target="_blank"
-                rel="noreferrer noopener"
-              >
-                <span>Main Website</span>
-                <ExternalLink className="ml-2 h-4 w-4" />
-              </a>
-            </Button>
-          </SidebarMenuButton>
+          {convexUser && <NavUser user={convexUser} />}
         </SidebarFooter>
       </Sidebar>
     </div>

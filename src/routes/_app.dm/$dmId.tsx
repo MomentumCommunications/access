@@ -1,4 +1,3 @@
-import { SignedOut, useUser } from "@clerk/tanstack-react-start";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
@@ -6,9 +5,9 @@ import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
 import { MessageSquare, OctagonMinus } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { SignInPrompt } from "~/components/sign-in-prompt";
 import LazyChatWindow from "~/components/lazy/ChatWindow";
 import { useChatMessages } from "~/hooks/useChatMessages";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
 
 export const Route = createFileRoute("/_app/dm/$dmId")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -22,13 +21,10 @@ export const Route = createFileRoute("/_app/dm/$dmId")({
 function RouteComponent() {
   const params = Route.useParams();
   const search = Route.useSearch();
-  const user = useUser();
   const channelId = params.dmId as Id<"channels">;
   const messageId = search.messageId as Id<"messages"> | undefined;
 
-  const { data: convexUser } = useQuery(
-    convexQuery(api.users.getUserByClerkId, { ClerkId: user?.user?.id }),
-  );
+  const { data: convexUser } = useCurrentUser();
 
   const { data: channel } = useQuery(
     convexQuery(api.channels.getChannel, { id: channelId }),
@@ -60,7 +56,7 @@ function RouteComponent() {
     .join(", ");
 
   // Don't render anything while loading essential data
-  if (!user || !convexUser || !channel) return null;
+  if (!convexUser || !channel) return null;
 
   // Check if user has access to private DM
   if (
@@ -91,22 +87,8 @@ function RouteComponent() {
 
       {/* Main Content Area */}
       <div className="flex-1 w-full h-full min-h-0 relative">
-        <SignedOut>
-          <div className="h-full flex items-center justify-center px-4">
-            <div className="text-center space-y-4">
-              <Alert className="max-w-sm">
-                <OctagonMinus color="red" />
-                <AlertDescription>
-                  You must be signed in to view this conversation.
-                </AlertDescription>
-              </Alert>
-              <SignInPrompt />
-            </div>
-          </div>
-        </SignedOut>
-
         {/* Chat Window */}
-        {user && convexUser && (
+        {convexUser && (
           <LazyChatWindow
             messages={messages}
             onLoadOlder={loadOlderMessages}

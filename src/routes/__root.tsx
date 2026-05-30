@@ -9,13 +9,9 @@ import {
   createRootRouteWithContext,
 } from "@tanstack/react-router";
 import { ThemeProvider } from "~/components/theme-provider";
-import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { getGlobalClients } from "~/lib/query-client";
 import { Toaster } from "sonner";
-import { ConvexReactClient } from "convex/react";
 // import { PWAHandler } from "~/components/pwa-handler"; // Disabled for Netlify compatibility
-
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
@@ -111,11 +107,6 @@ export const Route = createRootRouteWithContext<{
         href: "https://fonts.gstatic.com",
         crossOrigin: "anonymous",
       },
-      // DNS prefetch for other external resources
-      {
-        rel: "dns-prefetch",
-        href: "https://clerk.dev",
-      },
     ],
   }),
   component: RootComponent,
@@ -128,11 +119,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <ConvexAuthProvider client={convex}>
-          <RootDocument>
-            <Outlet />
-          </RootDocument>
-        </ConvexAuthProvider>
+        <RootDocument>
+          <Outlet />
+        </RootDocument>
       </ThemeProvider>
     </QueryClientProvider>
   );

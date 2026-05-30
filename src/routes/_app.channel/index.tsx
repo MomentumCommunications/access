@@ -1,22 +1,19 @@
-import { useUser } from "@clerk/tanstack-react-start";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
+import { Id } from "convex/_generated/dataModel";
 import { Hash } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
 
 export const Route = createFileRoute("/_app/channel/")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { user } = useUser();
-
-  const { data: convexUser } = useQuery(
-    convexQuery(api.users.getUserByClerkId, { ClerkId: user?.id }),
-  );
+  const { data: convexUser } = useCurrentUser();
 
   const { data: channels, isLoading } = useQuery(
     convexQuery(api.channels.getChannelsByUser, { user: convexUser?._id }),
@@ -31,7 +28,11 @@ function RouteComponent() {
         <div className="flex flex-col items-stretch max-w-[200px] w-full gap-2">
           <h2 className="text-xl font-semibold mt-4">Channels</h2>
           <Button asChild variant="outline" className="flex justify-start">
-            <Link to="/channel/general">
+            <Link
+              to="/channel/$channelId"
+              params={{ channelId: "general" as Id<"channels"> }}
+              search={{ messageId: undefined }}
+            >
               <Hash color="#ce2128" />
               <span>General</span>
             </Link>
@@ -50,7 +51,11 @@ function RouteComponent() {
                 variant="outline"
                 className="flex justify-start"
               >
-                <Link to="/channel/$channel" params={{ channel: channel?._id }}>
+                <Link
+                  to="/channel/$channelId"
+                  params={{ channelId: channel?._id as Id<"channels"> }}
+                  search={{ messageId: undefined }}
+                >
                   <Hash color="#ce2128" />
                   <span>
                     <p>{channel?.name}</p>

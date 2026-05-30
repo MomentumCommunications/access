@@ -1,4 +1,3 @@
-import { useUser } from "@clerk/tanstack-react-start";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -28,21 +27,17 @@ import {
   PopoverTrigger,
 } from "~/components/ui/popover";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
 import { cn } from "~/lib/utils";
 
 export function SearchBar() {
   const [open, setOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState("");
   const navigate = useNavigate();
-  const { user } = useUser();
+  const { data: convexUser } = useCurrentUser();
 
   const isMac = navigator.userAgent.includes("Mac");
   const isMobile = useIsMobile();
-
-  const { data: convexUser } = useQuery({
-    ...convexQuery(api.users.getUserByClerkId, { ClerkId: user?.id }),
-    enabled: !!user?.id,
-  });
 
   const { data: channels } = useQuery({
     ...convexQuery(api.channels.getAccessibleChannelsForSearch, {

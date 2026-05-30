@@ -59,7 +59,9 @@ export function AddBulletin() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">Add Bulletin</Button>
+        <Button variant="outline">
+          <PlusIcon className="h-4 w-4" />
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
@@ -84,7 +86,7 @@ const formSchema = z.object({
 
 const DATE_FORMAT = "yyyy-MM-dd";
 const DISPLAY_DATE_FORMAT = "LLL d, yyyy";
-const DEFAULT_TIME = "09:00";
+const DEFAULT_TIME = "03:00";
 
 function formatDateValue(date: Date) {
   return format(date, DATE_FORMAT);

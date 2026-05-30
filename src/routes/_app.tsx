@@ -1,8 +1,4 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
-import { useUser } from "@clerk/tanstack-react-start";
-import { convexQuery } from "@convex-dev/react-query";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "convex/_generated/api";
 import { SidebarProvider } from "~/components/ui/sidebar";
 import { AppSidebar } from "~/components/app-sidebar";
 import { SidebarDataProvider } from "~/contexts/SidebarDataContext";
@@ -11,6 +7,7 @@ import { useUnreadCounts } from "~/hooks/useUnreadCounts";
 import { useDocumentTitle } from "~/hooks/useDocumentTitle";
 import { memo, Suspense } from "react";
 import { SidebarSkeleton } from "~/components/SidebarSkeleton";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayoutComponent,
@@ -22,15 +19,8 @@ const MemoizedHeader = memo(Header);
 
 // Separate component for sidebar data loading
 const SidebarWithData = memo(() => {
-  const user = useUser();
-
   // Only load essential user data immediately
-  const { data: convexUser } = useQuery({
-    ...convexQuery(api.users.getUserByClerkId, { ClerkId: user.user?.id }),
-    enabled: !!user.user?.id,
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    gcTime: 60 * 60 * 1000, // 1 hour
-  });
+  const { data: convexUser } = useCurrentUser();
 
   // Lazy load unread counts for document title
   const {

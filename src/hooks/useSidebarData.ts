@@ -1,20 +1,12 @@
-import { useUser } from "@clerk/tanstack-react-start";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { api } from "convex/_generated/api";
+import { useCurrentUser } from "./useCurrentUser";
 
 export function useSidebarData() {
-  const user = useUser();
-
   // Get current user - rely on global QueryClient cache settings
-  const { data: convexUser, isLoading: isUserLoading } = useQuery({
-    ...convexQuery(api.users.getUserByClerkId, { ClerkId: user.user?.id }),
-    enabled: !!user.user?.id,
-    // Use default global cache settings from query-client.ts
-    staleTime: 10 * 60 * 1000, // 10 minutes - user data changes infrequently
-    gcTime: 60 * 60 * 1000, // 1 hour - keep user data cached longer
-  });
+  const { data: convexUser, isLoading: isUserLoading } = useCurrentUser();
 
   // Get channels and DMs - leverage global cache for persistence
   const { data: publicChannels, isLoading: isPublicChannelsLoading } = useQuery(
@@ -93,4 +85,3 @@ export function useSidebarData() {
       stableLoadingStates.isDMsLoading,
   };
 }
-

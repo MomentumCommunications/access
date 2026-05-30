@@ -1,7 +1,7 @@
-import { useUser } from "@clerk/tanstack-react-start";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
+import { Id } from "convex/_generated/dataModel";
 import { InboxIcon, Hash, MessageSquare, Clock } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
 } from "~/components/ui/popover";
 import { useAppBadge } from "~/hooks/useAppBadge";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
 
 function formatTimeAgo(timestamp: number) {
   const now = Date.now();
@@ -84,15 +85,11 @@ function UnreadMessageItem({ message, onClick }: UnreadMessageItemProps) {
 }
 
 export function InboxButton() {
-  const user = useUser();
-
-  const { data: convexUser } = useQuery(
-    convexQuery(api.users.getUserByClerkId, { ClerkId: user.user?.id }),
-  );
+  const { data: convexUser } = useCurrentUser();
 
   const { data: unreadMessages, isLoading } = useQuery({
     ...convexQuery(api.messages.getUnreadMessages, {
-      userId: convexUser?._id,
+      userId: convexUser?._id ?? ("" as Id<"users">),
       limit: 20,
     }),
     enabled: !!convexUser?._id,
@@ -101,7 +98,7 @@ export function InboxButton() {
   // Get total unread count (not limited to 20)
   const { data: totalUnreadCount, isLoading: isLoadingTotal } = useQuery({
     ...convexQuery(api.messages.getTotalUnreadCount, {
-      userId: convexUser?._id,
+      userId: convexUser?._id ?? ("" as Id<"users">),
     }),
     enabled: !!convexUser?._id,
   });
@@ -185,4 +182,3 @@ export function InboxButton() {
     </Popover>
   );
 }
-

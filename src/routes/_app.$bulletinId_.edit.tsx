@@ -1,4 +1,3 @@
-import { useUser } from "@clerk/tanstack-react-start";
 import { useConvexMutation } from "@convex-dev/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
@@ -117,7 +116,7 @@ function DateTimePicker({
           </PopoverTrigger>
           <PopoverContent
             className="max-w-[calc(100vw-2rem)] overflow-x-auto p-0"
-            align="start"
+            align="center"
           >
             <Calendar
               mode="single"
@@ -182,14 +181,11 @@ function DateRangePicker({
 }
 
 function RouteComponent() {
-  const { user } = useUser();
   const { bulletinId } = Route.useParams();
   const bulletin = useQuery(api.bulletins.getBulletin, {
     id: bulletinId as Id<"bulletin">,
   });
-  const currentUser = useQuery(api.users.getUserByClerkId, {
-    ClerkId: user?.id,
-  });
+  const currentUser = useQuery(api.users.current, {});
   const navigate = useNavigate();
 
   if (bulletin === undefined) {

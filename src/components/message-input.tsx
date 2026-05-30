@@ -7,8 +7,8 @@ import { useConvexMutation, convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "convex/_generated/api";
 import { ImageUpload } from "./image-upload";
-import { useUser } from "@clerk/tanstack-react-start";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
 
 type ReplyingTo = {
   _id: Id<"messages">;
@@ -30,13 +30,9 @@ export function MessageInput({
   replyingTo?: ReplyingTo;
   onCancelReply?: () => void;
 }) {
-  const user = useUser();
   const isMobile = useIsMobile();
 
-  const { data: convexUser } = useQuery({
-    ...convexQuery(api.users.getUserByClerkId, { ClerkId: user?.user?.id }),
-    enabled: !!user?.user?.id,
-  });
+  const { data: convexUser } = useCurrentUser();
 
   const role = convexUser?.role;
 

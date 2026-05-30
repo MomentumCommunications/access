@@ -13,6 +13,8 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as ResendOTPEmailVerification from "../ResendOTPEmailVerification.js";
+import type * as ResendOTPPasswordReset from "../ResendOTPPasswordReset.js";
 import type * as auth from "../auth.js";
 import type * as bulletins from "../bulletins.js";
 import type * as channels from "../channels.js";
@@ -20,6 +22,7 @@ import type * as etcFunctions from "../etcFunctions.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as reactions from "../reactions.js";
+import type * as resendConfig from "../resendConfig.js";
 import type * as tasks from "../tasks.js";
 import type * as users from "../users.js";
 
@@ -32,6 +35,8 @@ import type * as users from "../users.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  ResendOTPEmailVerification: typeof ResendOTPEmailVerification;
+  ResendOTPPasswordReset: typeof ResendOTPPasswordReset;
   auth: typeof auth;
   bulletins: typeof bulletins;
   channels: typeof channels;
@@ -39,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   messages: typeof messages;
   reactions: typeof reactions;
+  resendConfig: typeof resendConfig;
   tasks: typeof tasks;
   users: typeof users;
 }>;

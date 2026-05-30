@@ -1,4 +1,3 @@
-import { useUser } from "@clerk/tanstack-react-start";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
@@ -39,6 +38,7 @@ import {
 import LazyChatWindow from "~/components/lazy/ChatWindow";
 import { useChatMessages } from "~/hooks/useChatMessages";
 import Delayed from "~/components/delayed";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
 
 export const Route = createFileRoute("/_app/channel/$channelId")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -52,14 +52,11 @@ export const Route = createFileRoute("/_app/channel/$channelId")({
 function RouteComponent() {
   const params = Route.useParams();
   const search = Route.useSearch();
-  const user = useUser();
   const channelId = params.channelId as Id<"channels">;
   const messageId = search.messageId as Id<"messages"> | undefined;
   const isMobile = useIsMobile();
 
-  const { data: convexUser } = useQuery(
-    convexQuery(api.users.getUserByClerkId, { ClerkId: user?.user?.id }),
-  );
+  const { data: convexUser } = useCurrentUser();
 
   const { data: channel } = useQuery(
     convexQuery(api.channels.getChannel, { id: channelId }),
@@ -87,7 +84,7 @@ function RouteComponent() {
   // Don't render anything while loading essential data
   if (!channel) return null;
 
-  if (!user || !convexUser)
+  if (!convexUser)
     return (
       <Delayed>
         <div className="flex h-[calc(100vh-64px)] max-w-4xl mx-auto items-center justify-center px-4">
@@ -96,18 +93,6 @@ function RouteComponent() {
             <AlertTitle>Hold up!</AlertTitle>
             <AlertDescription>
               You must be signed in to access this channel.
-              <div className="flex gap-2 py-2">
-                <Button
-                  asChild
-                  variant="outline"
-                  className="w-min cursor-pointer text-foreground"
-                >
-                  <a href="/sign-in">Sign in</a>
-                </Button>
-                <Button asChild className="w-min cursor-pointer">
-                  <a href="/sign-up">Sign up</a>
-                </Button>
-              </div>
             </AlertDescription>
           </Alert>
         </div>
@@ -204,7 +189,7 @@ function RouteComponent() {
 
       {/* Main Content Area */}
       <div className="flex-1 w-full h-full min-h-0 relative">
-        {user && convexUser && (
+        {convexUser && (
           <LazyChatWindow
             messages={messages}
             onLoadOlder={loadOlderMessages}

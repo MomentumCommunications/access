@@ -67,7 +67,7 @@ function RouteComponent() {
         <img
           src={bulletin.image}
           alt={bulletin.title}
-          className="max-h-[420px] w-full rounded object-cover"
+          className="max-h-96 w-full rounded object-cover"
         />
       )}
       <div className="flex flex-col gap-2">
@@ -82,7 +82,9 @@ function RouteComponent() {
           </p>
         )}
         <div className="flex items-center gap-2">
-          {bulletin.hidden && <EyeOff className="text-muted-foreground h-5 w-5" />}
+          {bulletin.hidden && (
+            <EyeOff className="text-muted-foreground h-5 w-5" />
+          )}
           <h1
             className={cn(
               "text-foreground text-3xl font-bold",

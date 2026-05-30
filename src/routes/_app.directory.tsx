@@ -1,4 +1,3 @@
-import { useUser } from "@clerk/tanstack-react-start";
 import {
   convexQuery,
   useConvexMutation,
@@ -39,11 +38,7 @@ export const Route = createFileRoute("/_app/directory")({
 });
 
 function RouteComponent() {
-  const user = useUser();
-
-  const convexUser = useConvexQuery(api.users.getUserByClerkId, {
-    ClerkId: user.user?.id,
-  });
+  const convexUser = useConvexQuery(api.users.current, {});
 
   const { data: users, isLoading } = useQuery({
     ...convexQuery(api.users.getUsers, {}),

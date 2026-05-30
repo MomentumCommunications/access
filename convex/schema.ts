@@ -9,18 +9,25 @@ export default defineSchema({
     text: v.string(),
   }),
   users: defineTable({
-    name: v.string(),
+    name: v.optional(v.string()),
     displayName: v.optional(v.string()),
-    email: v.optional(v.array(v.string())),
+    email: v.optional(v.union(v.string(), v.array(v.string()))),
+    emailVerificationTime: v.optional(v.number()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
     role: v.optional(
       v.union(v.literal("admin"), v.literal("staff"), v.literal("member")),
     ),
     group: v.optional(v.array(v.id("groups"))),
     image: v.optional(v.string()),
     description: v.optional(v.string()),
-    // this the Clerk ID, stored in the subject JWT field
-    externalId: v.string(),
-  }).index("byExternalId", ["externalId"]),
+    // Legacy Clerk ID. Convex Auth stores its user ID in the subject JWT field.
+    externalId: v.optional(v.string()),
+  })
+    .index("email", ["email"])
+    .index("phone", ["phone"])
+    .index("byExternalId", ["externalId"]),
   groups: defineTable({
     name: v.string(),
     description: v.string(),

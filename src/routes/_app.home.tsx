@@ -1,8 +1,8 @@
-import { SignedIn, SignedOut, useUser } from "@clerk/tanstack-react-start";
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
+import { Authenticated, Unauthenticated } from "convex/react";
 import { useEffect, useState } from "react";
 import { LazyAddBulletin } from "~/components/lazy/AdminComponents";
 import { AdminBulletin } from "~/components/admin-bulletin";
@@ -12,6 +12,7 @@ import { Card, CardDescription, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
 import { BulletinFeed } from "~/components/bulletin-feed";
+import { useCurrentUser } from "~/hooks/useCurrentUser";
 
 export const Route = createFileRoute("/_app/home")({
   component: Home,
@@ -19,13 +20,7 @@ export const Route = createFileRoute("/_app/home")({
 
 function Home() {
   // TODO: change array indexed passkeys to be more dynamic
-  const { user } = useUser();
-
-  const { data: userData, isLoading } = useQuery(
-    convexQuery(api.users.getUserByClerkId, {
-      ClerkId: user?.id as string,
-    }),
-  );
+  const { data: userData, isLoading } = useCurrentUser();
 
   const role = userData?.role;
 
@@ -117,16 +112,16 @@ function Home() {
     <div className="flex justify-center overscroll-contain">
       <main className="w-full max-w-3xl p-4">
         <div className="flex flex-col justify-start gap-4 py-4">
-          <SignedOut>
+          <Unauthenticated>
             <div className="py-4">
               <h1 className="text-center text-4xl font-bold">
                 ACCESS MOMENTUM
               </h1>
             </div>
             <ProtectedContent password={groupPassword} />
-          </SignedOut>
+          </Unauthenticated>
         </div>
-        <SignedIn>
+        <Authenticated>
           <div className="flex justify-between align-middle">
             <h1 className="text-4xl font-bold">Bulletin</h1>
             {role === "admin" && <LazyAddBulletin />}
@@ -134,7 +129,7 @@ function Home() {
           <Separator className="my-4 w-full" />
           {role !== "admin" && <BulletinFeed groups={userGroups} />}
           {role === "admin" && <AdminBulletin />}
-        </SignedIn>
+        </Authenticated>
       </main>
     </div>
   );

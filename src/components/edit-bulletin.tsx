@@ -1,7 +1,6 @@
 import * as React from "react";
 
 import { cn } from "~/lib/utils";
-import { useUser } from "@clerk/tanstack-react-start";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -59,10 +58,7 @@ type Bulletin = {
 
 export function EditBulletin({ bulletin }: { bulletin: Bulletin }) {
   const [open, setOpen] = React.useState(false);
-  const { user } = useUser();
-  const currentUser = useQuery(api.users.getUserByClerkId, {
-    ClerkId: user?.id,
-  });
+  const currentUser = useQuery(api.users.current, {});
 
   const isMobile = useIsMobile();
   const navigate = useNavigate();

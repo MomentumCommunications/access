@@ -33,11 +33,10 @@ import { NewChannel } from "./new-channel";
 import { NewDm } from "./new-dm";
 import { channelNameOrFallback } from "~/lib/utils";
 import { useSidebarDataContext } from "~/contexts/SidebarDataContext";
-import { Link, Navigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { NavUser } from "./user";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import { Spinner } from "./ui/spinner";
-import { signIn } from "convex/auth";
 import { Button } from "./ui/button";
 
 // Memoized components for individual sidebar items
@@ -177,7 +176,7 @@ const AppSidebarComponent = memo(() => {
       onTouchEnd={handleTouchEnd}
       style={{ height: "100vh" }} // Ensure full height for touch detection
     >
-      <Sidebar collapsible="icon">
+      <Sidebar variant="floating" collapsible="icon">
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>

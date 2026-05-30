@@ -41,7 +41,7 @@ export function NavUser({ user }: { user: Doc<"users"> }) {
     setIsSigningOut(true);
     try {
       await signOut();
-      await navigate({ to: "/login" });
+      await navigate({ to: "/home" });
     } finally {
       setIsSigningOut(false);
     }

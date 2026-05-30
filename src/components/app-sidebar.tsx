@@ -7,6 +7,7 @@ import {
   HelpCircle,
   Home,
   Lock,
+  LogIn,
   MessageSquare,
 } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
@@ -32,8 +33,12 @@ import { NewChannel } from "./new-channel";
 import { NewDm } from "./new-dm";
 import { channelNameOrFallback } from "~/lib/utils";
 import { useSidebarDataContext } from "~/contexts/SidebarDataContext";
-import { Link } from "@tanstack/react-router";
+import { Link, Navigate } from "@tanstack/react-router";
 import { NavUser } from "./user";
+import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
+import { Spinner } from "./ui/spinner";
+import { signIn } from "convex/auth";
+import { Button } from "./ui/button";
 
 // Memoized components for individual sidebar items
 const PublicChannelItem = memo<{
@@ -289,7 +294,20 @@ const AppSidebarComponent = memo(() => {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-          {convexUser && <NavUser user={convexUser} />}
+          <AuthLoading>
+            <Spinner />
+          </AuthLoading>
+          <Unauthenticated>
+            <Button variant={"outline"} asChild>
+              <a href="/login">
+                <LogIn />
+                <span>Sign In</span>
+              </a>
+            </Button>
+          </Unauthenticated>
+          <Authenticated>
+            {convexUser && <NavUser user={convexUser} />}
+          </Authenticated>
         </SidebarFooter>
       </Sidebar>
     </div>

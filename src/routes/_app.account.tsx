@@ -1,6 +1,6 @@
 import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { useForm } from "react-hook-form";
 import z from "zod";
@@ -17,6 +17,9 @@ import {
   FormMessage,
 } from "~/components/ui/form";
 import { toast } from "sonner";
+import { LogOut } from "lucide-react";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useState } from "react";
 
 const formSchema = z.object({
   bio: z.string().max(1000),
@@ -28,6 +31,10 @@ export const Route = createFileRoute("/_app/account")({
 
 function RouteComponent() {
   const convexUser = useConvexQuery(api.users.current, {});
+
+  const { signOut } = useAuthActions();
+  const navigate = useNavigate();
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -47,6 +54,16 @@ function RouteComponent() {
     toast("Description updated");
   }
 
+  async function handleSignOut() {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      await navigate({ to: "/home" });
+    } finally {
+      setIsSigningOut(false);
+    }
+  }
+
   return (
     <div className="flex px-2 md:px-4 w-full items-center justify-start pt-8 md:py-24 flex-col gap-6 md:gap-12">
       <div className="flex flex-col gap-6 md:gap-12 max-w-4xl w-full">
@@ -59,7 +76,10 @@ function RouteComponent() {
             </p>
             <Separator />
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-8"
+              >
                 <FormField
                   control={form.control}
                   name="bio"
@@ -80,6 +100,16 @@ function RouteComponent() {
               </form>
             </Form>
           </div>
+          <Separator className="my-4" />
+          <h1 className="text-2xl font-semibold mb-4">Had enough?</h1>
+          <Button
+            onSelect={handleSignOut}
+            variant="destructive"
+            disabled={isSigningOut}
+          >
+            <LogOut />
+            {isSigningOut ? "Logging out..." : "Log out"}
+          </Button>
         </div>
       </div>
     </div>

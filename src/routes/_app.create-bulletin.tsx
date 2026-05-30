@@ -149,7 +149,7 @@ function DateRangePicker({
           mode="range"
           selected={dateRange}
           onSelect={onDateRangeChange}
-          numberOfMonths={2}
+          numberOfMonths={1}
           className="w-full"
         />
       </PopoverContent>
@@ -362,7 +362,7 @@ function RouteComponent() {
               <FormItem>
                 <FormLabel>Body</FormLabel>
                 <FormControl>
-                  <Textarea {...field} className="min-h-[200px]" />
+                  <Textarea {...field} className="min-h-52" />
                 </FormControl>
                 <FormMessage />
               </FormItem>

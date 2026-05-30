@@ -26,8 +26,6 @@ function Home() {
 
   const userGroups = userData?.group || [];
 
-  console.log(userGroups);
-
   const { data: groups, isLoading: groupsLoading } = useQuery(
     convexQuery(api.etcFunctions.getGroups, {}),
   );

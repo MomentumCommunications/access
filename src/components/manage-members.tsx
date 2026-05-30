@@ -117,7 +117,6 @@ function MemberList({ channelId }: { channelId: Id<"channels"> }) {
     user: Id<"users"> | undefined,
   ) {
     if (!user) return;
-    console.log("remove user, ", user, "from", channel);
     removalMutation({ channel, user });
   }
 
@@ -126,7 +125,6 @@ function MemberList({ channelId }: { channelId: Id<"channels"> }) {
     user: Id<"users"> | undefined,
   ) {
     if (!user) return;
-    console.log("add user, ", user);
     additionMutation({ channel: channelId, user });
   }
 

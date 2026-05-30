@@ -172,7 +172,7 @@ function DateRangePicker({
           mode="range"
           selected={dateRange}
           onSelect={onDateRangeChange}
-          numberOfMonths={2}
+          numberOfMonths={1}
           className="w-full"
         />
       </PopoverContent>

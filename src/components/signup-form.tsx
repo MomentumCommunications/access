@@ -15,7 +15,7 @@ import {
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 
-type SignupFormProps = React.ComponentProps<typeof Card> & {
+type SignupFormProps = Omit<React.ComponentProps<typeof Card>, "onSubmit"> & {
   error?: string | null;
   isSubmitting?: boolean;
   onSubmit: React.FormEventHandler<HTMLFormElement>;

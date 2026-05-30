@@ -15,7 +15,10 @@ import {
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 
-type PasswordResetFormProps = React.ComponentProps<typeof Card> & {
+type PasswordResetFormProps = Omit<
+  React.ComponentProps<typeof Card>,
+  "onSubmit"
+> & {
   email?: string;
   error?: string | null;
   isSubmitting?: boolean;

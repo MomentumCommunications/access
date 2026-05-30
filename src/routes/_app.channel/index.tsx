@@ -1,71 +1,38 @@
-import { convexQuery } from "@convex-dev/react-query";
-import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { api } from "convex/_generated/api";
-import { Id } from "convex/_generated/dataModel";
-import { Hash } from "lucide-react";
+import { MessageSquareOff } from "lucide-react";
 import { Button } from "~/components/ui/button";
-import { Skeleton } from "~/components/ui/skeleton";
-import { useCurrentUser } from "~/hooks/useCurrentUser";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 
 export const Route = createFileRoute("/_app/channel/")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  const { data: convexUser } = useCurrentUser();
-
-  const { data: channels, isLoading } = useQuery(
-    convexQuery(api.channels.getChannelsByUser, { user: convexUser?._id }),
-  );
-
-  if (!channels) return null;
-
   return (
-    <>
-      <div className="p-4">
-        <h1 className="text-2xl font-bold">Chat</h1>
-        <div className="flex flex-col items-stretch max-w-[200px] w-full gap-2">
-          <h2 className="text-xl font-semibold mt-4">Channels</h2>
-          <Button asChild variant="outline" className="flex justify-start">
-            <Link
-              to="/channel/$channelId"
-              params={{ channelId: "general" as Id<"channels"> }}
-              search={{ messageId: undefined }}
-            >
-              <Hash color="#ce2128" />
-              <span>General</span>
-            </Link>
+    <div className="flex min-h-[calc(100vh-54px)] items-center justify-center p-6">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <MessageSquareOff className="size-5 text-muted-foreground" />
+            <CardTitle>Chat unavailable</CardTitle>
+          </div>
+          <CardDescription>
+            Channel chat is temporarily unavailable while the new chat
+            experience is being prepared.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild>
+            <Link to="/home">Go Home</Link>
           </Button>
-          {isLoading ? (
-            <div className="flex flex-col gap-2">
-              <Skeleton className="w-32 h-6" />
-              <Skeleton className="w-32 h-6" />
-              <Skeleton className="w-32 h-6" />
-            </div>
-          ) : (
-            channels.map((channel) => (
-              <Button
-                asChild
-                key={channel?._id}
-                variant="outline"
-                className="flex justify-start"
-              >
-                <Link
-                  to="/channel/$channelId"
-                  params={{ channelId: channel?._id as Id<"channels"> }}
-                  search={{ messageId: undefined }}
-                >
-                  <Hash color="#ce2128" />
-                  <span>
-                    <p>{channel?.name}</p>
-                  </span>
-                </Link>
-              </Button>
-            ))
-          )}
-        </div>
-      </div>
-    </>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

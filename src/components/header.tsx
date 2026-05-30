@@ -1,7 +1,5 @@
-import { InboxButton } from "./inbox-button";
 import { Separator } from "./ui/separator";
 import { SidebarTrigger } from "./ui/sidebar";
-import { SearchBar } from "./search-bar";
 
 export function Header() {
   return (
@@ -9,10 +7,6 @@ export function Header() {
       <div className="flex items-center justify-between p-2">
         <div className="flex items-center space-x-2">
           <SidebarTrigger />
-        </div>
-        <SearchBar />
-        <div className="px-2 flex items-center space-x-2">
-          <InboxButton />
         </div>
       </div>
       <Separator />

@@ -396,7 +396,7 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
               <FormItem>
                 <FormLabel>Body</FormLabel>
                 <FormControl>
-                  <Textarea className="min-h-[200px]" {...field} />
+                  <Textarea className="min-h-50" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

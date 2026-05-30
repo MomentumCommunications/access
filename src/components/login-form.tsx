@@ -22,7 +22,7 @@ export function LoginForm({
   isSubmitting,
   onSubmit,
   ...props
-}: React.ComponentProps<"div"> & {
+}: Omit<React.ComponentProps<"div">, "onSubmit"> & {
   error?: string | null;
   isSubmitting?: boolean;
   onSubmit: React.FormEventHandler<HTMLFormElement>;

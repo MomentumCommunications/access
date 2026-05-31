@@ -1,10 +1,11 @@
-import { memo, useRef } from "react";
-import { Cog, HelpCircle, Home, LogIn } from "lucide-react";
+import { memo } from "react";
+import { Cog, HelpCircle, Home, LogIn, MessageSquareOff } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
@@ -17,48 +18,19 @@ import { Link } from "@tanstack/react-router";
 import { NavUser } from "./user";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import { Spinner } from "./ui/spinner";
-import { Button } from "./ui/button";
 
 const AppSidebarComponent = memo(() => {
   const { convexUser } = useSidebarDataContext();
-  const sidebar = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
 
-  const touchStartX = useRef<number | null>(null);
-  const touchCurrentX = useRef<number | null>(null);
-  const swipeThreshold = 50;
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchCurrentX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    if (touchStartX.current !== null && touchCurrentX.current !== null) {
-      const deltaX = touchCurrentX.current - touchStartX.current;
-
-      if (touchStartX.current < 30 && deltaX > swipeThreshold) {
-        sidebar.toggleSidebar();
-      }
-
-      if (sidebar.open && deltaX < -swipeThreshold) {
-        sidebar.toggleSidebar();
-      }
+  const closeMobileSidebar = () => {
+    if (isMobile) {
+      setOpenMobile(false);
     }
-
-    touchStartX.current = null;
-    touchCurrentX.current = null;
   };
 
   return (
-    <div
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      style={{ height: "100vh" }}
-    >
+    <div className="h-svh">
       <Sidebar variant="floating" collapsible="icon">
         <SidebarHeader>
           <SidebarMenu>
@@ -78,41 +50,98 @@ const AppSidebarComponent = memo(() => {
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarMenuButton asChild onClick={() => sidebar.toggleSidebar()}>
-              <Link to="/home">
-                <Home />
-                <span>Home</span>
-              </Link>
-            </SidebarMenuButton>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip="Home"
+                    onClick={closeMobileSidebar}
+                  >
+                    <Link to="/home">
+                      <Home />
+                      <span>Home</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
           </SidebarGroup>
           <SidebarGroup>
             <SidebarGroupLabel>Etc</SidebarGroupLabel>
-            <SidebarMenuButton asChild onClick={() => sidebar.toggleSidebar()}>
-              <Link to="/settings">
-                <Cog />
-                <span>Settings</span>
-              </Link>
-            </SidebarMenuButton>
-            <SidebarMenuButton asChild>
-              <a href="/help">
-                <HelpCircle />
-                <span>Help</span>
-              </a>
-            </SidebarMenuButton>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip="Settings"
+                    onClick={closeMobileSidebar}
+                  >
+                    <Link to="/settings">
+                      <Cog />
+                      <span>Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip="Help"
+                    onClick={closeMobileSidebar}
+                  >
+                    <Link to="/help">
+                      <HelpCircle />
+                      <span>Help</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
           </SidebarGroup>
+          {/* <SidebarGroup> */}
+          {/*   <SidebarGroupLabel>DMs</SidebarGroupLabel> */}
+          {/*   <SidebarGroupContent> */}
+          {/*     <SidebarMenu> */}
+          {/*       <SidebarMenuItem> */}
+          {/*         <SidebarMenuButton */}
+          {/*           disabled */}
+          {/*           tooltip="No DMs" */}
+          {/*           className="text-muted-foreground" */}
+          {/*         > */}
+          {/*           <MessageSquareOff /> */}
+          {/*           <span>No DMs</span> */}
+          {/*         </SidebarMenuButton> */}
+          {/*       </SidebarMenuItem> */}
+          {/*     </SidebarMenu> */}
+          {/*   </SidebarGroupContent> */}
+          {/* </SidebarGroup> */}
         </SidebarContent>
         <SidebarFooter>
-          <AuthLoading>
-            <Spinner />
-          </AuthLoading>
-          <Unauthenticated>
-            <Button variant="outline" asChild>
-              <a href="/login">
-                <LogIn />
-                <span>Sign In</span>
-              </a>
-            </Button>
-          </Unauthenticated>
+          <SidebarMenu>
+            <AuthLoading>
+              <SidebarMenuItem>
+                <SidebarMenuButton disabled>
+                  <Spinner />
+                  <span>Loading...</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </AuthLoading>
+            <Unauthenticated>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  variant="outline"
+                  tooltip="Sign In"
+                  onClick={closeMobileSidebar}
+                >
+                  <Link to="/login">
+                    <LogIn />
+                    <span>Sign In</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </Unauthenticated>
+          </SidebarMenu>
           <Authenticated>
             {convexUser && <NavUser user={convexUser} />}
           </Authenticated>

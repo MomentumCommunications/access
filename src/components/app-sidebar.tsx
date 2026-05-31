@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Cog, HelpCircle, Home, LogIn, MessageSquareOff } from "lucide-react";
+import { Cog, HelpCircle, Home, LogIn } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -98,23 +98,6 @@ const AppSidebarComponent = memo(() => {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-          {/* <SidebarGroup> */}
-          {/*   <SidebarGroupLabel>DMs</SidebarGroupLabel> */}
-          {/*   <SidebarGroupContent> */}
-          {/*     <SidebarMenu> */}
-          {/*       <SidebarMenuItem> */}
-          {/*         <SidebarMenuButton */}
-          {/*           disabled */}
-          {/*           tooltip="No DMs" */}
-          {/*           className="text-muted-foreground" */}
-          {/*         > */}
-          {/*           <MessageSquareOff /> */}
-          {/*           <span>No DMs</span> */}
-          {/*         </SidebarMenuButton> */}
-          {/*       </SidebarMenuItem> */}
-          {/*     </SidebarMenu> */}
-          {/*   </SidebarGroupContent> */}
-          {/* </SidebarGroup> */}
         </SidebarContent>
         <SidebarFooter>
           <SidebarMenu>

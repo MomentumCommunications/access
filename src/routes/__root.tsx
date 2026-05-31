@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import appCss from "~/styles/app.css?url";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -96,6 +96,11 @@ export const Route = createRootRouteWithContext<{
         sizes: "120x120",
         href: "/icons/icon-120x120.png",
       },
+      {
+        rel: "preload",
+        href: "/icons/icon-120x120.png",
+        as: "image",
+      },
       // Preconnect to critical origins for faster loading
       {
         rel: "preconnect",
@@ -119,6 +124,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <RootDocument>
+          <BootSplashDismiss />
           <Outlet />
         </RootDocument>
       </ThemeProvider>
@@ -126,11 +132,109 @@ function RootComponent() {
   );
 }
 
+function BootSplashDismiss() {
+  useEffect(() => {
+    document.documentElement.dataset.appReady = "true";
+  }, []);
+
+  return null;
+}
+
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html suppressHydrationWarning>
       <head>
         <HeadContent />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              #app-boot-splash {
+                position: fixed;
+                inset: 0;
+                z-index: 2147483647;
+                display: grid;
+                place-items: center;
+                background: #e8e8e8;
+                color: #18181b;
+                transition: opacity 180ms ease, visibility 180ms ease;
+              }
+
+              .dark #app-boot-splash {
+                background: #09090b;
+                color: #fafafa;
+              }
+
+              html[data-app-ready="true"] #app-boot-splash {
+                opacity: 0;
+                visibility: hidden;
+                pointer-events: none;
+              }
+
+              .app-boot-splash__content {
+                display: grid;
+                justify-items: center;
+                gap: 14px;
+              }
+
+              .app-boot-splash__logo {
+                width: 64px;
+                height: 64px;
+                border-radius: 16px;
+                box-shadow: 0 18px 45px rgb(0 0 0 / 18%);
+              }
+
+              .app-boot-splash__brand {
+                font: 700 13px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                letter-spacing: 0.08em;
+              }
+
+              .app-boot-splash__bar {
+                width: 96px;
+                height: 3px;
+                overflow: hidden;
+                border-radius: 999px;
+                background: rgb(0 0 0 / 12%);
+              }
+
+              .dark .app-boot-splash__bar {
+                background: rgb(255 255 255 / 14%);
+              }
+
+              .app-boot-splash__bar::after {
+                content: "";
+                display: block;
+                width: 42px;
+                height: 100%;
+                border-radius: inherit;
+                background: #ce2128;
+                animation: app-boot-splash-slide 900ms ease-in-out infinite;
+              }
+
+              @keyframes app-boot-splash-slide {
+                0% {
+                  transform: translateX(-44px);
+                }
+                50% {
+                  transform: translateX(98px);
+                }
+                100% {
+                  transform: translateX(98px);
+                }
+              }
+
+              @media (prefers-reduced-motion: reduce) {
+                #app-boot-splash {
+                  transition: none;
+                }
+
+                .app-boot-splash__bar::after {
+                  animation: none;
+                  width: 100%;
+                }
+              }
+            `,
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -149,6 +253,17 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
         />
       </head>
       <body className="overscroll-none overscroll-x-none">
+        <div id="app-boot-splash" aria-hidden="true">
+          <div className="app-boot-splash__content">
+            <img
+              className="app-boot-splash__logo"
+              src="/icons/icon-120x120.png"
+              alt=""
+            />
+            <div className="app-boot-splash__brand">ACCESS MOMENTUM</div>
+            <div className="app-boot-splash__bar" />
+          </div>
+        </div>
         {children}
         {/* <PWAHandler /> */}
         <Toaster />

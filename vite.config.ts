@@ -3,6 +3,7 @@ import { defineConfig } from "vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import netlify from "@netlify/vite-plugin-tanstack-start";
 
 export default defineConfig({
   server: {
@@ -13,6 +14,7 @@ export default defineConfig({
   },
   plugins: [
     tanstackStart(),
+    netlify(),
     react(),
     tailwindcss(),
     // Temporarily disable PWA plugin due to TanStack Start compatibility issues

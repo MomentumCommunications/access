@@ -6,7 +6,7 @@ import { DefaultCatchBoundary } from "./components/default-catch-boundry";
 import { getGlobalClients } from "./lib/query-client";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 
-export function createRouter() {
+export function getRouter() {
   // Use global singleton clients to ensure cache persistence
   const { convex, queryClient } = getGlobalClients();
 
@@ -27,8 +27,10 @@ export function createRouter() {
   return router;
 }
 
+export const createRouter = getRouter;
+
 declare module "@tanstack/react-router" {
   interface Register {
-    router: ReturnType<typeof createRouter>;
+    router: ReturnType<typeof getRouter>;
   }
 }

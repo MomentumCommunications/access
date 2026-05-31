@@ -1,33 +1,19 @@
 // vite.config.ts
 import { defineConfig } from "vite";
-import tsConfigPaths from "vite-tsconfig-paths";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import tailwindcss from "@tailwindcss/vite";
-import { VitePWA } from "vite-plugin-pwa";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   server: {
     port: 3000,
-    // Add middleware to handle Firefox dynamic import MIME type issues
-    middlewares: [
-      (req, res, next) => {
-        // Handle dynamic imports with query parameters for Firefox
-        if (req.url?.includes(".tsx?") || req.url?.includes(".ts?")) {
-          res.setHeader(
-            "Content-Type",
-            "application/javascript; charset=utf-8",
-          );
-        }
-        next();
-      },
-    ],
+  },
+  resolve: {
+    tsconfigPaths: true,
   },
   plugins: [
-    tsConfigPaths(),
-    tanstackStart({
-      target: "netlify",
-      ssr: true,
-    }),
+    tanstackStart(),
+    react(),
     tailwindcss(),
     // Temporarily disable PWA plugin due to TanStack Start compatibility issues
     // VitePWA({
@@ -54,8 +40,6 @@ export default defineConfig({
         // manualChunks: undefined,
         // Simplify chunk file naming
         chunkFileNames: "assets/[name]-[hash].js",
-        // Optimize compression
-        compact: true,
       },
     },
     // Use safer minification for deployment compatibility
@@ -77,12 +61,6 @@ export default defineConfig({
     ], // Pre-bundle these for better compatibility
     // Force exclude problematic packages that might cause circular deps
     exclude: ["@tanstack/start-server-core"],
-  },
-  // Improve tree shaking
-  esbuild: {
-    treeShaking: true,
-    // Remove console logs in production
-    drop: process.env.NODE_ENV === "production" ? ["console", "debugger"] : [],
   },
   // Add explicit environment variable
   define: {

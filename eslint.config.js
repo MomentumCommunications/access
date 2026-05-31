@@ -6,6 +6,18 @@ import { defineConfig } from "eslint/config";
 
 export default defineConfig([
   {
+    ignores: [
+      ".netlify/**",
+      ".nitro/**",
+      ".output/**",
+      ".tanstack/**",
+      "convex/_generated/**",
+      "dev-dist/**",
+      "dist/**",
+      "node_modules/**",
+    ],
+  },
+  {
     files: ["**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     plugins: { js, react: pluginReact },
     extends: [
@@ -17,6 +29,7 @@ export default defineConfig([
     settings: { react: { version: "detect" } },
     rules: {
       "react/react-in-jsx-scope": "off",
+      "react/prop-types": "off",
       quotes: ["error", "double", { avoidEscape: true }],
       // other rules...
     },

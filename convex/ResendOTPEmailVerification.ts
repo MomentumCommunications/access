@@ -2,6 +2,7 @@ import Resend from "@auth/core/providers/resend";
 import { Resend as ResendAPI } from "resend";
 import { RandomReader, generateRandomString } from "@oslojs/crypto/random";
 import { getResendApiKey, resendFromAddress } from "./resendConfig";
+import { fillRandomBytes } from "./random";
 
 export const ResendOTPEmailVerification = Resend({
   id: "resend-email-verification",
@@ -9,7 +10,7 @@ export const ResendOTPEmailVerification = Resend({
   async generateVerificationToken() {
     const random: RandomReader = {
       read(bytes) {
-        crypto.getRandomValues(bytes);
+        fillRandomBytes(bytes);
       },
     };
 

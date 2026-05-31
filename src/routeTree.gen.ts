@@ -128,7 +128,7 @@ export interface FileRoutesByFullPath {
   '/$bulletinId/edit': typeof AppBulletinIdEditRoute
   '/channel/$channelId': typeof AppChannelChannelIdRoute
   '/dm/$dmId': typeof AppDmDmIdRoute
-  '/channel': typeof AppChannelIndexRoute
+  '/channel/': typeof AppChannelIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -186,7 +186,7 @@ export interface FileRouteTypes {
     | '/$bulletinId/edit'
     | '/channel/$channelId'
     | '/dm/$dmId'
-    | '/channel'
+    | '/channel/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -260,7 +260,7 @@ declare module '@tanstack/react-router' {
     '/_app': {
       id: '/_app'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -330,7 +330,7 @@ declare module '@tanstack/react-router' {
     '/_app/channel/': {
       id: '/_app/channel/'
       path: '/channel'
-      fullPath: '/channel'
+      fullPath: '/channel/'
       preLoaderRoute: typeof AppChannelIndexRouteImport
       parentRoute: typeof AppRoute
     }
@@ -400,3 +400,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

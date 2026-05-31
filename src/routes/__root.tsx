@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-// @ts-expect-error It's probably fine
 import appCss from "~/styles/app.css?url";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -129,7 +128,7 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html>
+    <html suppressHydrationWarning>
       <head>
         <HeadContent />
         <script

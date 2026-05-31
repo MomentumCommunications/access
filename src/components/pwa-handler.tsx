@@ -1,25 +1,30 @@
-import { useEffect } from 'react';
-import { toast } from 'sonner';
+import { useEffect } from "react";
+import { toast } from "sonner";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
 
 export function PWAHandler() {
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
+    if ("serviceWorker" in navigator) {
       // Register service worker
-      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      navigator.serviceWorker.register("/sw.js", { scope: "/" })
         .then((registration) => {
-          console.log('SW registered: ', registration);
+          console.log("SW registered: ", registration);
           
           // Listen for updates
-          registration.addEventListener('updatefound', () => {
+          registration.addEventListener("updatefound", () => {
             const newWorker = registration.installing;
             if (newWorker) {
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              newWorker.addEventListener("statechange", () => {
+                if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
                   // Show update notification
-                  toast.success('New version available!', {
-                    description: 'Refresh the page to get the latest features.',
+                  toast.success("New version available!", {
+                    description: "Refresh the page to get the latest features.",
                     action: {
-                      label: 'Refresh',
+                      label: "Refresh",
                       onClick: () => window.location.reload()
                     },
                     duration: 10000
@@ -30,30 +35,30 @@ export function PWAHandler() {
           });
         })
         .catch((registrationError) => {
-          console.log('SW registration failed: ', registrationError);
+          console.log("SW registration failed: ", registrationError);
         });
 
       // Listen for controlling service worker changes
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
         window.location.reload();
       });
     }
 
     // Handle install prompt
-    let deferredPrompt: any;
+    let deferredPrompt: BeforeInstallPromptEvent | null = null;
     
     const handleBeforeInstallPrompt = (e: Event) => {
       // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
       // Stash the event so it can be triggered later
-      deferredPrompt = e;
+      deferredPrompt = e as BeforeInstallPromptEvent;
       
       // Show install suggestion after a delay
       setTimeout(() => {
-        toast.info('Install Access Momentum', {
-          description: 'Add to your home screen for quick access!',
+        toast.info("Install Access Momentum", {
+          description: "Add to your home screen for quick access!",
           action: {
-            label: 'Install',
+            label: "Install",
             onClick: async () => {
               if (deferredPrompt) {
                 deferredPrompt.prompt();
@@ -68,22 +73,22 @@ export function PWAHandler() {
       }, 30000); // Show after 30 seconds
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
     // Handle successful installation
     const handleAppInstalled = () => {
-      toast.success('Access Momentum installed successfully!', {
-        description: 'You can now access the app from your home screen.'
+      toast.success("Access Momentum installed successfully!", {
+        description: "You can now access the app from your home screen."
       });
       deferredPrompt = null;
     };
 
-    window.addEventListener('appinstalled', handleAppInstalled);
+    window.addEventListener("appinstalled", handleAppInstalled);
 
     // Cleanup
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 

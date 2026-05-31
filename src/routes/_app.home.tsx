@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Authenticated, Unauthenticated } from "convex/react";
+import { Download, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { LazyAddBulletin } from "~/components/lazy/AdminComponents";
 import { AdminBulletin } from "~/components/admin-bulletin";
@@ -17,6 +18,97 @@ import { useCurrentUser } from "~/hooks/useCurrentUser";
 export const Route = createFileRoute("/_app/home")({
   component: Home,
 });
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
+
+function isStandaloneApp() {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    ("standalone" in navigator && navigator.standalone === true)
+  );
+}
+
+function PwaInstallBanner() {
+  const [isVisible, setIsVisible] = useState(false);
+  const [installPrompt, setInstallPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const isMobileBrowser =
+      window.matchMedia("(max-width: 767px)").matches &&
+      navigator.maxTouchPoints > 0 &&
+      !isStandaloneApp();
+
+    setIsVisible(isMobileBrowser);
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt,
+      );
+    };
+  }, []);
+
+  if (!isVisible) {
+    return null;
+  }
+
+  async function handleInstall() {
+    if (!installPrompt) {
+      window.location.href = "/help#install-app";
+      return;
+    }
+
+    await installPrompt.prompt();
+    setInstallPrompt(null);
+  }
+
+  return (
+    <div className="rounded-lg border bg-card p-3 text-card-foreground shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="rounded-md bg-primary p-2 text-primary-foreground">
+          <Download className="size-4" />
+        </div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div>
+            <h2 className="text-sm font-semibold">Install Access Momentum</h2>
+            <p className="text-sm text-muted-foreground">
+              Add the portal to your home screen for a faster app-like launch.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={handleInstall}>
+              {installPrompt ? "Install" : "Show me how"}
+            </Button>
+            {installPrompt && (
+              <Button variant="outline" size="sm" asChild>
+                <a href="/help#install-app">Show me how</a>
+              </Button>
+            )}
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="-m-2 size-8 shrink-0"
+          onClick={() => setIsVisible(false)}
+          aria-label="Dismiss install prompt"
+        >
+          <X className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 function Home() {
   // TODO: change array indexed passkeys to be more dynamic
@@ -109,6 +201,7 @@ function Home() {
   return (
     <div className="flex justify-center overscroll-contain">
       <main className="w-full max-w-3xl p-4">
+        <PwaInstallBanner />
         <div className="flex flex-col justify-start gap-4 py-4">
           <Unauthenticated>
             <div className="py-4">

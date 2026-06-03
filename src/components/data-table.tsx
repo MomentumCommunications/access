@@ -64,8 +64,8 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
+    <div className="min-w-0 space-y-3">
+      <div className="flex min-w-0 items-center gap-2">
         {filterColumn ? (
           <Input
             placeholder={filterPlaceholder}
@@ -75,15 +75,15 @@ export function DataTable<TData, TValue>({
             onChange={(event) =>
               table.getColumn(filterColumn)?.setFilterValue(event.target.value)
             }
-            className="max-w-sm"
+            className="min-w-0 flex-1 sm:max-w-sm"
           />
         ) : null}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline" className="ml-auto shrink-0 px-3 sm:px-4">
               <SlidersHorizontal />
-              View
-              <ChevronDown />
+              <span className="hidden sm:inline">View</span>
+              <ChevronDown className="hidden sm:block" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -103,7 +103,7 @@ export function DataTable<TData, TValue>({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="rounded-md border">
+      <div className="max-w-full overflow-hidden rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -151,7 +151,7 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex items-center justify-end gap-2 overflow-hidden">
         <Button
           variant="outline"
           size="sm"

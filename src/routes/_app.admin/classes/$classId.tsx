@@ -198,12 +198,12 @@ function AdminClassDetailPage() {
           </Card>
         </main>
       ) : (
-        <main className="mx-auto grid w-full max-w-7xl gap-4 p-4 lg:grid-cols-[24rem_1fr] lg:p-8">
+        <main className="mx-auto grid w-full max-w-7xl min-w-0 gap-4 p-4 lg:grid-cols-[24rem_1fr] lg:p-8">
           <div className="lg:col-span-2">
             <h1 className="text-3xl font-bold">{classData.classItem.title}</h1>
             <Separator className="my-4" />
           </div>
-          <section className="space-y-4">
+          <section className="min-w-0 space-y-4">
             <Card className="rounded-lg">
               <CardHeader>
                 <CardTitle>Class details</CardTitle>
@@ -311,7 +311,7 @@ function AdminClassDetailPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     <div className="space-y-1">
                       <Label htmlFor="enrollment-start-date">Start date</Label>
                       <Input
@@ -362,7 +362,7 @@ function AdminClassDetailPage() {
                       onChange={(event) => setSessionDate(event.target.value)}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
                     <div className="space-y-1">
                       <Label htmlFor="session-start">Start</Label>
                       <Input
@@ -456,7 +456,7 @@ function AdminClassDetailPage() {
               </CardContent>
             </Card>
           </section>
-          <section className="space-y-4">
+          <section className="min-w-0 space-y-4">
             <Card className="rounded-lg">
               <CardHeader>
                 <CardTitle>Enrollments</CardTitle>

@@ -67,7 +67,7 @@ function AdminStudentsPage() {
 
   return (
     <RoleGate allow="admin">
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 lg:p-8">
+      <main className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-4 p-4 lg:p-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold">Students</h1>
@@ -75,7 +75,7 @@ function AdminStudentsPage() {
               Student profiles are separate from login accounts.
             </p>
           </div>
-          <Button asChild>
+          <Button asChild className="w-full sm:w-auto">
             <Link to="/admin/students/create">
               <Plus />
               Add Student

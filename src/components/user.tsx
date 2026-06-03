@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useNavigate } from "@tanstack/react-router";
-import { BadgeCheck, ChevronsUpDown, LogOut, User } from "lucide-react";
+import { ChevronsUpDown, LogOut, User, UserIcon } from "lucide-react";
 import { Doc } from "convex/_generated/dataModel";
 
 import {
@@ -93,7 +93,7 @@ export function NavUser({ user }: { user: Doc<"users"> }) {
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
                 <a href="/account">
-                  <BadgeCheck />
+                  <UserIcon className="h-4 w-4" />
                   <span>Account</span>
                 </a>
               </DropdownMenuItem>

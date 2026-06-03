@@ -14,6 +14,7 @@ import {
   FieldLabel,
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
+import { PasswordInput } from "~/components/password-input";
 
 type PasswordResetFormProps = Omit<
   React.ComponentProps<typeof Card>,
@@ -73,10 +74,9 @@ export function PasswordResetForm({
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="new-password">New password</FieldLabel>
-                  <Input
+                  <PasswordInput
                     id="new-password"
                     name="newPassword"
-                    type="password"
                     autoComplete="new-password"
                     required
                   />

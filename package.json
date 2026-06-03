@@ -17,6 +17,7 @@
   "description": "",
   "dependencies": {
     "@auth/core": "^0.37.0",
+    "@base-ui/react": "^1.5.0",
     "@convex-dev/auth": "^0.0.92",
     "@convex-dev/react-query": "^0.1.0",
     "@hookform/resolvers": "^5.4.0",
@@ -56,6 +57,7 @@
     "lucide-react": "^1.17.0",
     "next-themes": "^0.4.6",
     "postcss": "^8.5.15",
+    "radix-ui": "^1.4.3",
     "react": "^19.2.6",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.6",

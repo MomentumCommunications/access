@@ -15,6 +15,7 @@ import {
   FieldLabel,
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
+import { PasswordInput } from "~/components/password-input";
 
 export function LoginForm({
   className,
@@ -60,7 +61,7 @@ export function LoginForm({
                     Forgot your password?
                   </Link>
                 </div>
-                <Input id="password" name="password" type="password" required />
+                <PasswordInput id="password" name="password" required />
               </Field>
               {error ? (
                 <FieldDescription className="text-destructive">

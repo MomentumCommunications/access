@@ -116,4 +116,130 @@ export default defineSchema({
     .index("byChannel", ["channelId"])
     .index("byMessageUser", ["messageId", "userId"])
     .index("byChannelUser", ["channelId", "userId"]),
+  students: defineTable({
+    firstName: v.string(),
+    lastName: v.string(),
+    preferredName: v.optional(v.string()),
+    dateOfBirth: v.optional(v.string()),
+    photo: v.optional(v.id("_storage")),
+    notes: v.optional(v.string()),
+    status: v.union(
+      v.literal("active"),
+      v.literal("inactive"),
+      v.literal("archived"),
+    ),
+  }).index("byStatus", ["status"]),
+  studentContacts: defineTable({
+    student: v.id("students"),
+    user: v.optional(v.id("users")),
+    inviteEmail: v.optional(v.string()),
+    name: v.optional(v.string()),
+    relationship: v.optional(v.string()),
+    canManage: v.boolean(),
+    isPrimary: v.boolean(),
+  })
+    .index("byStudent", ["student"])
+    .index("byUser", ["user"])
+    .index("byInviteEmail", ["inviteEmail"]),
+  classes: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("archived"),
+    ),
+    capacity: v.optional(v.number()),
+    location: v.optional(v.string()),
+    scheduleSummary: v.optional(v.string()),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+    startTime: v.optional(v.string()),
+    endTime: v.optional(v.string()),
+    weekdays: v.optional(
+      v.array(
+        v.union(
+          v.literal("sunday"),
+          v.literal("monday"),
+          v.literal("tuesday"),
+          v.literal("wednesday"),
+          v.literal("thursday"),
+          v.literal("friday"),
+          v.literal("saturday"),
+        ),
+      ),
+    ),
+    timezone: v.optional(v.string()),
+    scheduleVersion: v.optional(v.number()),
+    assignedStaff: v.optional(v.array(v.id("users"))),
+  }).index("byStatus", ["status"]),
+  sessions: defineTable({
+    classId: v.id("classes"),
+    date: v.string(),
+    active: v.boolean(),
+    source: v.union(v.literal("generated"), v.literal("manual")),
+    scheduleVersion: v.optional(v.number()),
+    hasManualOverride: v.optional(v.boolean()),
+    startTime: v.optional(v.string()),
+    endTime: v.optional(v.string()),
+    location: v.optional(v.string()),
+    assignedStaff: v.optional(v.array(v.id("users"))),
+    substitute: v.optional(v.id("users")),
+    status: v.union(
+      v.literal("scheduled"),
+      v.literal("cancelled"),
+      v.literal("completed"),
+    ),
+  })
+    .index("byClass", ["classId"])
+    .index("byDate", ["date"]),
+  sessionStudents: defineTable({
+    session: v.id("sessions"),
+    student: v.id("students"),
+    addedBy: v.id("users"),
+    addedAt: v.number(),
+  })
+    .index("bySession", ["session"])
+    .index("byStudent", ["student"])
+    .index("bySessionStudent", ["session", "student"]),
+  classEnrollments: defineTable({
+    classId: v.id("classes"),
+    student: v.id("students"),
+    requestedBy: v.optional(v.id("users")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("enrolled"),
+      v.literal("waitlisted"),
+      v.literal("dropped"),
+    ),
+    notes: v.optional(v.string()),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+  })
+    .index("byClass", ["classId"])
+    .index("byStudent", ["student"])
+    .index("byClassStudent", ["classId", "student"]),
+  attendanceRecords: defineTable({
+    session: v.id("sessions"),
+    student: v.id("students"),
+    status: v.union(
+      v.literal("present"),
+      v.literal("absent"),
+      v.literal("late"),
+      v.literal("excused"),
+    ),
+    notes: v.optional(v.string()),
+    markedBy: v.id("users"),
+    markedAt: v.number(),
+  })
+    .index("bySession", ["session"])
+    .index("byStudent", ["student"])
+    .index("bySessionStudent", ["session", "student"]),
+  holidays: defineTable({
+    name: v.string(),
+    startDate: v.string(),
+    endDate: v.string(),
+  })
+    .index("byStartDate", ["startDate"])
+    .index("byEndDate", ["endDate"]),
 });

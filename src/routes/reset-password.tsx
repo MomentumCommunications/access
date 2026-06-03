@@ -2,6 +2,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { PasswordResetForm } from "~/components/password-reset-form";
+import { getAuthErrorMessage } from "~/lib/auth-errors";
 
 export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordRoute,
@@ -30,9 +31,7 @@ function ResetPasswordRoute() {
 
       setResetEmail(formData.get("email") as string);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not reset your password.",
-      );
+      setError(getAuthErrorMessage(err, "Could not reset your password."));
     } finally {
       setIsSubmitting(false);
     }

@@ -22,10 +22,32 @@ import { Route as AppDirectoryRouteImport } from './routes/_app.directory'
 import { Route as AppCreateBulletinRouteImport } from './routes/_app.create-bulletin'
 import { Route as AppAccountRouteImport } from './routes/_app.account'
 import { Route as AppBulletinIdRouteImport } from './routes/_app.$bulletinId'
+import { Route as AppStudentsIndexRouteImport } from './routes/_app.students/index'
+import { Route as AppStaffIndexRouteImport } from './routes/_app.staff/index'
+import { Route as AppClassesIndexRouteImport } from './routes/_app.classes/index'
 import { Route as AppChannelIndexRouteImport } from './routes/_app.channel/index'
+import { Route as AppAdminIndexRouteImport } from './routes/_app.admin/index'
+import { Route as AppStudentsCreateRouteImport } from './routes/_app.students/create'
+import { Route as AppStudentsStudentIdRouteImport } from './routes/_app.students/$studentId'
+import { Route as AppStaffClassesRouteImport } from './routes/_app.staff/classes'
+import { Route as AppStaffAttendanceRouteImport } from './routes/_app.staff/attendance'
 import { Route as AppDmDmIdRouteImport } from './routes/_app.dm/$dmId'
+import { Route as AppClassesClassIdRouteImport } from './routes/_app.classes/$classId'
 import { Route as AppChannelChannelIdRouteImport } from './routes/_app.channel/$channelId'
+import { Route as AppAdminSchedulingRouteImport } from './routes/_app.admin/scheduling'
+import { Route as AppAdminAccountsRouteImport } from './routes/_app.admin/accounts'
 import { Route as AppBulletinIdEditRouteImport } from './routes/_app.$bulletinId_.edit'
+import { Route as AppAdminStudentsIndexRouteImport } from './routes/_app.admin/students/index'
+import { Route as AppAdminClassesIndexRouteImport } from './routes/_app.admin/classes/index'
+import { Route as AppStudentsStudentIdEditRouteImport } from './routes/_app.students/$studentId_.edit'
+import { Route as AppStaffAttendanceSessionIdRouteImport } from './routes/_app.staff/attendance_.$sessionId'
+import { Route as AppAdminStudentsCreateRouteImport } from './routes/_app.admin/students/create'
+import { Route as AppAdminStudentsStudentIdRouteImport } from './routes/_app.admin/students/$studentId'
+import { Route as AppAdminClassesCreateRouteImport } from './routes/_app.admin/classes/create'
+import { Route as AppAdminClassesClassIdRouteImport } from './routes/_app.admin/classes/$classId'
+import { Route as AppAdminAccountsUserIdRouteImport } from './routes/_app.admin/accounts_.$userId'
+import { Route as AppAdminStudentsStudentIdEditRouteImport } from './routes/_app.admin/students/$studentId_.edit'
+import { Route as AppAdminClassesClassIdEditRouteImport } from './routes/_app.admin/classes/$classId_.edit'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -91,9 +113,49 @@ const AppBulletinIdRoute = AppBulletinIdRouteImport.update({
   path: '/$bulletinId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppStudentsIndexRoute = AppStudentsIndexRouteImport.update({
+  id: '/students/',
+  path: '/students/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStaffIndexRoute = AppStaffIndexRouteImport.update({
+  id: '/staff/',
+  path: '/staff/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppClassesIndexRoute = AppClassesIndexRouteImport.update({
+  id: '/classes/',
+  path: '/classes/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppChannelIndexRoute = AppChannelIndexRouteImport.update({
   id: '/channel/',
   path: '/channel/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStudentsCreateRoute = AppStudentsCreateRouteImport.update({
+  id: '/students/create',
+  path: '/students/create',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStudentsStudentIdRoute = AppStudentsStudentIdRouteImport.update({
+  id: '/students/$studentId',
+  path: '/students/$studentId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStaffClassesRoute = AppStaffClassesRouteImport.update({
+  id: '/staff/classes',
+  path: '/staff/classes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStaffAttendanceRoute = AppStaffAttendanceRouteImport.update({
+  id: '/staff/attendance',
+  path: '/staff/attendance',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDmDmIdRoute = AppDmDmIdRouteImport.update({
@@ -101,9 +163,24 @@ const AppDmDmIdRoute = AppDmDmIdRouteImport.update({
   path: '/dm/$dmId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppClassesClassIdRoute = AppClassesClassIdRouteImport.update({
+  id: '/classes/$classId',
+  path: '/classes/$classId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppChannelChannelIdRoute = AppChannelChannelIdRouteImport.update({
   id: '/channel/$channelId',
   path: '/channel/$channelId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminSchedulingRoute = AppAdminSchedulingRouteImport.update({
+  id: '/admin/scheduling',
+  path: '/admin/scheduling',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminAccountsRoute = AppAdminAccountsRouteImport.update({
+  id: '/admin/accounts',
+  path: '/admin/accounts',
   getParentRoute: () => AppRoute,
 } as any)
 const AppBulletinIdEditRoute = AppBulletinIdEditRouteImport.update({
@@ -111,6 +188,66 @@ const AppBulletinIdEditRoute = AppBulletinIdEditRouteImport.update({
   path: '/$bulletinId/edit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminStudentsIndexRoute = AppAdminStudentsIndexRouteImport.update({
+  id: '/admin/students/',
+  path: '/admin/students/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminClassesIndexRoute = AppAdminClassesIndexRouteImport.update({
+  id: '/admin/classes/',
+  path: '/admin/classes/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStudentsStudentIdEditRoute =
+  AppStudentsStudentIdEditRouteImport.update({
+    id: '/students/$studentId_/edit',
+    path: '/students/$studentId/edit',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppStaffAttendanceSessionIdRoute =
+  AppStaffAttendanceSessionIdRouteImport.update({
+    id: '/staff/attendance_/$sessionId',
+    path: '/staff/attendance/$sessionId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAdminStudentsCreateRoute = AppAdminStudentsCreateRouteImport.update({
+  id: '/admin/students/create',
+  path: '/admin/students/create',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminStudentsStudentIdRoute =
+  AppAdminStudentsStudentIdRouteImport.update({
+    id: '/admin/students/$studentId',
+    path: '/admin/students/$studentId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAdminClassesCreateRoute = AppAdminClassesCreateRouteImport.update({
+  id: '/admin/classes/create',
+  path: '/admin/classes/create',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminClassesClassIdRoute = AppAdminClassesClassIdRouteImport.update({
+  id: '/admin/classes/$classId',
+  path: '/admin/classes/$classId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminAccountsUserIdRoute = AppAdminAccountsUserIdRouteImport.update({
+  id: '/admin/accounts_/$userId',
+  path: '/admin/accounts/$userId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminStudentsStudentIdEditRoute =
+  AppAdminStudentsStudentIdEditRouteImport.update({
+    id: '/admin/students/$studentId_/edit',
+    path: '/admin/students/$studentId/edit',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAdminClassesClassIdEditRoute =
+  AppAdminClassesClassIdEditRouteImport.update({
+    id: '/admin/classes/$classId_/edit',
+    path: '/admin/classes/$classId/edit',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -126,9 +263,31 @@ export interface FileRoutesByFullPath {
   '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
   '/$bulletinId/edit': typeof AppBulletinIdEditRoute
+  '/admin/accounts': typeof AppAdminAccountsRoute
+  '/admin/scheduling': typeof AppAdminSchedulingRoute
   '/channel/$channelId': typeof AppChannelChannelIdRoute
+  '/classes/$classId': typeof AppClassesClassIdRoute
   '/dm/$dmId': typeof AppDmDmIdRoute
+  '/staff/attendance': typeof AppStaffAttendanceRoute
+  '/staff/classes': typeof AppStaffClassesRoute
+  '/students/$studentId': typeof AppStudentsStudentIdRoute
+  '/students/create': typeof AppStudentsCreateRoute
+  '/admin/': typeof AppAdminIndexRoute
   '/channel/': typeof AppChannelIndexRoute
+  '/classes/': typeof AppClassesIndexRoute
+  '/staff/': typeof AppStaffIndexRoute
+  '/students/': typeof AppStudentsIndexRoute
+  '/admin/accounts/$userId': typeof AppAdminAccountsUserIdRoute
+  '/admin/classes/$classId': typeof AppAdminClassesClassIdRoute
+  '/admin/classes/create': typeof AppAdminClassesCreateRoute
+  '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
+  '/admin/students/create': typeof AppAdminStudentsCreateRoute
+  '/staff/attendance/$sessionId': typeof AppStaffAttendanceSessionIdRoute
+  '/students/$studentId/edit': typeof AppStudentsStudentIdEditRoute
+  '/admin/classes/': typeof AppAdminClassesIndexRoute
+  '/admin/students/': typeof AppAdminStudentsIndexRoute
+  '/admin/classes/$classId/edit': typeof AppAdminClassesClassIdEditRoute
+  '/admin/students/$studentId/edit': typeof AppAdminStudentsStudentIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -144,9 +303,31 @@ export interface FileRoutesByTo {
   '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
   '/$bulletinId/edit': typeof AppBulletinIdEditRoute
+  '/admin/accounts': typeof AppAdminAccountsRoute
+  '/admin/scheduling': typeof AppAdminSchedulingRoute
   '/channel/$channelId': typeof AppChannelChannelIdRoute
+  '/classes/$classId': typeof AppClassesClassIdRoute
   '/dm/$dmId': typeof AppDmDmIdRoute
+  '/staff/attendance': typeof AppStaffAttendanceRoute
+  '/staff/classes': typeof AppStaffClassesRoute
+  '/students/$studentId': typeof AppStudentsStudentIdRoute
+  '/students/create': typeof AppStudentsCreateRoute
+  '/admin': typeof AppAdminIndexRoute
   '/channel': typeof AppChannelIndexRoute
+  '/classes': typeof AppClassesIndexRoute
+  '/staff': typeof AppStaffIndexRoute
+  '/students': typeof AppStudentsIndexRoute
+  '/admin/accounts/$userId': typeof AppAdminAccountsUserIdRoute
+  '/admin/classes/$classId': typeof AppAdminClassesClassIdRoute
+  '/admin/classes/create': typeof AppAdminClassesCreateRoute
+  '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
+  '/admin/students/create': typeof AppAdminStudentsCreateRoute
+  '/staff/attendance/$sessionId': typeof AppStaffAttendanceSessionIdRoute
+  '/students/$studentId/edit': typeof AppStudentsStudentIdEditRoute
+  '/admin/classes': typeof AppAdminClassesIndexRoute
+  '/admin/students': typeof AppAdminStudentsIndexRoute
+  '/admin/classes/$classId/edit': typeof AppAdminClassesClassIdEditRoute
+  '/admin/students/$studentId/edit': typeof AppAdminStudentsStudentIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -164,9 +345,31 @@ export interface FileRoutesById {
   '/_app/search': typeof AppSearchRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/$bulletinId_/edit': typeof AppBulletinIdEditRoute
+  '/_app/admin/accounts': typeof AppAdminAccountsRoute
+  '/_app/admin/scheduling': typeof AppAdminSchedulingRoute
   '/_app/channel/$channelId': typeof AppChannelChannelIdRoute
+  '/_app/classes/$classId': typeof AppClassesClassIdRoute
   '/_app/dm/$dmId': typeof AppDmDmIdRoute
+  '/_app/staff/attendance': typeof AppStaffAttendanceRoute
+  '/_app/staff/classes': typeof AppStaffClassesRoute
+  '/_app/students/$studentId': typeof AppStudentsStudentIdRoute
+  '/_app/students/create': typeof AppStudentsCreateRoute
+  '/_app/admin/': typeof AppAdminIndexRoute
   '/_app/channel/': typeof AppChannelIndexRoute
+  '/_app/classes/': typeof AppClassesIndexRoute
+  '/_app/staff/': typeof AppStaffIndexRoute
+  '/_app/students/': typeof AppStudentsIndexRoute
+  '/_app/admin/accounts_/$userId': typeof AppAdminAccountsUserIdRoute
+  '/_app/admin/classes/$classId': typeof AppAdminClassesClassIdRoute
+  '/_app/admin/classes/create': typeof AppAdminClassesCreateRoute
+  '/_app/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
+  '/_app/admin/students/create': typeof AppAdminStudentsCreateRoute
+  '/_app/staff/attendance_/$sessionId': typeof AppStaffAttendanceSessionIdRoute
+  '/_app/students/$studentId_/edit': typeof AppStudentsStudentIdEditRoute
+  '/_app/admin/classes/': typeof AppAdminClassesIndexRoute
+  '/_app/admin/students/': typeof AppAdminStudentsIndexRoute
+  '/_app/admin/classes/$classId_/edit': typeof AppAdminClassesClassIdEditRoute
+  '/_app/admin/students/$studentId_/edit': typeof AppAdminStudentsStudentIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -184,9 +387,31 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/$bulletinId/edit'
+    | '/admin/accounts'
+    | '/admin/scheduling'
     | '/channel/$channelId'
+    | '/classes/$classId'
     | '/dm/$dmId'
+    | '/staff/attendance'
+    | '/staff/classes'
+    | '/students/$studentId'
+    | '/students/create'
+    | '/admin/'
     | '/channel/'
+    | '/classes/'
+    | '/staff/'
+    | '/students/'
+    | '/admin/accounts/$userId'
+    | '/admin/classes/$classId'
+    | '/admin/classes/create'
+    | '/admin/students/$studentId'
+    | '/admin/students/create'
+    | '/staff/attendance/$sessionId'
+    | '/students/$studentId/edit'
+    | '/admin/classes/'
+    | '/admin/students/'
+    | '/admin/classes/$classId/edit'
+    | '/admin/students/$studentId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -202,9 +427,31 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/$bulletinId/edit'
+    | '/admin/accounts'
+    | '/admin/scheduling'
     | '/channel/$channelId'
+    | '/classes/$classId'
     | '/dm/$dmId'
+    | '/staff/attendance'
+    | '/staff/classes'
+    | '/students/$studentId'
+    | '/students/create'
+    | '/admin'
     | '/channel'
+    | '/classes'
+    | '/staff'
+    | '/students'
+    | '/admin/accounts/$userId'
+    | '/admin/classes/$classId'
+    | '/admin/classes/create'
+    | '/admin/students/$studentId'
+    | '/admin/students/create'
+    | '/staff/attendance/$sessionId'
+    | '/students/$studentId/edit'
+    | '/admin/classes'
+    | '/admin/students'
+    | '/admin/classes/$classId/edit'
+    | '/admin/students/$studentId/edit'
   id:
     | '__root__'
     | '/'
@@ -221,9 +468,31 @@ export interface FileRouteTypes {
     | '/_app/search'
     | '/_app/settings'
     | '/_app/$bulletinId_/edit'
+    | '/_app/admin/accounts'
+    | '/_app/admin/scheduling'
     | '/_app/channel/$channelId'
+    | '/_app/classes/$classId'
     | '/_app/dm/$dmId'
+    | '/_app/staff/attendance'
+    | '/_app/staff/classes'
+    | '/_app/students/$studentId'
+    | '/_app/students/create'
+    | '/_app/admin/'
     | '/_app/channel/'
+    | '/_app/classes/'
+    | '/_app/staff/'
+    | '/_app/students/'
+    | '/_app/admin/accounts_/$userId'
+    | '/_app/admin/classes/$classId'
+    | '/_app/admin/classes/create'
+    | '/_app/admin/students/$studentId'
+    | '/_app/admin/students/create'
+    | '/_app/staff/attendance_/$sessionId'
+    | '/_app/students/$studentId_/edit'
+    | '/_app/admin/classes/'
+    | '/_app/admin/students/'
+    | '/_app/admin/classes/$classId_/edit'
+    | '/_app/admin/students/$studentId_/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -327,11 +596,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppBulletinIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/students/': {
+      id: '/_app/students/'
+      path: '/students'
+      fullPath: '/students/'
+      preLoaderRoute: typeof AppStudentsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/staff/': {
+      id: '/_app/staff/'
+      path: '/staff'
+      fullPath: '/staff/'
+      preLoaderRoute: typeof AppStaffIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/classes/': {
+      id: '/_app/classes/'
+      path: '/classes'
+      fullPath: '/classes/'
+      preLoaderRoute: typeof AppClassesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/channel/': {
       id: '/_app/channel/'
       path: '/channel'
       fullPath: '/channel/'
       preLoaderRoute: typeof AppChannelIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/': {
+      id: '/_app/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AppAdminIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/students/create': {
+      id: '/_app/students/create'
+      path: '/students/create'
+      fullPath: '/students/create'
+      preLoaderRoute: typeof AppStudentsCreateRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/students/$studentId': {
+      id: '/_app/students/$studentId'
+      path: '/students/$studentId'
+      fullPath: '/students/$studentId'
+      preLoaderRoute: typeof AppStudentsStudentIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/staff/classes': {
+      id: '/_app/staff/classes'
+      path: '/staff/classes'
+      fullPath: '/staff/classes'
+      preLoaderRoute: typeof AppStaffClassesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/staff/attendance': {
+      id: '/_app/staff/attendance'
+      path: '/staff/attendance'
+      fullPath: '/staff/attendance'
+      preLoaderRoute: typeof AppStaffAttendanceRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dm/$dmId': {
@@ -341,6 +666,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDmDmIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/classes/$classId': {
+      id: '/_app/classes/$classId'
+      path: '/classes/$classId'
+      fullPath: '/classes/$classId'
+      preLoaderRoute: typeof AppClassesClassIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/channel/$channelId': {
       id: '/_app/channel/$channelId'
       path: '/channel/$channelId'
@@ -348,11 +680,102 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChannelChannelIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/scheduling': {
+      id: '/_app/admin/scheduling'
+      path: '/admin/scheduling'
+      fullPath: '/admin/scheduling'
+      preLoaderRoute: typeof AppAdminSchedulingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/accounts': {
+      id: '/_app/admin/accounts'
+      path: '/admin/accounts'
+      fullPath: '/admin/accounts'
+      preLoaderRoute: typeof AppAdminAccountsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/$bulletinId_/edit': {
       id: '/_app/$bulletinId_/edit'
       path: '/$bulletinId/edit'
       fullPath: '/$bulletinId/edit'
       preLoaderRoute: typeof AppBulletinIdEditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/students/': {
+      id: '/_app/admin/students/'
+      path: '/admin/students'
+      fullPath: '/admin/students/'
+      preLoaderRoute: typeof AppAdminStudentsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/classes/': {
+      id: '/_app/admin/classes/'
+      path: '/admin/classes'
+      fullPath: '/admin/classes/'
+      preLoaderRoute: typeof AppAdminClassesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/students/$studentId_/edit': {
+      id: '/_app/students/$studentId_/edit'
+      path: '/students/$studentId/edit'
+      fullPath: '/students/$studentId/edit'
+      preLoaderRoute: typeof AppStudentsStudentIdEditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/staff/attendance_/$sessionId': {
+      id: '/_app/staff/attendance_/$sessionId'
+      path: '/staff/attendance/$sessionId'
+      fullPath: '/staff/attendance/$sessionId'
+      preLoaderRoute: typeof AppStaffAttendanceSessionIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/students/create': {
+      id: '/_app/admin/students/create'
+      path: '/admin/students/create'
+      fullPath: '/admin/students/create'
+      preLoaderRoute: typeof AppAdminStudentsCreateRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/students/$studentId': {
+      id: '/_app/admin/students/$studentId'
+      path: '/admin/students/$studentId'
+      fullPath: '/admin/students/$studentId'
+      preLoaderRoute: typeof AppAdminStudentsStudentIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/classes/create': {
+      id: '/_app/admin/classes/create'
+      path: '/admin/classes/create'
+      fullPath: '/admin/classes/create'
+      preLoaderRoute: typeof AppAdminClassesCreateRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/classes/$classId': {
+      id: '/_app/admin/classes/$classId'
+      path: '/admin/classes/$classId'
+      fullPath: '/admin/classes/$classId'
+      preLoaderRoute: typeof AppAdminClassesClassIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/accounts_/$userId': {
+      id: '/_app/admin/accounts_/$userId'
+      path: '/admin/accounts/$userId'
+      fullPath: '/admin/accounts/$userId'
+      preLoaderRoute: typeof AppAdminAccountsUserIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/students/$studentId_/edit': {
+      id: '/_app/admin/students/$studentId_/edit'
+      path: '/admin/students/$studentId/edit'
+      fullPath: '/admin/students/$studentId/edit'
+      preLoaderRoute: typeof AppAdminStudentsStudentIdEditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/classes/$classId_/edit': {
+      id: '/_app/admin/classes/$classId_/edit'
+      path: '/admin/classes/$classId/edit'
+      fullPath: '/admin/classes/$classId/edit'
+      preLoaderRoute: typeof AppAdminClassesClassIdEditRouteImport
       parentRoute: typeof AppRoute
     }
   }
@@ -368,9 +791,31 @@ interface AppRouteChildren {
   AppSearchRoute: typeof AppSearchRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppBulletinIdEditRoute: typeof AppBulletinIdEditRoute
+  AppAdminAccountsRoute: typeof AppAdminAccountsRoute
+  AppAdminSchedulingRoute: typeof AppAdminSchedulingRoute
   AppChannelChannelIdRoute: typeof AppChannelChannelIdRoute
+  AppClassesClassIdRoute: typeof AppClassesClassIdRoute
   AppDmDmIdRoute: typeof AppDmDmIdRoute
+  AppStaffAttendanceRoute: typeof AppStaffAttendanceRoute
+  AppStaffClassesRoute: typeof AppStaffClassesRoute
+  AppStudentsStudentIdRoute: typeof AppStudentsStudentIdRoute
+  AppStudentsCreateRoute: typeof AppStudentsCreateRoute
+  AppAdminIndexRoute: typeof AppAdminIndexRoute
   AppChannelIndexRoute: typeof AppChannelIndexRoute
+  AppClassesIndexRoute: typeof AppClassesIndexRoute
+  AppStaffIndexRoute: typeof AppStaffIndexRoute
+  AppStudentsIndexRoute: typeof AppStudentsIndexRoute
+  AppAdminAccountsUserIdRoute: typeof AppAdminAccountsUserIdRoute
+  AppAdminClassesClassIdRoute: typeof AppAdminClassesClassIdRoute
+  AppAdminClassesCreateRoute: typeof AppAdminClassesCreateRoute
+  AppAdminStudentsStudentIdRoute: typeof AppAdminStudentsStudentIdRoute
+  AppAdminStudentsCreateRoute: typeof AppAdminStudentsCreateRoute
+  AppStaffAttendanceSessionIdRoute: typeof AppStaffAttendanceSessionIdRoute
+  AppStudentsStudentIdEditRoute: typeof AppStudentsStudentIdEditRoute
+  AppAdminClassesIndexRoute: typeof AppAdminClassesIndexRoute
+  AppAdminStudentsIndexRoute: typeof AppAdminStudentsIndexRoute
+  AppAdminClassesClassIdEditRoute: typeof AppAdminClassesClassIdEditRoute
+  AppAdminStudentsStudentIdEditRoute: typeof AppAdminStudentsStudentIdEditRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -383,9 +828,31 @@ const AppRouteChildren: AppRouteChildren = {
   AppSearchRoute: AppSearchRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppBulletinIdEditRoute: AppBulletinIdEditRoute,
+  AppAdminAccountsRoute: AppAdminAccountsRoute,
+  AppAdminSchedulingRoute: AppAdminSchedulingRoute,
   AppChannelChannelIdRoute: AppChannelChannelIdRoute,
+  AppClassesClassIdRoute: AppClassesClassIdRoute,
   AppDmDmIdRoute: AppDmDmIdRoute,
+  AppStaffAttendanceRoute: AppStaffAttendanceRoute,
+  AppStaffClassesRoute: AppStaffClassesRoute,
+  AppStudentsStudentIdRoute: AppStudentsStudentIdRoute,
+  AppStudentsCreateRoute: AppStudentsCreateRoute,
+  AppAdminIndexRoute: AppAdminIndexRoute,
   AppChannelIndexRoute: AppChannelIndexRoute,
+  AppClassesIndexRoute: AppClassesIndexRoute,
+  AppStaffIndexRoute: AppStaffIndexRoute,
+  AppStudentsIndexRoute: AppStudentsIndexRoute,
+  AppAdminAccountsUserIdRoute: AppAdminAccountsUserIdRoute,
+  AppAdminClassesClassIdRoute: AppAdminClassesClassIdRoute,
+  AppAdminClassesCreateRoute: AppAdminClassesCreateRoute,
+  AppAdminStudentsStudentIdRoute: AppAdminStudentsStudentIdRoute,
+  AppAdminStudentsCreateRoute: AppAdminStudentsCreateRoute,
+  AppStaffAttendanceSessionIdRoute: AppStaffAttendanceSessionIdRoute,
+  AppStudentsStudentIdEditRoute: AppStudentsStudentIdEditRoute,
+  AppAdminClassesIndexRoute: AppAdminClassesIndexRoute,
+  AppAdminStudentsIndexRoute: AppAdminStudentsIndexRoute,
+  AppAdminClassesClassIdEditRoute: AppAdminClassesClassIdEditRoute,
+  AppAdminStudentsStudentIdEditRoute: AppAdminStudentsStudentIdEditRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { EmailVerificationForm } from "~/components/email-verification-form";
 import { SignupForm } from "~/components/signup-form";
+import { getAuthErrorMessage } from "~/lib/auth-errors";
 
 export const Route = createFileRoute("/signup")({
   component: SignupRoute,
@@ -36,7 +37,7 @@ function SignupRoute() {
       }
       setVerificationEmail(formData.get("email") as string);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create account.");
+      setError(getAuthErrorMessage(err, "Could not create account."));
     } finally {
       setIsSubmitting(false);
     }
@@ -53,9 +54,7 @@ function SignupRoute() {
       await signIn("password", new FormData(event.currentTarget));
       await navigate({ to: "/home" });
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not verify your email.",
-      );
+      setError(getAuthErrorMessage(err, "Could not verify your email."));
     } finally {
       setIsSubmitting(false);
     }

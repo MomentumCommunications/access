@@ -11,7 +11,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
@@ -45,6 +45,7 @@ export function DataTable<TData, TValue>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const hasSetMobileVisibility = useRef(false);
 
   const table = useReactTable({
     data,
@@ -62,6 +63,26 @@ export function DataTable<TData, TValue>({
       columnVisibility,
     },
   });
+
+  useEffect(() => {
+    if (
+      hasSetMobileVisibility.current ||
+      !window.matchMedia("(max-width: 639px)").matches
+    ) {
+      return;
+    }
+
+    hasSetMobileVisibility.current = true;
+    setColumnVisibility(
+      Object.fromEntries(
+        table
+          .getAllLeafColumns()
+          .slice(3)
+          .filter((column) => column.getCanHide())
+          .map((column) => [column.id, false]),
+      ),
+    );
+  }, [table]);
 
   return (
     <div className="min-w-0 space-y-3">
@@ -103,7 +124,7 @@ export function DataTable<TData, TValue>({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="max-w-full overflow-hidden rounded-md border">
+      <div className="max-w-full overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

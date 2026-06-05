@@ -25,16 +25,48 @@ export const getOtherUsers = query({
   },
 });
 
-export const addUserDescription = mutation({
-  args: {
-    description: v.optional(v.string()),
-    user: v.optional(v.id("users")),
-  },
-  handler: async (ctx, { description, user }) => {
-    if (user === undefined) {
-      return;
+export const generateProfileImageUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
     }
-    await ctx.db.patch(user, { description });
+
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const updateProfile = mutation({
+  args: {
+    displayName: v.string(),
+    description: v.optional(v.string()),
+    imageStorageId: v.optional(v.id("_storage")),
+  },
+  handler: async (ctx, { displayName, description, imageStorageId }) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw new Error("Not authenticated");
+    }
+
+    const trimmedDisplayName = displayName.trim();
+    if (trimmedDisplayName.length === 0 || trimmedDisplayName.length > 80) {
+      throw new Error("Display name must be between 1 and 80 characters");
+    }
+
+    if (description && description.length > 1000) {
+      throw new Error("Description must be 1000 characters or fewer");
+    }
+
+    const image = imageStorageId
+      ? await ctx.storage.getUrl(imageStorageId)
+      : undefined;
+
+    await ctx.db.patch(userId, {
+      displayName: trimmedDisplayName,
+      description,
+      ...(image ? { image } : {}),
+    });
   },
 });
 

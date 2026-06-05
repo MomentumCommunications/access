@@ -227,18 +227,6 @@ const AppSidebarComponent = memo(() => {
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <a
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      href="https://momentumdanceavl.com"
-                    >
-                      <ExternalLink />
-                      <span>Main Site</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
                     tooltip="Settings"

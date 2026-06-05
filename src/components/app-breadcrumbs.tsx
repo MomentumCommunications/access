@@ -33,6 +33,7 @@ const STATIC_LABELS: Record<string, string> = {
   edit: "Edit",
   help: "Help",
   home: "Home",
+  report: "Report",
   scheduling: "Scheduling",
   search: "Search",
   settings: "Settings",

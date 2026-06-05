@@ -1,10 +1,17 @@
 import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
+import { useAuthActions } from "@convex-dev/auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
+import { Id } from "convex/_generated/dataModel";
+import { Camera, LogOut, User } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import z from "zod";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
 import { Textarea } from "~/components/ui/textarea";
 import {
@@ -16,14 +23,17 @@ import {
   FormLabel,
   FormMessage,
 } from "~/components/ui/form";
-import { toast } from "sonner";
-import { LogOut } from "lucide-react";
-import { useAuthActions } from "@convex-dev/auth/react";
-import { useState } from "react";
 
 const formSchema = z.object({
+  displayName: z
+    .string()
+    .trim()
+    .min(1, "Display name is required")
+    .max(80, "Display name must be 80 characters or fewer"),
   bio: z.string().max(1000),
 });
+
+const MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024;
 
 export const Route = createFileRoute("/_app/account")({
   component: RouteComponent,
@@ -35,23 +45,113 @@ function RouteComponent() {
   const { signOut } = useAuthActions();
   const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      displayName: "",
       bio: convexUser?.description || "",
     },
   });
 
-  const mutation = useConvexMutation(api.users.addUserDescription);
+  const updateProfile = useConvexMutation(api.users.updateProfile);
+  const generateUploadUrl = useConvexMutation(
+    api.users.generateProfileImageUploadUrl,
+  );
+  const previewUrl = useMemo(
+    () => (selectedImage ? URL.createObjectURL(selectedImage) : undefined),
+    [selectedImage],
+  );
+  const displayedName =
+    form.watch("displayName") || convexUser?.displayName || convexUser?.name;
+  const initials = displayedName
+    ?.split(" ")
+    .filter(Boolean)
+    .map((word) => word[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    mutation({
-      description: values.bio,
-      user: convexUser?._id,
+  useEffect(() => {
+    if (!convexUser) {
+      return;
+    }
+
+    form.reset({
+      displayName: convexUser.displayName || convexUser.name || "",
+      bio: convexUser.description || "",
+    });
+  }, [convexUser, form]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  async function uploadProfileImage() {
+    if (!selectedImage) {
+      return undefined;
+    }
+
+    const postUrl = await generateUploadUrl({});
+    const result = await fetch(postUrl, {
+      method: "POST",
+      headers: { "Content-Type": selectedImage.type },
+      body: selectedImage,
     });
 
-    toast("Description updated");
+    if (!result.ok) {
+      throw new Error("Profile image upload failed");
+    }
+
+    const { storageId } = (await result.json()) as {
+      storageId: Id<"_storage">;
+    };
+    return storageId;
+  }
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      const imageStorageId = await uploadProfileImage();
+      await updateProfile({
+        displayName: values.displayName,
+        description: values.bio || undefined,
+        ...(imageStorageId ? { imageStorageId } : {}),
+      });
+      setSelectedImage(null);
+      if (imageInputRef.current) {
+        imageInputRef.current.value = "";
+      }
+      toast.success("Profile updated");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Profile could not be updated",
+      );
+    }
+  }
+
+  function handleImageChange(file?: File) {
+    if (!file) {
+      setSelectedImage(null);
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Choose an image file");
+      return;
+    }
+
+    if (file.size > MAX_PROFILE_IMAGE_SIZE) {
+      toast.error("Profile image must be 5 MB or smaller");
+      return;
+    }
+
+    setSelectedImage(file);
   }
 
   async function handleSignOut() {
@@ -65,21 +165,83 @@ function RouteComponent() {
   }
 
   return (
-    <div className="flex px-2 md:px-4 w-full items-center justify-start pt-8 md:py-24 flex-col gap-6 md:gap-12">
-      <div className="flex flex-col gap-6 md:gap-12 max-w-4xl w-full">
-        <div className="p-4 flex flex-col gap-4 items-start w-full">
-          <div className="flex flex-col gap-2 w-full">
-            <h2 className="text-2xl font-semibold">About Me</h2>
+    <div className="flex w-full flex-col items-center justify-start gap-6 px-2 pt-8 md:gap-12 md:px-4 md:py-24">
+      <div className="flex w-full max-w-4xl flex-col gap-6 md:gap-12">
+        <div className="flex w-full flex-col items-start gap-4 p-4">
+          <div className="flex w-full flex-col gap-2">
+            <h1 className="text-2xl font-semibold">Profile</h1>
             <p className="text-muted-foreground">
-              Let others know more about you, who&apos;s your kids, stuff you
-              like and anything else you would like to share.
+              Manage how your name, photo, and bio appear to other members.
             </p>
             <Separator />
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-8"
+                className="space-y-6"
               >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <Avatar
+                    className="size-24 border"
+                    style={{
+                      width: 96,
+                      height: 96,
+                      minWidth: 96,
+                      minHeight: 96,
+                      maxWidth: 96,
+                      maxHeight: 96,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <AvatarImage
+                      src={previewUrl || convexUser?.image}
+                      alt={displayedName || "Profile photo"}
+                      className="object-cover"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                    <AvatarFallback>
+                      {initials || <User className="size-7" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="w-full max-w-sm space-y-2">
+                    <FormLabel htmlFor="profile-image">
+                      Profile picture
+                    </FormLabel>
+                    <Input
+                      ref={imageInputRef}
+                      id="profile-image"
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) =>
+                        handleImageChange(event.target.files?.[0])
+                      }
+                    />
+                    <FormDescription>
+                      JPG, PNG, GIF, or WebP up to 5 MB.
+                    </FormDescription>
+                  </div>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="displayName"
+                  render={({ field }) => (
+                    <FormItem className="max-w-sm">
+                      <FormLabel>Display name</FormLabel>
+                      <FormControl>
+                        <Input {...field} autoComplete="name" />
+                      </FormControl>
+                      <FormDescription>
+                        This is the name other members will see.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="bio"
@@ -89,23 +251,33 @@ function RouteComponent() {
                       <FormControl>
                         <Textarea {...field} className="h-64" />
                       </FormControl>
-                      <FormDescription id="bio-description">
+                      <FormDescription>
                         Characters: {field.value.length} / 1000
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <Button type="submit">Submit</Button>
+                <Button
+                  type="submit"
+                  disabled={form.formState.isSubmitting}
+                  className="cursor-pointer"
+                >
+                  <Camera />
+                  {form.formState.isSubmitting
+                    ? "Saving profile..."
+                    : "Save profile"}
+                </Button>
               </form>
             </Form>
           </div>
           <Separator className="my-4" />
-          <h1 className="text-2xl font-semibold mb-4">Had enough?</h1>
+          <h2 className="mb-4 text-2xl font-semibold">Had enough?</h2>
           <Button
-            onSelect={handleSignOut}
+            onClick={handleSignOut}
             variant="destructive"
             disabled={isSigningOut}
+            className="cursor-pointer"
           >
             <LogOut />
             {isSigningOut ? "Logging out..." : "Log out"}

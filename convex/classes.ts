@@ -766,6 +766,60 @@ export const adminGetStudent = query({
   },
 });
 
+export const adminGetStudentAttendanceReport = query({
+  args: { student: v.id("students") },
+  handler: async (ctx, { student }) => {
+    await requireAdmin(ctx);
+    const studentDoc = await ctx.db.get(student);
+    if (!studentDoc) {
+      return null;
+    }
+
+    const attendance = await ctx.db
+      .query("attendanceRecords")
+      .withIndex("byStudent", (q) => q.eq("student", student))
+      .collect();
+
+    const attendanceRows = (
+      await Promise.all(
+        attendance.map(async (record) => {
+          const session = await ctx.db.get(record.session);
+          if (!session) {
+            return null;
+          }
+
+          return {
+            record,
+            session,
+            classItem: await ctx.db.get(session.classId),
+          };
+        }),
+      )
+    ).filter((row) => row !== null);
+
+    attendanceRows.sort((a, b) =>
+      b.session.date.localeCompare(a.session.date),
+    );
+
+    return {
+      student: studentDoc,
+      photoUrl: studentDoc.photo
+        ? await ctx.storage.getUrl(studentDoc.photo)
+        : null,
+      summary: {
+        present: attendanceRows.filter(
+          (row) => row.record.status === "present",
+        ).length,
+        absent: attendanceRows.filter((row) => row.record.status === "absent")
+          .length,
+      },
+      absences: attendanceRows.filter(
+        (row) => row.record.status === "absent",
+      ),
+    };
+  },
+});
+
 export const adminCreateStudent = mutation({
   args: {
     firstName: v.string(),

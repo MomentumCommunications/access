@@ -4,7 +4,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
-import { Pencil } from "lucide-react";
+import { ChartPie, Pencil } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
@@ -172,15 +172,26 @@ function AdminStudentDetailPage() {
                       {studentData.student.preferredName || "No preferred name"}
                     </CardDescription>
                   </div>
-                  <Button asChild size="icon" variant="outline">
-                    <Link
-                      to="/admin/students/$studentId/edit"
-                      params={{ studentId: studentData.student._id }}
-                    >
-                      <Pencil />
-                      <span className="sr-only">Edit student</span>
-                    </Link>
-                  </Button>
+                  <div className="flex shrink-0 gap-2">
+                    <Button asChild size="icon" variant="outline">
+                      <Link
+                        to="/admin/students/$studentId/report"
+                        params={{ studentId: studentData.student._id }}
+                      >
+                        <ChartPie />
+                        <span className="sr-only">View attendance report</span>
+                      </Link>
+                    </Button>
+                    <Button asChild size="icon" variant="outline">
+                      <Link
+                        to="/admin/students/$studentId/edit"
+                        params={{ studentId: studentData.student._id }}
+                      >
+                        <Pencil />
+                        <span className="sr-only">Edit student</span>
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4 text-sm">

@@ -8,7 +8,7 @@ import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
-import { formatAge } from "~/lib/date-utils";
+import { formatAge, formatMDYYYY } from "~/lib/date-utils";
 
 export const Route = createFileRoute("/_app/admin/students/")({
   component: AdminStudentsPage,
@@ -46,14 +46,15 @@ const columns: ColumnDef<StudentRow>[] = [
     cell: ({ row }) => row.original.student.status,
   },
   {
-    accessorKey: "student.dateOfBirth",
-    header: "Birthday",
-    cell: ({ row }) => row.original.student.dateOfBirth || "Not set",
-  },
-  {
     id: "age",
     header: "Age",
     cell: ({ row }) => formatAge(row.original.student.dateOfBirth),
+  },
+  {
+    accessorKey: "student.dateOfBirth",
+    header: "Birthday",
+    cell: ({ row }) =>
+      formatMDYYYY(row.original.student.dateOfBirth) || "Not set",
   },
   {
     id: "contacts",
@@ -68,17 +69,13 @@ function AdminStudentsPage() {
   return (
     <RoleGate allow="admin">
       <main className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-4 p-4 lg:p-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex gap-3 flex-row justify-between">
           <div>
             <h1 className="text-3xl font-bold">Students</h1>
-            <p className="text-muted-foreground">
-              Student profiles are separate from login accounts.
-            </p>
           </div>
-          <Button asChild className="w-full sm:w-auto">
+          <Button asChild>
             <Link to="/admin/students/create">
               <Plus />
-              Add Student
             </Link>
           </Button>
         </div>

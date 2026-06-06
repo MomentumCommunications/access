@@ -17,6 +17,7 @@ import type * as classes from "../classes.js";
 import type * as etcFunctions from "../etcFunctions.js";
 import type * as http from "../http.js";
 import type * as lib_classSorting from "../lib/classSorting.js";
+import type * as lib_scheduling from "../lib/scheduling.js";
 import type * as messages from "../messages.js";
 import type * as random from "../random.js";
 import type * as reactions from "../reactions.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   etcFunctions: typeof etcFunctions;
   http: typeof http;
   "lib/classSorting": typeof lib_classSorting;
+  "lib/scheduling": typeof lib_scheduling;
   messages: typeof messages;
   random: typeof random;
   reactions: typeof reactions;

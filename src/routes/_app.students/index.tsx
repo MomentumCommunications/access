@@ -25,7 +25,11 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import { formatAge, formatFullDate } from "~/lib/date-utils";
+import {
+  formatAge,
+  formatFullDate,
+  formatTimeRange,
+} from "~/lib/date-utils";
 
 export const Route = createFileRoute("/_app/students/")({
   component: StudentsPage,
@@ -155,9 +159,10 @@ function StudentsPage() {
                                     </TableCell>
                                     <TableCell className="text-muted-foreground">
                                       {classItem.scheduleSummary ||
-                                        [classItem.startTime, classItem.endTime]
-                                          .filter(Boolean)
-                                          .join(" - ") ||
+                                        formatTimeRange(
+                                          classItem.startTime,
+                                          classItem.endTime,
+                                        ) ||
                                         "Schedule TBD"}
                                     </TableCell>
                                   </TableRow>

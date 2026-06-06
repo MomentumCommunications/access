@@ -36,19 +36,20 @@ const columns: ColumnDef<ClassRow>[] = [
     ),
   },
   {
+    accessorKey: "classItem.scheduleSummary",
+    header: "Schedule",
+    cell: ({ row }) => row.original.classItem.scheduleSummary || "Not set",
+  },
+  {
+    id: "capacity",
+    header: "Capacity",
+    cell: ({ row }) =>
+      `${row.original.enrollments.length}/${row.original.classItem.capacity}`,
+  },
+  {
     accessorKey: "classItem.status",
     header: "Status",
     cell: ({ row }) => row.original.classItem.status,
-  },
-  {
-    id: "enrollments",
-    header: "Enrollments",
-    cell: ({ row }) => row.original.enrollments.length,
-  },
-  {
-    id: "sessions",
-    header: "Sessions",
-    cell: ({ row }) => row.original.sessions.length,
   },
   {
     accessorKey: "classItem.location",

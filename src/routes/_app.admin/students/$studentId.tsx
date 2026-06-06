@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
-import { formatAge } from "~/lib/date-utils";
+import { formatAge, formatTimeRange } from "~/lib/date-utils";
 
 export const Route = createFileRoute("/_app/admin/students/$studentId")({
   component: AdminStudentDetailPage,
@@ -60,7 +60,7 @@ function formatClassOptionLabel(
     classItem.scheduleSummary ||
     [
       [classItem.startDate, classItem.endDate].filter(Boolean).join(" - "),
-      [classItem.startTime, classItem.endTime].filter(Boolean).join(" - "),
+      formatTimeRange(classItem.startTime, classItem.endTime),
     ]
       .filter(Boolean)
       .join(" · ");

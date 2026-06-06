@@ -121,7 +121,7 @@ function AdminStudentReportPage() {
         </header>
 
         <div className="gap-4 flex flex-col">
-          <Card className="rounded-lg">
+          <Card className="rounded-lg max-w-[92vw] mx-auto w-full sm:max-w-none">
             <CardHeader>
               <CardTitle>Attendance</CardTitle>
               <CardDescription>
@@ -136,7 +136,7 @@ function AdminStudentReportPage() {
               ) : (
                 <ChartContainer
                   config={chartConfig}
-                  className="mx-auto w-full max-w-md"
+                  className="mx-auto w-full max-w-sm"
                   style={{ height: 288, minHeight: 288 }}
                 >
                   <PieChart accessibilityLayer>
@@ -191,7 +191,7 @@ function AdminStudentReportPage() {
                   </PieChart>
                 </ChartContainer>
               )}
-              <div className="flex w-full flex-row sm:flex-col justify-around border-t sm:border-t-0 sm:border-l pt-4 text-center">
+              <div className="flex w-full sm:w-1/2 flex-row sm:flex-col justify-around border-t sm:border-t-0 sm:border-l pt-4 text-center">
                 <div>
                   <div className="text-2xl font-semibold">
                     {report.summary.present}

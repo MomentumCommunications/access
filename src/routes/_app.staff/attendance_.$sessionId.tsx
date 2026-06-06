@@ -4,6 +4,7 @@ import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
 import { ArrowLeft, Check, CheckCheck, UserPlus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { AttendanceRowActions } from "~/components/attendance-row-actions";
 import { RoleGate } from "~/components/role-gate";
 import { Button } from "~/components/ui/button";
 import {
@@ -22,7 +23,7 @@ import {
   ComboboxList,
 } from "~/components/ui/combobox";
 import { Spinner } from "~/components/ui/spinner";
-import { formatMDYYYY } from "~/lib/date-utils";
+import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
 import { cn } from "~/lib/utils";
 
 export const Route = createFileRoute("/_app/staff/attendance_/$sessionId")({
@@ -54,6 +55,16 @@ function AttendanceSessionPage() {
     const map = new Map<string, AttendanceStatus>();
     sessionData?.attendance.forEach((record) => {
       map.set(record.student, record.status);
+    });
+    return map;
+  }, [sessionData]);
+  const attendanceRecordByStudent = useMemo(() => {
+    const map = new Map<
+      string,
+      NonNullable<typeof sessionData>["attendance"][number]
+    >();
+    sessionData?.attendance.forEach((record) => {
+      map.set(record.student, record);
     });
     return map;
   }, [sessionData]);
@@ -233,9 +244,10 @@ function AttendanceSessionPage() {
               </h1>
               <p className="text-muted-foreground">
                 {formatMDYYYY(sessionData.session.date)} ·{" "}
-                {[sessionData.session.startTime, sessionData.session.endTime]
-                  .filter(Boolean)
-                  .join(" - ") || "Time TBD"}
+                {formatTimeRange(
+                  sessionData.session.startTime,
+                  sessionData.session.endTime,
+                ) || "Time TBD"}
                 {sessionData.session.location
                   ? ` · ${sessionData.session.location}`
                   : ""}
@@ -243,7 +255,7 @@ function AttendanceSessionPage() {
             </div>
           </div>
 
-          <Card className="rounded-lg">
+          <Card className="rounded-lg px-0">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Roster</CardTitle>
               <Button
@@ -257,7 +269,7 @@ function AttendanceSessionPage() {
                 <span className="sr-only">Mark all present</span>
               </Button>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 px-3">
               {error ? (
                 <p className="text-destructive text-sm">{error}</p>
               ) : null}
@@ -270,6 +282,12 @@ function AttendanceSessionPage() {
                 if (!enrollment.student) return null;
                 const student = enrollment.student;
                 const current = localAttendance.get(student._id);
+                const attendanceRecord = attendanceRecordByStudent.get(
+                  student._id,
+                );
+                const studentName =
+                  student.preferredName ||
+                  `${student.firstName} ${student.lastName}`;
 
                 return (
                   <div
@@ -280,38 +298,46 @@ function AttendanceSessionPage() {
                       {enrollment.photoUrl ? (
                         <img
                           src={enrollment.photoUrl}
-                          alt={
-                            student.preferredName ||
-                            `${student.firstName} ${student.lastName}`
-                          }
+                          alt={studentName}
                           className="size-10 shrink-0 rounded-full object-cover"
                         />
                       ) : null}
                       <div className="min-w-0">
                         <div className="truncate font-medium">
-                          {student.preferredName ||
-                            `${student.firstName} ${student.lastName}`}
+                          {studentName}
                         </div>
                       </div>
                     </div>
-                    <div
-                      className="grid w-24 shrink-0 grid-cols-2 gap-2 sm:w-32"
-                      aria-label={`Mark attendance for ${
-                        student.preferredName ||
-                        `${student.firstName} ${student.lastName}`
-                      }`}
-                    >
-                      <AttendanceToggleButton
-                        label="Present"
-                        selected={current === "present"}
-                        tone="present"
-                        onClick={() => toggleAttendance(student._id, "present")}
-                      />
-                      <AttendanceToggleButton
-                        label="Absent"
-                        selected={current === "absent"}
-                        tone="absent"
-                        onClick={() => toggleAttendance(student._id, "absent")}
+                    <div className="flex flex-row items-center gap-1">
+                      <div
+                        className="grid w-24 shrink-0 grid-cols-2 gap-2 sm:w-32"
+                        aria-label={`Mark attendance for ${studentName}`}
+                      >
+                        <AttendanceToggleButton
+                          label="Present"
+                          selected={current === "present"}
+                          tone="present"
+                          onClick={() =>
+                            toggleAttendance(student._id, "present")
+                          }
+                        />
+                        <AttendanceToggleButton
+                          label="Absent"
+                          selected={current === "absent"}
+                          tone="absent"
+                          onClick={() =>
+                            toggleAttendance(student._id, "absent")
+                          }
+                        />
+                      </div>
+                      <AttendanceRowActions
+                        session={sessionId as Id<"sessions">}
+                        student={student._id}
+                        studentName={studentName}
+                        status={current}
+                        reason={attendanceRecord?.reason}
+                        canRemove={enrollment.status === "session"}
+                        onError={setError}
                       />
                     </div>
                   </div>

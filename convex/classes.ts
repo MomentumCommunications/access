@@ -1,6 +1,10 @@
 import { v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 import { mutation, MutationCtx, query, QueryCtx } from "./_generated/server";
+import {
+  compareClassesBySchedule,
+  compareRowsByClassSchedule,
+} from "./lib/classSorting";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
 
 const roleValidator = v.union(
@@ -33,6 +37,15 @@ const attendanceStatusValidator = v.union(
   v.literal("absent"),
   v.literal("late"),
   v.literal("excused"),
+);
+
+const attendanceReasonValidator = v.union(
+  v.literal("sick"),
+  v.literal("injured"),
+  v.literal("homework"),
+  v.literal("vacation"),
+  v.literal("school-event"),
+  v.literal("no-ride"),
 );
 
 const weekdayValidator = v.union(
@@ -391,10 +404,11 @@ export const currentUserAccess = query({
 export const listPublishedClasses = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db
+    const classes = await ctx.db
       .query("classes")
       .withIndex("byStatus", (q) => q.eq("status", "published"))
       .collect();
+    return classes.sort(compareClassesBySchedule);
   },
 });
 
@@ -460,7 +474,9 @@ export const listMyStudents = query({
           photoUrl: student?.photo
             ? await ctx.storage.getUrl(student.photo)
             : null,
-          classes: classes.filter(({ classItem }) => classItem !== null),
+          classes: classes
+            .filter(({ classItem }) => classItem !== null)
+            .sort(compareRowsByClassSchedule),
         };
       }),
     );
@@ -492,20 +508,22 @@ export const getMyStudent = query({
       .withIndex("byStudent", (q) => q.eq("student", student))
       .collect();
 
+    const enrollmentRows = await Promise.all(
+      enrollments
+        .filter((enrollment) => enrollment.status !== "dropped")
+        .map(async (enrollment) => ({
+          ...enrollment,
+          classItem: await ctx.db.get(enrollment.classId),
+        })),
+    );
+
     return {
       student: studentDoc,
       contact: contact || null,
       photoUrl: studentDoc.photo
         ? await ctx.storage.getUrl(studentDoc.photo)
         : null,
-      enrollments: await Promise.all(
-        enrollments
-          .filter((enrollment) => enrollment.status !== "dropped")
-          .map(async (enrollment) => ({
-            ...enrollment,
-            classItem: await ctx.db.get(enrollment.classId),
-          })),
-      ),
+      enrollments: enrollmentRows.sort(compareRowsByClassSchedule),
     };
   },
 });
@@ -742,6 +760,16 @@ export const adminGetStudent = query({
       .withIndex("byStudent", (q) => q.eq("student", student))
       .collect();
 
+    const enrollmentRows = await Promise.all(
+      enrollments.map(async (enrollment) => ({
+        ...enrollment,
+        classItem: await ctx.db.get(enrollment.classId),
+        requestedBy: enrollment.requestedBy
+          ? await ctx.db.get(enrollment.requestedBy)
+          : null,
+      })),
+    );
+
     return {
       student: studentDoc,
       photoUrl: studentDoc.photo
@@ -753,15 +781,7 @@ export const adminGetStudent = query({
           user: contact.user ? await ctx.db.get(contact.user) : null,
         })),
       ),
-      enrollments: await Promise.all(
-        enrollments.map(async (enrollment) => ({
-          ...enrollment,
-          classItem: await ctx.db.get(enrollment.classId),
-          requestedBy: enrollment.requestedBy
-            ? await ctx.db.get(enrollment.requestedBy)
-            : null,
-        })),
-      ),
+      enrollments: enrollmentRows.sort(compareRowsByClassSchedule),
     };
   },
 });
@@ -903,6 +923,7 @@ export const adminListClasses = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
     const classes = await ctx.db.query("classes").collect();
+    classes.sort(compareClassesBySchedule);
     return await Promise.all(
       classes.map(async (classItem) => {
         const enrollments = await ctx.db
@@ -1071,11 +1092,11 @@ export const staffListClasses = query({
     const user = await requireStaff(ctx);
     const classes = await ctx.db.query("classes").collect();
     if (isAdmin(user)) {
-      return classes;
+      return classes.sort(compareClassesBySchedule);
     }
-    return classes.filter((classItem) =>
-      classItem.assignedStaff?.includes(user._id),
-    );
+    return classes
+      .filter((classItem) => classItem.assignedStaff?.includes(user._id))
+      .sort(compareClassesBySchedule);
   },
 });
 
@@ -1159,6 +1180,7 @@ export const markAttendance = mutation({
     const patch = {
       status,
       notes,
+      ...(status === "absent" ? {} : { reason: undefined }),
       markedBy: user._id,
       markedAt: Date.now(),
     };
@@ -1172,6 +1194,48 @@ export const markAttendance = mutation({
       session,
       student,
       ...patch,
+    });
+  },
+});
+
+export const updateAttendanceReason = mutation({
+  args: {
+    session: v.id("sessions"),
+    student: v.id("students"),
+    reason: v.optional(attendanceReasonValidator),
+  },
+  handler: async (ctx, { session, student, reason }) => {
+    const user = await requireStaff(ctx);
+    const sessionDoc = await ctx.db.get(session);
+    if (!sessionDoc) {
+      throw new Error("Session not found");
+    }
+    if (
+      !isAdmin(user) &&
+      !sessionDoc.assignedStaff?.includes(user._id) &&
+      sessionDoc.substitute !== user._id
+    ) {
+      const classItem = await ctx.db.get(sessionDoc.classId);
+      if (!classItem?.assignedStaff?.includes(user._id)) {
+        throw new Error("Unauthorized");
+      }
+    }
+
+    const attendance = await ctx.db
+      .query("attendanceRecords")
+      .withIndex("bySessionStudent", (q) =>
+        q.eq("session", session).eq("student", student),
+      )
+      .unique();
+
+    if (!attendance || attendance.status !== "absent") {
+      throw new Error("An absence reason requires an absent attendance mark.");
+    }
+
+    await ctx.db.patch(attendance._id, {
+      reason,
+      markedBy: user._id,
+      markedAt: Date.now(),
     });
   },
 });
@@ -1267,6 +1331,52 @@ export const addStudentToSession = mutation({
   },
 });
 
+export const removeStudentFromSession = mutation({
+  args: {
+    session: v.id("sessions"),
+    student: v.id("students"),
+  },
+  handler: async (ctx, { session, student }) => {
+    const user = await requireStaff(ctx);
+    const sessionDoc = await ctx.db.get(session);
+    if (!sessionDoc) {
+      throw new Error("Session not found");
+    }
+    if (
+      !isAdmin(user) &&
+      !sessionDoc.assignedStaff?.includes(user._id) &&
+      sessionDoc.substitute !== user._id
+    ) {
+      const classItem = await ctx.db.get(sessionDoc.classId);
+      if (!classItem?.assignedStaff?.includes(user._id)) {
+        throw new Error("Unauthorized");
+      }
+    }
+
+    const sessionStudent = await ctx.db
+      .query("sessionStudents")
+      .withIndex("bySessionStudent", (q) =>
+        q.eq("session", session).eq("student", student),
+      )
+      .unique();
+    if (!sessionStudent) {
+      throw new Error("Only students added to this session can be removed.");
+    }
+
+    const attendance = await ctx.db
+      .query("attendanceRecords")
+      .withIndex("bySessionStudent", (q) =>
+        q.eq("session", session).eq("student", student),
+      )
+      .unique();
+    if (attendance) {
+      await ctx.db.delete(attendance._id);
+    }
+
+    await ctx.db.delete(sessionStudent._id);
+  },
+});
+
 export const markSessionPresent = mutation({
   args: {
     session: v.id("sessions"),
@@ -1318,6 +1428,7 @@ export const markSessionPresent = mutation({
           .unique();
         const patch = {
           status: "present" as const,
+          reason: undefined,
           markedBy: user._id,
           markedAt: Date.now(),
         };

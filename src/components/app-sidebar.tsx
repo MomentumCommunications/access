@@ -5,7 +5,6 @@ import {
   CalendarDays,
   CoffeeIcon,
   Cog,
-  ExternalLink,
   GraduationCap,
   HelpCircle,
   Home,

@@ -29,7 +29,7 @@ import {
 import { Spinner } from "~/components/ui/spinner";
 import { Separator } from "~/components/ui/separator";
 import { ScrollArea } from "~/components/ui/scroll-area";
-import { formatMDYYYY } from "~/lib/date-utils";
+import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
 
 export const Route = createFileRoute("/_app/admin/classes/$classId")({
   component: AdminClassDetailPage,
@@ -487,11 +487,14 @@ function AdminClassDetailPage() {
                         className="flex flex-col gap-2 rounded-md border p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
-                          <div className="font-medium">{session.date}</div>
+                          <div className="font-medium">
+                            {formatMDYYYY(session.date)}
+                          </div>
                           <div className="text-muted-foreground">
-                            {[session.startTime, session.endTime]
-                              .filter(Boolean)
-                              .join(" - ") || "Time TBD"}
+                            {formatTimeRange(
+                              session.startTime,
+                              session.endTime,
+                            ) || "Time TBD"}
                           </div>
                           <div className="text-xs capitalize text-muted-foreground">
                             {session.source}

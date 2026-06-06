@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
+import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
 
 export const Route = createFileRoute("/_app/classes/$classId")({
   component: ClassDetailPage,
@@ -114,11 +115,10 @@ function ClassDetailPage() {
                   key={session._id}
                   className="flex items-center justify-between rounded-md border p-3"
                 >
-                  <span>{session.date}</span>
+                  <span>{formatMDYYYY(session.date)}</span>
                   <span className="text-muted-foreground">
-                    {[session.startTime, session.endTime]
-                      .filter(Boolean)
-                      .join(" - ") || "Time TBD"}
+                    {formatTimeRange(session.startTime, session.endTime) ||
+                      "Time TBD"}
                   </span>
                 </div>
               ))

@@ -228,6 +228,16 @@ export default defineSchema({
       v.literal("late"),
       v.literal("excused"),
     ),
+    reason: v.optional(
+      v.union(
+        v.literal("sick"),
+        v.literal("injured"),
+        v.literal("homework"),
+        v.literal("vacation"),
+        v.literal("school-event"),
+        v.literal("no-ride"),
+      ),
+    ),
     notes: v.optional(v.string()),
     markedBy: v.id("users"),
     markedAt: v.number(),

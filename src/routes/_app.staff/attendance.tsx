@@ -16,6 +16,7 @@ import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Spinner } from "~/components/ui/spinner";
+import { formatTimeRange } from "~/lib/date-utils";
 
 export const Route = createFileRoute("/_app/staff/attendance")({
   component: AttendancePage,
@@ -101,9 +102,10 @@ function AttendancePage() {
                     {row.classItem?.title || "Untitled class"}
                   </CardTitle>
                   <CardDescription>
-                    {[row.session.startTime, row.session.endTime]
-                      .filter(Boolean)
-                      .join(" - ") || "Time TBD"}
+                    {formatTimeRange(
+                      row.session.startTime,
+                      row.session.endTime,
+                    ) || "Time TBD"}
                     {row.session.location ? ` · ${row.session.location}` : ""}
                   </CardDescription>
                 </CardHeader>

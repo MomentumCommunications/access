@@ -33,3 +33,31 @@ export function formatFullDate(date?: string) {
   if (!date) return "Not set";
   return format(new Date(date), "MMMM d, yyyy");
 }
+
+function parseMilitaryTime(time?: string) {
+  const match = time?.match(/^(\d{1,2}):([0-5]\d)(?::[0-5]\d)?$/);
+  if (!match) return null;
+
+  const hour = Number(match[1]);
+  if (hour > 23) return null;
+
+  return {
+    time: `${hour % 12 || 12}:${match[2]}`,
+    period: hour < 12 ? "AM" : "PM",
+  };
+}
+
+export function formatTimeRange(startTime?: string, endTime?: string) {
+  const start = parseMilitaryTime(startTime);
+  const end = parseMilitaryTime(endTime);
+
+  if (!start && !end) return "";
+  if (!start) return `${end!.time} ${end!.period}`;
+  if (!end) return `${start.time} ${start.period}`;
+
+  if (start.period === end.period) {
+    return `${start.time} - ${end.time} ${end.period}`;
+  }
+
+  return `${start.time} ${start.period} - ${end.time} ${end.period}`;
+}

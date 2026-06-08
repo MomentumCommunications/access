@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "test": "node --test --experimental-strip-types tests/*.test.ts",
+    "generate:pwa-splash": "node scripts/generate-ios-splash.mjs",
     "deploy": "npm run build && wrangler deploy",
     "cf-typegen": "wrangler types --env-interface Env"
   },

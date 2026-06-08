@@ -12,6 +12,49 @@ import { getGlobalClients } from "~/lib/query-client";
 import { Toaster } from "sonner";
 // import { PWAHandler } from "~/components/pwa-handler"; // Disabled for Netlify compatibility
 
+const IOS_STARTUP_SCREENS = [
+  { width: 320, height: 568, scale: 2 },
+  { width: 375, height: 667, scale: 2 },
+  { width: 414, height: 736, scale: 3 },
+  { width: 375, height: 812, scale: 3 },
+  { width: 414, height: 896, scale: 2 },
+  { width: 414, height: 896, scale: 3 },
+  { width: 390, height: 844, scale: 3 },
+  { width: 428, height: 926, scale: 3 },
+  { width: 393, height: 852, scale: 3 },
+  { width: 430, height: 932, scale: 3 },
+  { width: 402, height: 874, scale: 3 },
+  { width: 440, height: 956, scale: 3 },
+  { width: 744, height: 1133, scale: 2 },
+  { width: 768, height: 1024, scale: 2 },
+  { width: 820, height: 1180, scale: 2 },
+  { width: 834, height: 1112, scale: 2 },
+  { width: 834, height: 1194, scale: 2 },
+  { width: 834, height: 1210, scale: 2 },
+  { width: 1024, height: 1366, scale: 2 },
+  { width: 1032, height: 1376, scale: 2 },
+].flatMap(({ width, height, scale }) => {
+  const media = [
+    `(device-width: ${width}px)`,
+    `(device-height: ${height}px)`,
+    `(-webkit-device-pixel-ratio: ${scale})`,
+    "(orientation: portrait)",
+  ].join(" and ");
+
+  return [
+    {
+      rel: "apple-touch-startup-image",
+      href: `/splash/ios/launch-${width * scale}x${height * scale}-light.png`,
+      media,
+    },
+    {
+      rel: "apple-touch-startup-image",
+      href: `/splash/ios/launch-${width * scale}x${height * scale}-dark.png`,
+      media: `${media} and (prefers-color-scheme: dark)`,
+    },
+  ];
+});
+
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
@@ -101,6 +144,7 @@ export const Route = createRootRouteWithContext<{
         href: "/icons/icon-120x120.png",
         as: "image",
       },
+      ...IOS_STARTUP_SCREENS,
       // Preconnect to critical origins for faster loading
       {
         rel: "preconnect",

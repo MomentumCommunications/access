@@ -3,7 +3,7 @@
   "short_name": "Access",
   "description": "Client information portal - Connect, communicate, and stay informed with Access Momentum.",
   "theme_color": "#ce2128",
-  "background_color": "#ffffff",
+  "background_color": "#09090b",
   "display": "standalone",
   "orientation": "portrait-primary",
   "scope": "/",

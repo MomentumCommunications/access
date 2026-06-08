@@ -1,0 +1,31 @@
+name: Post commits to Discord
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send push summary to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          COMPARE_URL: ${{ github.event.compare }}
+        run: |
+          COMMITS=$(jq -r '
+            .commits
+            | map("- [`" + (.id[0:7]) + "`](" + .url + ") " + (.message | split("\n")[0]) + " — " + .author.name)
+            | join("\n")
+          ' "$GITHUB_EVENT_PATH")
+
+          jq -n \
+            --arg content "**$REPO** — push to **$BRANCH**\n$COMMITS\n\n<$COMPARE_URL>" \
+            '{content: $content}' \
+          | curl -sS -H "Content-Type: application/json" \
+              -d @- \
+              "$DISCORD_WEBHOOK_URL"

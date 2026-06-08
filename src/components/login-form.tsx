@@ -73,7 +73,8 @@ export function LoginForm({
                   {isSubmitting ? "Logging in..." : "Login"}
                 </Button>
                 <FieldDescription className="text-center">
-                  Don&apos;t have an account? <Link to="/signup">Sign up</Link>
+                  Don&apos;t have an account?{" "}
+                  <Link to="/register">Register</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>

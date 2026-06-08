@@ -3,6 +3,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Doc } from "convex/_generated/dataModel";
+import { Plus } from "lucide-react";
 import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
 import { Button } from "~/components/ui/button";
@@ -14,6 +15,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
+import { getAccountName } from "~/lib/account-name";
 
 export const Route = createFileRoute("/_app/admin/accounts")({
   component: AdminAccountsPage,
@@ -27,7 +29,8 @@ function AdminAccountsPage() {
 
   const columns: ColumnDef<Doc<"users">>[] = [
     {
-      accessorKey: "name",
+      accessorFn: (account) => getAccountName(account),
+      id: "name",
       header: "Name",
       cell: ({ row }) => (
         <Button asChild variant="link" className="h-auto p-0">
@@ -35,7 +38,7 @@ function AdminAccountsPage() {
             to="/admin/accounts/$userId"
             params={{ userId: row.original._id }}
           >
-            {row.original.name || "Unnamed"}
+            {getAccountName(row.original)}
           </Link>
         </Button>
       ),
@@ -74,11 +77,19 @@ function AdminAccountsPage() {
   return (
     <RoleGate allow="admin">
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 lg:p-8">
-        <div>
-          <h1 className="text-3xl font-bold">Accounts</h1>
-          <p className="text-muted-foreground">
-            Review user accounts and update sidebar access roles.
-          </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Accounts</h1>
+            <p className="text-muted-foreground">
+              Review user accounts and update sidebar access roles.
+            </p>
+          </div>
+          <Button asChild>
+            <Link to="/admin/accounts/create">
+              <Plus />
+              New account
+            </Link>
+          </Button>
         </div>
         {accounts === undefined ? (
           <div className="flex min-h-40 items-center justify-center">

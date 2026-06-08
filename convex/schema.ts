@@ -10,6 +10,8 @@ export default defineSchema({
   }),
   users: defineTable({
     name: v.optional(v.string()),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
     displayName: v.optional(v.string()),
     email: v.optional(v.union(v.string(), v.array(v.string()))),
     emailVerificationTime: v.optional(v.number()),
@@ -22,6 +24,13 @@ export default defineSchema({
     group: v.optional(v.array(v.id("groups"))),
     image: v.optional(v.string()),
     description: v.optional(v.string()),
+    onboardingStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("complete")),
+    ),
+    onboardingSource: v.optional(
+      v.union(v.literal("new"), v.literal("imported")),
+    ),
+    onboardingCompletedAt: v.optional(v.number()),
     // Legacy Clerk ID. Convex Auth stores its user ID in the subject JWT field.
     externalId: v.optional(v.string()),
   })
@@ -121,6 +130,13 @@ export default defineSchema({
     lastName: v.string(),
     preferredName: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()),
+    gender: v.optional(
+      v.union(v.literal(""), v.literal("Female"), v.literal("Male")),
+    ),
+    groupId: v.optional(v.id("groups")),
+    school: v.optional(v.string()),
+    allergies: v.optional(v.string()),
+    recital: v.optional(v.boolean()),
     photo: v.optional(v.id("_storage")),
     notes: v.optional(v.string()),
     status: v.union(
@@ -141,6 +157,19 @@ export default defineSchema({
     .index("byStudent", ["student"])
     .index("byUser", ["user"])
     .index("byInviteEmail", ["inviteEmail"]),
+  onboarding: defineTable({
+    user: v.id("users"),
+    currentStep: v.union(
+      v.literal("profile"),
+      v.literal("students"),
+      v.literal("review"),
+      v.literal("complete"),
+    ),
+    matchedImportedRecord: v.boolean(),
+    createdStudentIds: v.array(v.id("students")),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  }).index("byUser", ["user"]),
   classes: defineTable({
     title: v.string(),
     description: v.optional(v.string()),

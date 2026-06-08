@@ -1,4 +1,6 @@
-import { Outlet, createFileRoute } from "@tanstack/react-router";
+import { useConvexQuery } from "@convex-dev/react-query";
+import { Navigate, Outlet, createFileRoute } from "@tanstack/react-router";
+import { api } from "convex/_generated/api";
 import { memo, Suspense } from "react";
 import { AppSidebar } from "~/components/app-sidebar";
 import { Header } from "~/components/header";
@@ -14,6 +16,33 @@ const MemoizedAppSidebar = memo(AppSidebar);
 const MemoizedHeader = memo(Header);
 
 function AppLayoutComponent() {
+  const user = useConvexQuery(api.users.current, {});
+  const onboarding = useConvexQuery(
+    api.onboarding.getState,
+    user?.onboardingStatus === "pending" ? {} : "skip",
+  );
+
+  if (user?.onboardingStatus === "pending" && onboarding === undefined) {
+    return (
+      <main className="flex min-h-svh items-center justify-center">
+        <div className="size-5 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+      </main>
+    );
+  }
+
+  if (user?.onboardingStatus === "pending") {
+    const step = onboarding?.onboarding?.currentStep;
+    const destination =
+      step === "students"
+        ? "/register/students"
+        : step === "review"
+          ? "/register/review"
+          : step === "complete"
+            ? "/register/complete"
+            : "/register/profile";
+    return <Navigate to={destination} replace />;
+  }
+
   return (
     <SidebarProvider>
       <SidebarDataProvider>

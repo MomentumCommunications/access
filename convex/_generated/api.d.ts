@@ -19,6 +19,7 @@ import type * as http from "../http.js";
 import type * as lib_classSorting from "../lib/classSorting.js";
 import type * as lib_scheduling from "../lib/scheduling.js";
 import type * as messages from "../messages.js";
+import type * as onboarding from "../onboarding.js";
 import type * as random from "../random.js";
 import type * as reactions from "../reactions.js";
 import type * as resendConfig from "../resendConfig.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   "lib/classSorting": typeof lib_classSorting;
   "lib/scheduling": typeof lib_scheduling;
   messages: typeof messages;
+  onboarding: typeof onboarding;
   random: typeof random;
   reactions: typeof reactions;
   resendConfig: typeof resendConfig;

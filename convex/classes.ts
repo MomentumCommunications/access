@@ -75,6 +75,12 @@ const studentStatusValidator = v.union(
   v.literal("archived"),
 );
 
+const studentGenderValidator = v.union(
+  v.literal(""),
+  v.literal("Female"),
+  v.literal("Male"),
+);
+
 type DbCtx = QueryCtx | MutationCtx;
 
 function isAdmin(user: Doc<"users"> | null) {
@@ -231,6 +237,160 @@ export const currentUserAccess = query({
   },
 });
 
+export const searchApplication = query({
+  args: {
+    search: v.string(),
+  },
+  handler: async (ctx, { search }) => {
+    const user = await getCurrentUser(ctx);
+    const normalizedSearch = search.trim().toLowerCase();
+    if (!user || normalizedSearch.length === 0) {
+      return {
+        accounts: [],
+        students: [],
+        classes: [],
+      };
+    }
+
+    const includesSearch = (...values: Array<string | undefined>) =>
+      values.some((value) => value?.toLowerCase().includes(normalizedSearch));
+    const accountEmail = (account: Doc<"users">) =>
+      Array.isArray(account.email) ? account.email.join(", ") : account.email;
+
+    const accounts = isAdmin(user)
+      ? (await ctx.db.query("users").collect())
+          .filter((account) =>
+            includesSearch(
+              account.displayName,
+              account.name,
+              account.firstName,
+              account.lastName,
+              [account.firstName, account.lastName].filter(Boolean).join(" "),
+              accountEmail(account),
+              account.role,
+            ),
+          )
+          .sort((a, b) =>
+            (
+              a.displayName ||
+              [a.firstName, a.lastName].filter(Boolean).join(" ") ||
+              a.name ||
+              accountEmail(a) ||
+              ""
+            ).localeCompare(
+              b.displayName ||
+                [b.firstName, b.lastName].filter(Boolean).join(" ") ||
+                b.name ||
+                accountEmail(b) ||
+                "",
+            ),
+          )
+          .slice(0, 10)
+          .map((account) => ({
+            id: account._id,
+            title:
+              account.displayName ||
+              [account.firstName, account.lastName].filter(Boolean).join(" ") ||
+              account.name ||
+              accountEmail(account) ||
+              "Unnamed account",
+            subtitle: [accountEmail(account), account.role || "member"]
+              .filter(Boolean)
+              .join(" · "),
+            href: `/admin/accounts/${account._id}`,
+          }))
+      : [];
+
+    const studentDocs = isAdmin(user)
+      ? await ctx.db.query("students").collect()
+      : isStaff(user)
+        ? []
+        : await Promise.all(
+            (
+              await ctx.db
+                .query("studentContacts")
+                .withIndex("byUser", (q) => q.eq("user", user._id))
+                .collect()
+            ).map((contact) => ctx.db.get(contact.student)),
+          );
+    const seenStudents = new Set<Id<"students">>();
+    const students = studentDocs
+      .filter((student): student is Doc<"students"> => student !== null)
+      .filter((student) => {
+        if (seenStudents.has(student._id)) {
+          return false;
+        }
+        seenStudents.add(student._id);
+        return includesSearch(
+          student.firstName,
+          student.lastName,
+          student.preferredName,
+          `${student.firstName} ${student.lastName}`,
+        );
+      })
+      .sort((a, b) =>
+        (a.preferredName || `${a.firstName} ${a.lastName}`).localeCompare(
+          b.preferredName || `${b.firstName} ${b.lastName}`,
+        ),
+      )
+      .slice(0, 10)
+      .map((student) => ({
+        id: student._id,
+        title:
+          student.preferredName || `${student.firstName} ${student.lastName}`,
+        subtitle: `${student.firstName} ${student.lastName} · ${student.status}`,
+        href: isAdmin(user)
+          ? `/admin/students/${student._id}`
+          : `/students/${student._id}`,
+      }));
+
+    const classDocs = await ctx.db.query("classes").collect();
+    const classes = classDocs
+      .filter((classItem) => {
+        if (isAdmin(user)) {
+          return true;
+        }
+        if (isStaff(user)) {
+          return (
+            classItem.status === "published" &&
+            classItem.assignedStaff?.includes(user._id)
+          );
+        }
+        return classItem.status === "published";
+      })
+      .filter((classItem) =>
+        includesSearch(
+          classItem.title,
+          classItem.description,
+          classItem.scheduleSummary,
+          classItem.location,
+        ),
+      )
+      .sort(compareClassesBySchedule)
+      .slice(0, 10)
+      .map((classItem) => ({
+        id: classItem._id,
+        title: classItem.title,
+        subtitle: [
+          classItem.scheduleSummary,
+          classItem.location,
+          isAdmin(user) ? classItem.status : undefined,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        href: isAdmin(user)
+          ? `/admin/classes/${classItem._id}`
+          : `/classes/${classItem._id}`,
+      }));
+
+    return {
+      accounts,
+      students,
+      classes,
+    };
+  },
+});
+
 export const listPublishedClasses = query({
   args: {},
   handler: async (ctx) => {
@@ -364,11 +524,25 @@ export const createStudentForCurrentUser = mutation({
     lastName: v.string(),
     preferredName: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()),
+    gender: studentGenderValidator,
+    school: v.string(),
+    allergies: v.string(),
+    recital: v.boolean(),
     relationship: v.optional(v.string()),
   },
   handler: async (
     ctx,
-    { firstName, lastName, preferredName, dateOfBirth, relationship },
+    {
+      firstName,
+      lastName,
+      preferredName,
+      dateOfBirth,
+      gender,
+      school,
+      allergies,
+      recital,
+      relationship,
+    },
   ) => {
     const user = await getCurrentUserOrThrow(ctx);
     const student = await ctx.db.insert("students", {
@@ -376,6 +550,10 @@ export const createStudentForCurrentUser = mutation({
       lastName,
       preferredName,
       dateOfBirth,
+      gender,
+      school,
+      allergies,
+      recital,
       status: "active",
     });
 
@@ -406,6 +584,10 @@ export const updateMyStudent = mutation({
     lastName: v.string(),
     preferredName: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()),
+    gender: studentGenderValidator,
+    school: v.string(),
+    allergies: v.string(),
+    recital: v.boolean(),
     photo: v.optional(v.id("_storage")),
     notes: v.optional(v.string()),
     status: studentStatusValidator,
@@ -545,6 +727,48 @@ export const adminGetAccount = query({
   },
 });
 
+export const adminCreateAccount = mutation({
+  args: {
+    firstName: v.string(),
+    lastName: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    role: roleValidator,
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const firstName = args.firstName.trim();
+    const lastName = args.lastName.trim();
+    const email = args.email.trim().toLowerCase();
+    if (!firstName || !lastName) {
+      throw new Error("First and last name are required.");
+    }
+    if (!email) {
+      throw new Error("Email is required.");
+    }
+
+    const existing = (await ctx.db.query("users").collect()).find((user) => {
+      const emails = Array.isArray(user.email) ? user.email : [user.email];
+      return emails.some(
+        (candidate) => candidate?.trim().toLowerCase() === email,
+      );
+    });
+    if (existing) {
+      throw new Error("An account with this email already exists.");
+    }
+
+    return await ctx.db.insert("users", {
+      firstName,
+      lastName,
+      email,
+      phone: args.phone?.trim() || undefined,
+      role: args.role,
+      onboardingSource: "imported",
+    });
+  },
+});
+
 export const adminSetUserRole = mutation({
   args: {
     user: v.id("users"),
@@ -570,6 +794,14 @@ export const adminListStudents = query({
         return { student, contacts };
       }),
     );
+  },
+});
+
+export const adminListStudentGroups = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    return await ctx.db.query("groups").collect();
   },
 });
 
@@ -676,10 +908,18 @@ export const adminCreateStudent = mutation({
     lastName: v.string(),
     preferredName: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()),
+    gender: studentGenderValidator,
+    groupId: v.optional(v.id("groups")),
+    school: v.string(),
+    allergies: v.string(),
+    recital: v.boolean(),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    if (args.groupId && !(await ctx.db.get(args.groupId))) {
+      throw new Error("The selected group no longer exists.");
+    }
     return await ctx.db.insert("students", {
       ...args,
       status: "active",
@@ -694,13 +934,24 @@ export const adminUpdateStudent = mutation({
     lastName: v.string(),
     preferredName: v.optional(v.string()),
     dateOfBirth: v.optional(v.string()),
+    gender: studentGenderValidator,
+    groupId: v.union(v.id("groups"), v.null()),
+    school: v.string(),
+    allergies: v.string(),
+    recital: v.boolean(),
     photo: v.optional(v.id("_storage")),
     notes: v.optional(v.string()),
     status: studentStatusValidator,
   },
-  handler: async (ctx, { student, ...updates }) => {
+  handler: async (ctx, { student, groupId, ...updates }) => {
     await requireAdmin(ctx);
-    await ctx.db.patch(student, updates);
+    if (groupId && !(await ctx.db.get(groupId))) {
+      throw new Error("The selected group no longer exists.");
+    }
+    await ctx.db.patch(student, {
+      ...updates,
+      groupId: groupId ?? undefined,
+    });
   },
 });
 

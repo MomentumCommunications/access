@@ -13,6 +13,7 @@ import {
   BreadcrumbSeparator,
 } from "~/components/ui/breadcrumb";
 import { formatMDYYYY } from "~/lib/date-utils";
+import { getAccountName } from "~/lib/account-name";
 
 type Crumb = {
   href: string;
@@ -153,11 +154,9 @@ export function AppBreadcrumbs() {
     ...(ids.accountId
       ? {
           [ids.accountId]:
-            accountData?.account.name ||
-            (Array.isArray(accountData?.account.email)
-              ? accountData?.account.email[0]
-              : accountData?.account.email) ||
-            "Account",
+            accountData?.account
+              ? getAccountName(accountData.account)
+              : "Account",
         }
       : {}),
     ...(ids.adminClassId

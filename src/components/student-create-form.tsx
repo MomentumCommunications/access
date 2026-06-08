@@ -1,9 +1,8 @@
-import { useConvexMutation } from "@convex-dev/react-query";
+import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
-import type { Doc, Id } from "convex/_generated/dataModel";
-import { useEffect, useMemo } from "react";
+import type { Id } from "convex/_generated/dataModel";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "~/components/ui/button";
@@ -31,9 +30,7 @@ import {
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 
-const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
-
-const studentFormSchema = z.object({
+const studentCreateSchema = z.object({
   firstName: z
     .string()
     .trim()
@@ -49,113 +46,56 @@ const studentFormSchema = z.object({
     .max(80, "Preferred name must be 80 characters or fewer."),
   dateOfBirth: z.string(),
   gender: z.enum(["", "Female", "Male"]),
-  groupId: z.string(),
   school: z.string().max(160, "School must be 160 characters or fewer."),
   allergies: z
     .string()
     .max(1000, "Allergies must be 1000 characters or fewer."),
   recital: z.boolean(),
+  relationship: z
+    .string()
+    .max(80, "Relationship must be 80 characters or fewer."),
+  groupId: z.string(),
   notes: z.string().max(2000, "Notes must be 2000 characters or fewer."),
-  status: z.enum(["active", "inactive", "archived"]),
-  photo: z.custom<File | null>().superRefine((file, ctx) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      ctx.addIssue({ code: "custom", message: "Choose an image file." });
-    }
-    if (file.size > MAX_PHOTO_SIZE) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Photo must be 5 MB or smaller.",
-      });
-    }
-  }),
 });
 
-type StudentFormValues = z.infer<typeof studentFormSchema>;
+type StudentCreateValues = z.infer<typeof studentCreateSchema>;
 
-type StudentEditFormProps = {
+const defaultValues: StudentCreateValues = {
+  firstName: "",
+  lastName: "",
+  preferredName: "",
+  dateOfBirth: "",
+  gender: "",
+  school: "",
+  allergies: "",
+  recital: false,
+  relationship: "",
+  groupId: "",
+  notes: "",
+};
+
+type StudentCreateFormProps = {
   mode: "admin" | "member";
-  student: Doc<"students">;
-  photoUrl?: string | null;
-  backTo: string;
   groups?: Array<{ _id: Id<"groups">; name: string }>;
 };
 
-function StudentEditForm({
-  mode,
-  student,
-  photoUrl,
-  backTo,
-  groups = [],
-}: StudentEditFormProps) {
+function StudentCreateForm({ mode, groups = [] }: StudentCreateFormProps) {
   const navigate = useNavigate();
-  const generateUploadUrl = useConvexMutation(
-    api.classes.generateStudentPhotoUploadUrl,
+  const createMyStudent = useConvexMutation(
+    api.classes.createStudentForCurrentUser,
   );
-  const updateMyStudent = useConvexMutation(api.classes.updateMyStudent);
-  const adminUpdateStudent = useConvexMutation(api.classes.adminUpdateStudent);
-  const form = useForm<StudentFormValues>({
-    resolver: zodResolver(studentFormSchema),
-    defaultValues: {
-      firstName: student.firstName,
-      lastName: student.lastName,
-      preferredName: student.preferredName || "",
-      dateOfBirth: student.dateOfBirth || "",
-      gender: student.gender || "",
-      groupId: student.groupId || "",
-      school: student.school || "",
-      allergies: student.allergies || "",
-      recital: student.recital ?? false,
-      notes: student.notes || "",
-      status: student.status,
-      photo: null,
-    },
+  const adminCreateStudent = useConvexMutation(api.classes.adminCreateStudent);
+  const form = useForm<StudentCreateValues>({
+    resolver: zodResolver(studentCreateSchema),
+    defaultValues,
     mode: "onTouched",
   });
-  const selectedPhoto = form.watch("photo");
-  const firstName = form.watch("firstName");
-  const lastName = form.watch("lastName");
-  const previewUrl = useMemo(
-    () => (selectedPhoto ? URL.createObjectURL(selectedPhoto) : null),
-    [selectedPhoto],
-  );
-  const displayedPhoto = previewUrl || photoUrl;
 
-  useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [previewUrl]);
-
-  async function uploadPhoto(photo: File | null) {
-    if (!photo) return undefined;
-
-    const postUrl = await generateUploadUrl({});
-    const result = await fetch(postUrl, {
-      method: "POST",
-      headers: { "Content-Type": photo.type || "image/jpeg" },
-      body: photo,
-    });
-
-    if (!result.ok) {
-      throw new Error("Photo upload failed.");
-    }
-
-    const { storageId } = (await result.json()) as {
-      storageId: Id<"_storage">;
-    };
-    return storageId;
-  }
-
-  async function onSubmit(values: StudentFormValues) {
+  async function onSubmit(values: StudentCreateValues) {
     form.clearErrors("root");
 
     try {
-      const photo = await uploadPhoto(values.photo);
-      const updates = {
-        student: student._id,
+      const common = {
         firstName: values.firstName.trim(),
         lastName: values.lastName.trim(),
         preferredName: values.preferredName.trim() || undefined,
@@ -164,29 +104,30 @@ function StudentEditForm({
         school: values.school.trim(),
         allergies: values.allergies.trim(),
         recital: values.recital,
-        notes: values.notes.trim() || undefined,
-        status: values.status,
-        ...(photo ? { photo } : {}),
       };
 
       if (mode === "admin") {
-        await adminUpdateStudent({
-          ...updates,
+        await adminCreateStudent({
+          ...common,
           groupId: values.groupId
             ? (values.groupId as Id<"groups">)
-            : null,
+            : undefined,
+          notes: values.notes.trim() || undefined,
         });
+        await navigate({ to: "/admin/students" });
       } else {
-        await updateMyStudent(updates);
+        await createMyStudent({
+          ...common,
+          relationship: values.relationship.trim() || undefined,
+        });
+        await navigate({ to: "/students" });
       }
-
-      await navigate({ to: backTo as never });
     } catch (error) {
       form.setError("root", {
         message:
           error instanceof Error
             ? error.message
-            : "The student could not be saved. Please try again.",
+            : "The student could not be created. Please try again.",
       });
     }
   }
@@ -203,46 +144,6 @@ function StudentEditForm({
           onSubmit={form.handleSubmit(onSubmit)}
         >
           <FieldGroup>
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <div className="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
-                {displayedPhoto ? (
-                  <img
-                    src={displayedPhoto}
-                    alt={`${firstName} ${lastName}`}
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <span className="text-2xl font-semibold text-muted-foreground">
-                    {firstName.slice(0, 1)}
-                    {lastName.slice(0, 1)}
-                  </span>
-                )}
-              </div>
-              <Controller
-                name="photo"
-                control={form.control}
-                render={({ field: { onChange, name }, fieldState }) => (
-                  <Field
-                    className="w-full"
-                    data-invalid={fieldState.invalid}
-                  >
-                    <FieldLabel htmlFor={name}>Photo</FieldLabel>
-                    <Input
-                      id={name}
-                      name={name}
-                      type="file"
-                      accept="image/*"
-                      aria-invalid={fieldState.invalid}
-                      onChange={(event) =>
-                        onChange(event.target.files?.[0] || null)
-                      }
-                    />
-                    <FieldError errors={[fieldState.error]} />
-                  </Field>
-                )}
-              />
-            </div>
-
             <div className="grid gap-4 sm:grid-cols-2">
               {(["firstName", "lastName"] as const).map((name) => (
                 <Controller
@@ -371,7 +272,25 @@ function StudentEditForm({
                     </Field>
                   )}
                 />
-              ) : null}
+              ) : (
+                <Controller
+                  name="relationship"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>
+                        Relationship
+                      </FieldLabel>
+                      <Input
+                        {...field}
+                        id={field.name}
+                        aria-invalid={fieldState.invalid}
+                      />
+                      <FieldError errors={[fieldState.error]} />
+                    </Field>
+                  )}
+                />
+              )}
             </div>
 
             <Controller
@@ -407,34 +326,24 @@ function StudentEditForm({
               )}
             />
 
-            <Controller
-              name="status"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor={field.name}>Status</FieldLabel>
-                  <Select
-                    name={field.name}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger
+            {mode === "admin" ? (
+              <Controller
+                name="notes"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Notes</FieldLabel>
+                    <Textarea
+                      {...field}
                       id={field.name}
                       aria-invalid={fieldState.invalid}
-                      className="w-full"
-                    >
-                      <SelectValue placeholder="Select a status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="archived">Archived</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FieldError errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
+                      className="min-h-24"
+                    />
+                    <FieldError errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+            ) : null}
 
             <Controller
               name="recital"
@@ -447,9 +356,7 @@ function StudentEditForm({
                   <Checkbox
                     id={field.name}
                     checked={field.value}
-                    onCheckedChange={(checked) =>
-                      field.onChange(checked === true)
-                    }
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
                     aria-invalid={fieldState.invalid}
                   />
                   <FieldContent>
@@ -458,23 +365,6 @@ function StudentEditForm({
                     </FieldLabel>
                     <FieldError errors={[fieldState.error]} />
                   </FieldContent>
-                </Field>
-              )}
-            />
-
-            <Controller
-              name="notes"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor={field.name}>Notes</FieldLabel>
-                  <Textarea
-                    {...field}
-                    id={field.name}
-                    aria-invalid={fieldState.invalid}
-                    className="min-h-28"
-                  />
-                  <FieldError errors={[fieldState.error]} />
                 </Field>
               )}
             />
@@ -491,10 +381,12 @@ function StudentEditForm({
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" asChild type="button">
-              <Link to={backTo as never}>Cancel</Link>
+              <Link to={mode === "admin" ? "/admin/students" : "/students"}>
+                Cancel
+              </Link>
             </Button>
             <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Saving..." : "Save Student"}
+              {form.formState.isSubmitting ? "Adding..." : "Add Student"}
             </Button>
           </div>
         </form>
@@ -503,17 +395,12 @@ function StudentEditForm({
   );
 }
 
-type MemberStudentEditFormProps = Omit<
-  StudentEditFormProps,
-  "mode" | "groups"
->;
-
-export function MemberStudentEditForm(props: MemberStudentEditFormProps) {
-  return <StudentEditForm {...props} mode="member" />;
+export function MemberStudentCreateForm() {
+  return <StudentCreateForm mode="member" />;
 }
 
-type AdminStudentEditFormProps = Omit<StudentEditFormProps, "mode">;
+export function AdminStudentCreateForm() {
+  const groups = useConvexQuery(api.classes.adminListStudentGroups, {});
 
-export function AdminStudentEditForm(props: AdminStudentEditFormProps) {
-  return <StudentEditForm {...props} mode="admin" />;
+  return <StudentCreateForm mode="admin" groups={groups ?? []} />;
 }

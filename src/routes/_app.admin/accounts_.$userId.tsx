@@ -14,6 +14,7 @@ import {
 } from "~/components/ui/card";
 import { Spinner } from "~/components/ui/spinner";
 import { formatAge } from "~/lib/date-utils";
+import { getAccountName } from "~/lib/account-name";
 
 export const Route = createFileRoute("/_app/admin/accounts_/$userId")({
   component: AdminAccountDetailPage,
@@ -57,7 +58,7 @@ function AdminAccountDetailPage() {
             </div>
             <Card className="rounded-lg">
               <CardHeader>
-                <CardTitle>{accountData.account.name || "Unnamed"}</CardTitle>
+                <CardTitle>{getAccountName(accountData.account)}</CardTitle>
                 <CardDescription className="capitalize">
                   {accountData.account.role || "member"}
                 </CardDescription>

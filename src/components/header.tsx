@@ -1,4 +1,5 @@
 import { AppBreadcrumbs } from "./app-breadcrumbs";
+import { ApplicationSearch } from "./application-search";
 import { Separator } from "./ui/separator";
 import { SidebarTrigger } from "./ui/sidebar";
 
@@ -11,6 +12,7 @@ export function Header() {
           <Separator className="h-6" orientation="vertical" />
           <AppBreadcrumbs />
         </div>
+        <ApplicationSearch />
       </div>
       <Separator />
     </header>

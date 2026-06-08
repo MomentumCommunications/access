@@ -2,7 +2,7 @@ import { useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
-import { StudentEditForm } from "~/components/student-edit-form";
+import { AdminStudentEditForm } from "~/components/student-edit-form";
 import { RoleGate } from "~/components/role-gate";
 import { Card, CardHeader, CardTitle } from "~/components/ui/card";
 import { Spinner } from "~/components/ui/spinner";
@@ -16,6 +16,7 @@ function AdminEditStudentPage() {
   const studentData = useConvexQuery(api.classes.adminGetStudent, {
     student: studentId as Id<"students">,
   });
+  const groups = useConvexQuery(api.classes.adminListStudentGroups, {});
 
   return (
     <RoleGate allow="admin">
@@ -39,11 +40,11 @@ function AdminEditStudentPage() {
               Update profile details and photo.
             </p>
           </div>
-          <StudentEditForm
-            mode="admin"
+          <AdminStudentEditForm
             student={studentData.student}
             photoUrl={studentData.photoUrl}
             backTo={`/admin/students/${studentData.student._id}`}
+            groups={groups ?? []}
           />
         </main>
       )}

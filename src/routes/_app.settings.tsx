@@ -64,10 +64,6 @@ function RouteComponent() {
             <Label>System</Label>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          note: setting the theme to system while in dark mode may cause the app
-          to flash a white background on every page load.
-        </p>
       </div>
     </div>
   );

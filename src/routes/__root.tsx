@@ -279,22 +279,6 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
             `,
           }}
         />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  const theme = localStorage.getItem('vite-ui-theme');
-                  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                    document.documentElement.classList.add('dark');
-                  } else {
-                    document.documentElement.classList.remove('dark');
-                  }
-                } catch (e) {}
-              })();
-            `,
-          }}
-        />
       </head>
       <body className="overscroll-none overscroll-x-none">
         <div id="app-boot-splash" aria-hidden="true">

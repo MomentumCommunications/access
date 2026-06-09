@@ -72,16 +72,6 @@ export const deleteGroup = mutation({
   },
 });
 
-export const setRole = mutation({
-  args: {
-    user: v.id("users"),
-    role: v.union(v.literal("admin"), v.literal("staff"), v.literal("member")),
-  },
-  handler: async (ctx, { user, role }) => {
-    await ctx.db.patch(user, { role });
-  },
-});
-
 export const getChannelIdByName = query({
   args: { name: v.string() },
   handler: async (ctx, { name }) => {

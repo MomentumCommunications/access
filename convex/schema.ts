@@ -21,6 +21,11 @@ export default defineSchema({
     role: v.optional(
       v.union(v.literal("admin"), v.literal("staff"), v.literal("member")),
     ),
+    roles: v.optional(
+      v.array(
+        v.union(v.literal("admin"), v.literal("staff"), v.literal("member")),
+      ),
+    ),
     group: v.optional(v.array(v.id("groups"))),
     image: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -170,6 +175,11 @@ export default defineSchema({
     startedAt: v.number(),
     completedAt: v.optional(v.number()),
   }).index("byUser", ["user"]),
+  seasons: defineTable({
+    name: v.string(),
+    startDate: v.string(),
+    endDate: v.string(),
+  }),
   classes: defineTable({
     title: v.string(),
     description: v.optional(v.string()),
@@ -181,6 +191,8 @@ export default defineSchema({
     capacity: v.optional(v.number()),
     location: v.optional(v.string()),
     scheduleSummary: v.optional(v.string()),
+    minAge: v.optional(v.number()),
+    maxAge: v.optional(v.number()),
     startDate: v.optional(v.string()),
     endDate: v.optional(v.string()),
     startTime: v.optional(v.string()),
@@ -231,6 +243,13 @@ export default defineSchema({
     .index("bySession", ["session"])
     .index("byStudent", ["student"])
     .index("bySessionStudent", ["session", "student"]),
+  seasonClasses: defineTable({
+    season: v.id("seasons"),
+    class: v.id("classes"),
+  })
+    .index("bySeason", ["season"])
+    .index("byClass", ["class"])
+    .index("bySeasonClass", ["season", "class"]),
   classEnrollments: defineTable({
     classId: v.id("classes"),
     student: v.id("students"),

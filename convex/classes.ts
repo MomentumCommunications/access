@@ -11,6 +11,13 @@ import {
   syncGeneratedSessionsForClass,
   todayValue,
 } from "./lib/scheduling";
+import {
+  hasUserRole,
+  highestUserRole,
+  normalizeUserRoles,
+  resolveUserRoles,
+  type UserRole,
+} from "./lib/roles";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
 
 const roleValidator = v.union(
@@ -18,6 +25,8 @@ const roleValidator = v.union(
   v.literal("staff"),
   v.literal("member"),
 );
+
+const rolesValidator = v.array(roleValidator);
 
 const classStatusValidator = v.union(
   v.literal("draft"),
@@ -84,11 +93,11 @@ const studentGenderValidator = v.union(
 type DbCtx = QueryCtx | MutationCtx;
 
 function isAdmin(user: Doc<"users"> | null) {
-  return user?.role === "admin";
+  return hasUserRole(user, "admin");
 }
 
 function isStaff(user: Doc<"users"> | null) {
-  return user?.role === "staff" || user?.role === "admin";
+  return hasUserRole(user, "staff");
 }
 
 async function canManageStudent(
@@ -124,6 +133,71 @@ async function requireStaff(ctx: QueryCtx) {
     throw new Error("Unauthorized");
   }
   return user;
+}
+
+function validateNamedDateRange(
+  name: string,
+  startDate: string,
+  endDate: string,
+) {
+  if (!name.trim()) {
+    throw new Error("Name is required.");
+  }
+  if (!startDate || !endDate) {
+    throw new Error("Start and end dates are required.");
+  }
+  if (endDate < startDate) {
+    throw new Error("End date must be on or after the start date.");
+  }
+}
+
+function validateClassAgeRange(minAge?: number, maxAge?: number) {
+  for (const [label, age] of [
+    ["Minimum age", minAge],
+    ["Maximum age", maxAge],
+  ] as const) {
+    if (age !== undefined && (!Number.isInteger(age) || age < 0)) {
+      throw new Error(`${label} must be a whole number of zero or more.`);
+    }
+  }
+
+  if (minAge !== undefined && maxAge !== undefined && maxAge < minAge) {
+    throw new Error("Maximum age must be greater than or equal to minimum age.");
+  }
+}
+
+async function setClassSeason(
+  ctx: MutationCtx,
+  classId: Id<"classes">,
+  seasonId?: Id<"seasons">,
+) {
+  const existingLinks = await ctx.db
+    .query("seasonClasses")
+    .withIndex("byClass", (q) => q.eq("class", classId))
+    .collect();
+
+  if (seasonId) {
+    const season = await ctx.db.get(seasonId);
+    if (!season) {
+      throw new Error("Season not found.");
+    }
+  }
+
+  await Promise.all(
+    existingLinks
+      .filter((link) => link.season !== seasonId)
+      .map((link) => ctx.db.delete(link._id)),
+  );
+
+  if (
+    seasonId &&
+    !existingLinks.some((link) => link.season === seasonId)
+  ) {
+    await ctx.db.insert("seasonClasses", {
+      season: seasonId,
+      class: classId,
+    });
+  }
 }
 
 async function getEnrollmentRows(ctx: QueryCtx, classId: Id<"classes">) {
@@ -240,15 +314,21 @@ export const currentUserAccess = query({
 export const searchApplication = query({
   args: {
     search: v.string(),
+    activeRole: roleValidator,
   },
-  handler: async (ctx, { search }) => {
+  handler: async (ctx, { search, activeRole }) => {
     const user = await getCurrentUser(ctx);
     const normalizedSearch = search.trim().toLowerCase();
-    if (!user || normalizedSearch.length === 0) {
+    if (
+      !user ||
+      normalizedSearch.length === 0 ||
+      !hasUserRole(user, activeRole)
+    ) {
       return {
         accounts: [],
         students: [],
         classes: [],
+        seasons: [],
       };
     }
 
@@ -257,7 +337,7 @@ export const searchApplication = query({
     const accountEmail = (account: Doc<"users">) =>
       Array.isArray(account.email) ? account.email.join(", ") : account.email;
 
-    const accounts = isAdmin(user)
+    const accounts = activeRole === "admin"
       ? (await ctx.db.query("users").collect())
           .filter((account) =>
             includesSearch(
@@ -267,7 +347,7 @@ export const searchApplication = query({
               account.lastName,
               [account.firstName, account.lastName].filter(Boolean).join(" "),
               accountEmail(account),
-              account.role,
+              ...resolveUserRoles(account),
             ),
           )
           .sort((a, b) =>
@@ -294,25 +374,29 @@ export const searchApplication = query({
               account.name ||
               accountEmail(account) ||
               "Unnamed account",
-            subtitle: [accountEmail(account), account.role || "member"]
+            subtitle: [
+              accountEmail(account),
+              resolveUserRoles(account).join(", "),
+            ]
               .filter(Boolean)
               .join(" · "),
             href: `/admin/accounts/${account._id}`,
           }))
       : [];
 
-    const studentDocs = isAdmin(user)
-      ? await ctx.db.query("students").collect()
-      : isStaff(user)
-        ? []
-        : await Promise.all(
-            (
-              await ctx.db
-                .query("studentContacts")
-                .withIndex("byUser", (q) => q.eq("user", user._id))
-                .collect()
-            ).map((contact) => ctx.db.get(contact.student)),
-          );
+    const studentDocs =
+      activeRole === "admin"
+        ? await ctx.db.query("students").collect()
+        : activeRole === "member"
+          ? await Promise.all(
+              (
+                await ctx.db
+                  .query("studentContacts")
+                  .withIndex("byUser", (q) => q.eq("user", user._id))
+                  .collect()
+              ).map((contact) => ctx.db.get(contact.student)),
+            )
+          : [];
     const seenStudents = new Set<Id<"students">>();
     const students = studentDocs
       .filter((student): student is Doc<"students"> => student !== null)
@@ -339,7 +423,7 @@ export const searchApplication = query({
         title:
           student.preferredName || `${student.firstName} ${student.lastName}`,
         subtitle: `${student.firstName} ${student.lastName} · ${student.status}`,
-        href: isAdmin(user)
+        href: activeRole === "admin"
           ? `/admin/students/${student._id}`
           : `/students/${student._id}`,
       }));
@@ -347,10 +431,10 @@ export const searchApplication = query({
     const classDocs = await ctx.db.query("classes").collect();
     const classes = classDocs
       .filter((classItem) => {
-        if (isAdmin(user)) {
+        if (activeRole === "admin") {
           return true;
         }
-        if (isStaff(user)) {
+        if (activeRole === "staff") {
           return (
             classItem.status === "published" &&
             classItem.assignedStaff?.includes(user._id)
@@ -374,31 +458,84 @@ export const searchApplication = query({
         subtitle: [
           classItem.scheduleSummary,
           classItem.location,
-          isAdmin(user) ? classItem.status : undefined,
+          activeRole === "admin" ? classItem.status : undefined,
         ]
           .filter(Boolean)
           .join(" · "),
-        href: isAdmin(user)
+        href: activeRole === "admin"
           ? `/admin/classes/${classItem._id}`
           : `/classes/${classItem._id}`,
       }));
+
+    const seasons =
+      activeRole === "admin" || activeRole === "member"
+        ? (await ctx.db.query("seasons").collect())
+            .filter(
+              (season) =>
+                activeRole === "admin" ||
+                season.endDate >= todayValue("America/New_York"),
+            )
+            .filter((season) =>
+              includesSearch(season.name, season.startDate, season.endDate),
+            )
+            .sort((a, b) => b.startDate.localeCompare(a.startDate))
+            .slice(0, 10)
+            .map((season) => ({
+              id: season._id,
+              title: season.name,
+              subtitle: `${season.startDate} - ${season.endDate}`,
+              href:
+                activeRole === "admin"
+                  ? `/admin/classes?season=${season._id}`
+                  : `/classes?season=${season._id}`,
+            }))
+        : [];
 
     return {
       accounts,
       students,
       classes,
+      seasons,
     };
   },
 });
 
 export const listPublishedClasses = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    seasonId: v.optional(v.id("seasons")),
+  },
+  handler: async (ctx, { seasonId }) => {
     const classes = await ctx.db
       .query("classes")
       .withIndex("byStatus", (q) => q.eq("status", "published"))
       .collect();
-    return classes.sort(compareClassesBySchedule);
+
+    if (!seasonId) {
+      return classes.sort(compareClassesBySchedule);
+    }
+
+    const seasonClassIds = new Set(
+      (
+        await ctx.db
+          .query("seasonClasses")
+          .withIndex("bySeason", (q) => q.eq("season", seasonId))
+          .collect()
+      ).map((link) => link.class),
+    );
+
+    return classes
+      .filter((classItem) => seasonClassIds.has(classItem._id))
+      .sort(compareClassesBySchedule);
+  },
+});
+
+export const listCurrentAndFutureSeasons = query({
+  args: {},
+  handler: async (ctx) => {
+    const today = todayValue("America/New_York");
+    return (await ctx.db.query("seasons").collect())
+      .filter((season) => season.endDate >= today)
+      .sort((a, b) => a.startDate.localeCompare(b.startDate));
   },
 });
 
@@ -694,6 +831,82 @@ export const adminDeleteHoliday = mutation({
   },
 });
 
+export const adminListSeasons = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const seasons = await ctx.db.query("seasons").collect();
+
+    return await Promise.all(
+      seasons
+        .sort((a, b) => b.startDate.localeCompare(a.startDate))
+        .map(async (season) => ({
+          season,
+          classCount: (
+            await ctx.db
+              .query("seasonClasses")
+              .withIndex("bySeason", (q) => q.eq("season", season._id))
+              .collect()
+          ).length,
+        })),
+    );
+  },
+});
+
+export const adminCreateSeason = mutation({
+  args: {
+    name: v.string(),
+    startDate: v.string(),
+    endDate: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    validateNamedDateRange(args.name, args.startDate, args.endDate);
+
+    return await ctx.db.insert("seasons", {
+      ...args,
+      name: args.name.trim(),
+    });
+  },
+});
+
+export const adminUpdateSeason = mutation({
+  args: {
+    season: v.id("seasons"),
+    name: v.string(),
+    startDate: v.string(),
+    endDate: v.string(),
+  },
+  handler: async (ctx, { season, ...patch }) => {
+    await requireAdmin(ctx);
+    validateNamedDateRange(patch.name, patch.startDate, patch.endDate);
+
+    const existing = await ctx.db.get(season);
+    if (!existing) {
+      throw new Error("Season not found.");
+    }
+
+    await ctx.db.patch(season, {
+      ...patch,
+      name: patch.name.trim(),
+    });
+  },
+});
+
+export const adminDeleteSeason = mutation({
+  args: { season: v.id("seasons") },
+  handler: async (ctx, { season }) => {
+    await requireAdmin(ctx);
+    const classLinks = await ctx.db
+      .query("seasonClasses")
+      .withIndex("bySeason", (q) => q.eq("season", season))
+      .collect();
+
+    await Promise.all(classLinks.map((link) => ctx.db.delete(link._id)));
+    await ctx.db.delete(season);
+  },
+});
+
 export const adminListAccounts = query({
   args: {},
   handler: async (ctx) => {
@@ -733,7 +946,7 @@ export const adminCreateAccount = mutation({
     lastName: v.string(),
     email: v.string(),
     phone: v.optional(v.string()),
-    role: roleValidator,
+    roles: rolesValidator,
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -746,6 +959,10 @@ export const adminCreateAccount = mutation({
     }
     if (!email) {
       throw new Error("Email is required.");
+    }
+    const roles = normalizeUserRoles(args.roles as UserRole[]);
+    if (roles.length === 0) {
+      throw new Error("Select at least one role.");
     }
 
     const existing = (await ctx.db.query("users").collect()).find((user) => {
@@ -763,20 +980,28 @@ export const adminCreateAccount = mutation({
       lastName,
       email,
       phone: args.phone?.trim() || undefined,
-      role: args.role,
+      roles,
+      role: highestUserRole(roles),
       onboardingSource: "imported",
     });
   },
 });
 
-export const adminSetUserRole = mutation({
+export const adminSetUserRoles = mutation({
   args: {
     user: v.id("users"),
-    role: roleValidator,
+    roles: rolesValidator,
   },
-  handler: async (ctx, { user, role }) => {
+  handler: async (ctx, { user, roles: requestedRoles }) => {
     await requireAdmin(ctx);
-    await ctx.db.patch(user, { role });
+    const roles = normalizeUserRoles(requestedRoles as UserRole[]);
+    if (roles.length === 0) {
+      throw new Error("Select at least one role.");
+    }
+    await ctx.db.patch(user, {
+      roles,
+      role: highestUserRole(roles),
+    });
   },
 });
 
@@ -1015,7 +1240,16 @@ export const adminListClasses = query({
           .query("sessions")
           .withIndex("byClass", (q) => q.eq("classId", classItem._id))
           .collect();
-        return { classItem, enrollments, sessions };
+        const seasonLink = await ctx.db
+          .query("seasonClasses")
+          .withIndex("byClass", (q) => q.eq("class", classItem._id))
+          .first();
+        return {
+          classItem,
+          enrollments,
+          sessions,
+          seasonId: seasonLink?.season,
+        };
       }),
     );
   },
@@ -1033,9 +1267,14 @@ export const adminGetClass = query({
       .query("sessions")
       .withIndex("byClass", (q) => q.eq("classId", classId))
       .collect();
+    const seasonLink = await ctx.db
+      .query("seasonClasses")
+      .withIndex("byClass", (q) => q.eq("class", classId))
+      .first();
 
     return {
       classItem,
+      seasonId: seasonLink?.season,
       sessions,
       enrollments: await getEnrollmentRows(ctx, classId),
     };
@@ -1050,6 +1289,8 @@ export const adminCreateClass = mutation({
     capacity: v.optional(v.number()),
     location: v.optional(v.string()),
     scheduleSummary: v.optional(v.string()),
+    minAge: v.optional(v.number()),
+    maxAge: v.optional(v.number()),
     startDate: v.optional(v.string()),
     endDate: v.optional(v.string()),
     startTime: v.optional(v.string()),
@@ -1057,14 +1298,17 @@ export const adminCreateClass = mutation({
     weekdays: v.optional(v.array(weekdayValidator)),
     timezone: v.optional(v.string()),
     assignedStaff: v.optional(v.array(v.id("users"))),
+    seasonId: v.optional(v.id("seasons")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, { seasonId, ...args }) => {
     await requireAdmin(ctx);
+    validateClassAgeRange(args.minAge, args.maxAge);
     const classId = await ctx.db.insert("classes", {
       ...args,
       timezone: args.timezone || "America/New_York",
       scheduleVersion: 1,
     });
+    await setClassSeason(ctx, classId, seasonId);
     const classItem = await ctx.db.get(classId);
     if (classItem) {
       await syncGeneratedSessionsForClass(ctx, classItem);
@@ -1082,6 +1326,8 @@ export const adminUpdateClass = mutation({
     capacity: v.optional(v.number()),
     location: v.optional(v.string()),
     scheduleSummary: v.optional(v.string()),
+    minAge: v.optional(v.number()),
+    maxAge: v.optional(v.number()),
     startDate: v.optional(v.string()),
     endDate: v.optional(v.string()),
     startTime: v.optional(v.string()),
@@ -1089,16 +1335,22 @@ export const adminUpdateClass = mutation({
     weekdays: v.optional(v.array(weekdayValidator)),
     timezone: v.optional(v.string()),
     assignedStaff: v.optional(v.array(v.id("users"))),
+    seasonId: v.optional(v.id("seasons")),
   },
-  handler: async (ctx, { classId, ...patch }) => {
+  handler: async (ctx, { classId, seasonId, ...patch }) => {
     await requireAdmin(ctx);
+    validateClassAgeRange(patch.minAge, patch.maxAge);
     const existing = await ctx.db.get(classId);
+    if (!existing) {
+      throw new Error("Class not found.");
+    }
     const scheduleVersion = (existing?.scheduleVersion || 0) + 1;
     await ctx.db.patch(classId, {
       ...patch,
       timezone: patch.timezone || "America/New_York",
       scheduleVersion,
     });
+    await setClassSeason(ctx, classId, seasonId);
     const classItem = await ctx.db.get(classId);
     if (classItem) {
       await syncGeneratedSessionsForClass(ctx, classItem);

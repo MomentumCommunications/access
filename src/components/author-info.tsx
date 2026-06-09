@@ -12,6 +12,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "./ui/sheet";
+import { hasUserRole } from "~/lib/roles";
 
 export default function AuthorInfo({ author }: { author: Id<"users"> }) {
   if (!author) {
@@ -31,7 +32,7 @@ export default function AuthorInfo({ author }: { author: Id<"users"> }) {
     .map((word) => word[0])
     .join("");
 
-  const isAdmin = data?.role === "admin";
+  const isAdmin = hasUserRole(data, "admin");
 
   return (
     <Sheet>
@@ -57,7 +58,7 @@ export default function AuthorInfo({ author }: { author: Id<"users"> }) {
                 {initials ? initials : <UserIcon />}
               </AvatarFallback>
             </Avatar>
-            {data?.role === "admin" && (
+            {isAdmin && (
               <div className="flex flex-row gap-1 justify-center">
                 <Shield strokeWidth={3} size={16} className="text-gray-500" />
                 <span className="text-muted-foreground">Admin</span>

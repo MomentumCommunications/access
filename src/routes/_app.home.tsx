@@ -14,6 +14,7 @@ import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
 import { BulletinFeed } from "~/components/bulletin-feed";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
+import { hasUserRole } from "~/lib/roles";
 
 export const Route = createFileRoute("/_app/home")({
   component: Home,
@@ -114,7 +115,7 @@ function Home() {
   // TODO: change array indexed passkeys to be more dynamic
   const { data: userData, isLoading } = useCurrentUser();
 
-  const role = userData?.role;
+  const isAdmin = hasUserRole(userData, "admin");
 
   const userGroups = userData?.group || [];
 
@@ -215,11 +216,11 @@ function Home() {
         <Authenticated>
           <div className="flex justify-between align-middle">
             <h1 className="text-4xl font-bold">Bulletin</h1>
-            {role === "admin" && <LazyAddBulletin />}
+            {isAdmin && <LazyAddBulletin />}
           </div>
           <Separator className="my-4 w-full" />
-          {role !== "admin" && <BulletinFeed groups={userGroups} />}
-          {role === "admin" && <AdminBulletin />}
+          {!isAdmin && <BulletinFeed groups={userGroups} />}
+          {isAdmin && <AdminBulletin />}
         </Authenticated>
       </main>
     </div>

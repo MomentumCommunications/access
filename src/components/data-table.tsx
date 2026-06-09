@@ -11,7 +11,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
@@ -34,6 +34,7 @@ type DataTableProps<TData, TValue> = {
   data: TData[];
   filterColumn?: string;
   filterPlaceholder?: string;
+  toolbar?: ReactNode;
 };
 
 export function DataTable<TData, TValue>({
@@ -41,6 +42,7 @@ export function DataTable<TData, TValue>({
   data,
   filterColumn,
   filterPlaceholder = "Filter...",
+  toolbar,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -86,7 +88,8 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="min-w-0 space-y-3">
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        {toolbar}
         {filterColumn ? (
           <Input
             placeholder={filterPlaceholder}
@@ -96,7 +99,7 @@ export function DataTable<TData, TValue>({
             onChange={(event) =>
               table.getColumn(filterColumn)?.setFilterValue(event.target.value)
             }
-            className="min-w-0 flex-1 sm:max-w-sm"
+            className="order-last min-w-0 basis-full sm:order-none sm:max-w-sm sm:flex-1 sm:basis-auto"
           />
         ) : null}
         <DropdownMenu>

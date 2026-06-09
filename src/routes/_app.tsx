@@ -7,6 +7,7 @@ import { Header } from "~/components/header";
 import { SidebarSkeleton } from "~/components/SidebarSkeleton";
 import { SidebarDataProvider } from "~/contexts/SidebarDataContext";
 import { SidebarProvider } from "~/components/ui/sidebar";
+import { ActiveRoleProvider } from "~/contexts/ActiveRoleContext";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayoutComponent,
@@ -45,15 +46,17 @@ function AppLayoutComponent() {
 
   return (
     <SidebarProvider>
-      <SidebarDataProvider>
-        <Suspense fallback={<SidebarSkeleton />}>
-          <MemoizedAppSidebar />
-        </Suspense>
-        <div className="flex flex-1 flex-col overscroll-contain">
-          <MemoizedHeader />
-          <Outlet />
-        </div>
-      </SidebarDataProvider>
+      <ActiveRoleProvider>
+        <SidebarDataProvider>
+          <Suspense fallback={<SidebarSkeleton />}>
+            <MemoizedAppSidebar />
+          </Suspense>
+          <div className="flex flex-1 flex-col overscroll-contain">
+            <MemoizedHeader />
+            <Outlet />
+          </div>
+        </SidebarDataProvider>
+      </ActiveRoleProvider>
     </SidebarProvider>
   );
 }

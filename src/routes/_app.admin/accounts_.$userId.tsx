@@ -1,4 +1,4 @@
-import { useConvexQuery } from "@convex-dev/react-query";
+import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
@@ -15,6 +15,8 @@ import {
 import { Spinner } from "~/components/ui/spinner";
 import { formatAge } from "~/lib/date-utils";
 import { getAccountName } from "~/lib/account-name";
+import { RoleDropdown } from "~/components/role-controls";
+import { resolveUserRoles } from "~/lib/roles";
 
 export const Route = createFileRoute("/_app/admin/accounts_/$userId")({
   component: AdminAccountDetailPage,
@@ -30,6 +32,7 @@ function AdminAccountDetailPage() {
   const accountData = useConvexQuery(api.classes.adminGetAccount, {
     user: userId as Id<"users">,
   });
+  const setRoles = useConvexMutation(api.classes.adminSetUserRoles);
 
   return (
     <RoleGate allow="admin">
@@ -59,11 +62,20 @@ function AdminAccountDetailPage() {
             <Card className="rounded-lg">
               <CardHeader>
                 <CardTitle>{getAccountName(accountData.account)}</CardTitle>
-                <CardDescription className="capitalize">
-                  {accountData.account.role || "member"}
+                <CardDescription>
+                  Manage account details and assigned roles.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
+                <div className="space-y-1">
+                  <div className="text-muted-foreground">Roles</div>
+                  <RoleDropdown
+                    roles={resolveUserRoles(accountData.account)}
+                    onRolesChange={(roles) =>
+                      void setRoles({ user: accountData.account._id, roles })
+                    }
+                  />
+                </div>
                 <div>
                   <div className="text-muted-foreground">Email</div>
                   <div className="font-medium">

@@ -2,6 +2,7 @@ import { convexAuth } from "@convex-dev/auth/server";
 import { Password } from "@convex-dev/auth/providers/Password";
 import { ResendOTPPasswordReset } from "./ResendOTPPasswordReset";
 import { ResendOTPEmailVerification } from "./ResendOTPEmailVerification";
+import { resolveUserRoles, highestUserRole } from "./lib/roles";
 
 function normalizedEmails(email: string | string[] | undefined) {
   if (!email) return [];
@@ -64,6 +65,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         : await ctx.db.insert("users", {
             ...profileUpdates,
             role: "member",
+            roles: ["member"],
           });
 
       const importedContacts = email
@@ -92,9 +94,14 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         existingOnboarding?.currentStep === "complete" ||
         existingOnboarding?.completedAt !== undefined;
 
+      const assignedRoles = importedUser
+        ? resolveUserRoles(importedUser)
+        : (["member"] as const);
+
       await ctx.db.patch(userId, {
         ...profileUpdates,
-        role: importedUser?.role ?? "member",
+        role: highestUserRole([...assignedRoles]),
+        roles: [...assignedRoles],
         onboardingStatus: onboardingIsComplete ? "complete" : "pending",
         onboardingSource: matchedImportedRecord ? "imported" : "new",
         ...(onboardingIsComplete

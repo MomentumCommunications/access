@@ -7,6 +7,7 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { getCurrentUserOrThrow } from "./users";
+import { highestUserRole, resolveUserRoles } from "./lib/roles";
 
 const onboardingStepValidator = v.union(
   v.literal("profile"),
@@ -110,6 +111,7 @@ export const saveProfile = mutation({
     const firstName = args.firstName.trim();
     const lastName = args.lastName.trim();
     const displayName = args.displayName.trim();
+    const roles = resolveUserRoles(user);
 
     if (!firstName || firstName.length > 80) {
       throw new Error("First name must be between 1 and 80 characters.");
@@ -126,7 +128,8 @@ export const saveProfile = mutation({
       lastName,
       displayName,
       phone: args.phone.trim() || undefined,
-      role: user.role ?? "member",
+      role: highestUserRole(roles),
+      roles,
       onboardingStatus: "pending",
     });
 
@@ -259,8 +262,10 @@ export const complete = mutation({
     }
 
     const completedAt = Date.now();
+    const roles = resolveUserRoles(user);
     await ctx.db.patch(user._id, {
-      role: user.role ?? "member",
+      role: highestUserRole(roles),
+      roles,
       onboardingStatus: "complete",
       onboardingCompletedAt: completedAt,
     });

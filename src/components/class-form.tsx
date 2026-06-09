@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
+import { hasUserRole } from "~/lib/roles";
 
 const weekdaySchema = z.enum([
   "sunday",
@@ -60,14 +61,43 @@ const classFormSchema = z
           (Number.isInteger(Number(value)) && Number(value) >= 0),
         "Capacity must be a whole number of zero or more.",
       ),
+    minAge: z
+      .string()
+      .refine(
+        (value) =>
+          value === "" ||
+          (Number.isInteger(Number(value)) && Number(value) >= 0),
+        "Minimum age must be a whole number of zero or more.",
+      ),
+    maxAge: z
+      .string()
+      .refine(
+        (value) =>
+          value === "" ||
+          (Number.isInteger(Number(value)) && Number(value) >= 0),
+        "Maximum age must be a whole number of zero or more.",
+      ),
     startDate: z.string(),
     endDate: z.string(),
     startTime: z.string(),
     endTime: z.string(),
     weekdays: z.array(weekdaySchema),
     assignedStaff: z.string(),
+    seasonId: z.string(),
   })
   .superRefine((values, ctx) => {
+    if (
+      values.minAge !== "" &&
+      values.maxAge !== "" &&
+      Number(values.maxAge) < Number(values.minAge)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["maxAge"],
+        message: "Maximum age must be greater than or equal to minimum age.",
+      });
+    }
+
     if (
       values.startDate &&
       values.endDate &&
@@ -143,15 +173,21 @@ const emptyValues: ClassFormValues = {
   scheduleSummary: "",
   location: "",
   capacity: "",
+  minAge: "",
+  maxAge: "",
   startDate: "",
   endDate: "",
   startTime: "",
   endTime: "",
   weekdays: [],
   assignedStaff: "none",
+  seasonId: "none",
 };
 
-function valuesFromClass(classItem: Doc<"classes">): ClassFormValues {
+function valuesFromClass(
+  classItem: Doc<"classes">,
+  seasonId?: Id<"seasons">,
+): ClassFormValues {
   return {
     title: classItem.title,
     description: classItem.description || "",
@@ -159,12 +195,15 @@ function valuesFromClass(classItem: Doc<"classes">): ClassFormValues {
     scheduleSummary: classItem.scheduleSummary || "",
     location: classItem.location || "",
     capacity: classItem.capacity?.toString() || "",
+    minAge: classItem.minAge?.toString() || "",
+    maxAge: classItem.maxAge?.toString() || "",
     startDate: classItem.startDate || "",
     endDate: classItem.endDate || "",
     startTime: classItem.startTime || "",
     endTime: classItem.endTime || "",
     weekdays: classItem.weekdays || [],
     assignedStaff: classItem.assignedStaff?.[0] || "none",
+    seasonId: seasonId || "none",
   };
 }
 
@@ -174,17 +213,21 @@ type ClassFormProps =
       mode: "edit";
       classItem: Doc<"classes">;
       classId: Id<"classes">;
+      seasonId?: Id<"seasons">;
     };
 
 export function ClassForm(props: ClassFormProps) {
   const navigate = useNavigate();
   const accounts = useConvexQuery(api.classes.adminListAccounts, {});
+  const seasons = useConvexQuery(api.classes.adminListSeasons, {});
   const createClass = useConvexMutation(api.classes.adminCreateClass);
   const updateClass = useConvexMutation(api.classes.adminUpdateClass);
   const form = useForm<ClassFormValues>({
     resolver: zodResolver(classFormSchema),
     defaultValues:
-      props.mode === "edit" ? valuesFromClass(props.classItem) : emptyValues,
+      props.mode === "edit"
+        ? valuesFromClass(props.classItem, props.seasonId)
+        : emptyValues,
     mode: "onTouched",
   });
 
@@ -197,6 +240,8 @@ export function ClassForm(props: ClassFormProps) {
       scheduleSummary: values.scheduleSummary.trim() || undefined,
       location: values.location.trim() || undefined,
       capacity: values.capacity === "" ? undefined : Number(values.capacity),
+      minAge: values.minAge === "" ? undefined : Number(values.minAge),
+      maxAge: values.maxAge === "" ? undefined : Number(values.maxAge),
       startDate: values.startDate || undefined,
       endDate: values.endDate || undefined,
       startTime: values.startTime || undefined,
@@ -206,6 +251,10 @@ export function ClassForm(props: ClassFormProps) {
         values.assignedStaff === "none"
           ? undefined
           : [values.assignedStaff as Id<"users">],
+      seasonId:
+        values.seasonId === "none"
+          ? undefined
+          : (values.seasonId as Id<"seasons">),
     };
 
     try {
@@ -299,6 +348,44 @@ export function ClassForm(props: ClassFormProps) {
           )}
         />
         <Controller
+          name="seasonId"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
+              <FieldLabel htmlFor={field.name}>Season</FieldLabel>
+              <Select
+                name={field.name}
+                value={field.value}
+                onValueChange={field.onChange}
+                disabled={seasons === undefined}
+              >
+                <SelectTrigger
+                  id={field.name}
+                  aria-invalid={fieldState.invalid}
+                  className="w-full"
+                >
+                  <SelectValue
+                    placeholder={
+                      seasons === undefined
+                        ? "Loading seasons..."
+                        : "Select a season"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No season</SelectItem>
+                  {seasons?.map(({ season }) => (
+                    <SelectItem key={season._id} value={season._id}>
+                      {season.name} ({season.startDate} - {season.endDate})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError errors={[fieldState.error]} />
+            </Field>
+          )}
+        />
+        <Controller
           name="scheduleSummary"
           control={form.control}
           render={({ field, fieldState }) => (
@@ -348,6 +435,31 @@ export function ClassForm(props: ClassFormProps) {
               </Field>
             )}
           />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {(["minAge", "maxAge"] as const).map((name) => (
+            <Controller
+              key={name}
+              name={name}
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor={field.name}>
+                    {name === "minAge" ? "Minimum age" : "Maximum age"}
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id={field.name}
+                    type="number"
+                    min="0"
+                    step="1"
+                    aria-invalid={fieldState.invalid}
+                  />
+                  <FieldError errors={[fieldState.error]} />
+                </Field>
+              )}
+            />
+          ))}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {(["startDate", "endDate"] as const).map((name) => (
@@ -462,10 +574,7 @@ export function ClassForm(props: ClassFormProps) {
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
                   {accounts
-                    ?.filter(
-                      (account) =>
-                        account.role === "staff" || account.role === "admin",
-                    )
+                    ?.filter((account) => hasUserRole(account, "staff"))
                     .map((account) => (
                       <SelectItem key={account._id} value={account._id}>
                         {account.name ||

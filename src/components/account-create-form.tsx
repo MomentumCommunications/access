@@ -20,20 +20,17 @@ import {
   FieldLabel,
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
+import { RoleCheckboxes } from "~/components/role-controls";
+import type { UserRole } from "~/lib/roles";
 
 const accountSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required.").max(80),
   lastName: z.string().trim().min(1, "Last name is required.").max(80),
   email: z.email("Enter a valid email address."),
   phone: z.string().max(30, "Phone number must be 30 characters or fewer."),
-  role: z.enum(["member", "staff", "admin"]),
+  roles: z
+    .array(z.enum(["member", "staff", "admin"]))
+    .min(1, "Select at least one role."),
 });
 
 type AccountValues = z.infer<typeof accountSchema>;
@@ -48,7 +45,7 @@ export function AccountCreateForm() {
       lastName: "",
       email: "",
       phone: "",
-      role: "member",
+      roles: ["member"],
     },
     mode: "onTouched",
   });
@@ -61,7 +58,7 @@ export function AccountCreateForm() {
         lastName: values.lastName.trim(),
         email: values.email.trim().toLowerCase(),
         phone: values.phone.trim() || undefined,
-        role: values.role,
+        roles: values.roles,
       });
       await navigate({
         to: "/admin/accounts/$userId",
@@ -139,49 +136,40 @@ export function AccountCreateForm() {
               )}
             />
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Controller
-                name="phone"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>Phone</FieldLabel>
-                    <Input
-                      {...field}
-                      id={field.name}
-                      type="tel"
-                      autoComplete="tel"
-                      aria-invalid={fieldState.invalid}
-                    />
-                    <FieldError errors={[fieldState.error]} />
-                  </Field>
-                )}
-              />
-              <Controller
-                name="role"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>Role</FieldLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger
-                        id={field.name}
-                        className="w-full"
-                        aria-invalid={fieldState.invalid}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="member">Member</SelectItem>
-                        <SelectItem value="staff">Staff</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FieldError errors={[fieldState.error]} />
-                  </Field>
-                )}
-              />
-            </div>
+            <Controller
+              name="phone"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor={field.name}>Phone</FieldLabel>
+                  <Input
+                    {...field}
+                    id={field.name}
+                    type="tel"
+                    autoComplete="tel"
+                    aria-invalid={fieldState.invalid}
+                  />
+                  <FieldError errors={[fieldState.error]} />
+                </Field>
+              )}
+            />
+            <Controller
+              name="roles"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Roles</FieldLabel>
+                  <RoleCheckboxes
+                    roles={field.value as UserRole[]}
+                    onRolesChange={field.onChange}
+                  />
+                  <FieldDescription>
+                    Selecting Admin initially enables all three roles.
+                  </FieldDescription>
+                  <FieldError errors={[fieldState.error]} />
+                </Field>
+              )}
+            />
           </FieldGroup>
 
           {form.formState.errors.root?.message ? (

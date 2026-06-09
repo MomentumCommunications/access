@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { DateRange } from "react-day-picker";
 import z from "zod";
+import { hasUserRole } from "~/lib/roles";
 import { Button } from "~/components/ui/button";
 import { Calendar } from "~/components/ui/calendar";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -218,7 +219,7 @@ function RouteComponent() {
     );
   }
 
-  if (currentUser?.role !== "admin") {
+  if (!hasUserRole(currentUser, "admin")) {
     return (
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-2 pb-2">
         <div className="flex w-full items-center justify-end">

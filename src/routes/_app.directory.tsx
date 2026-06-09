@@ -6,21 +6,12 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
-import { Id } from "convex/_generated/dataModel";
 import { CircleSlash } from "lucide-react";
 import Delayed from "~/components/delayed";
 import { EditGroup } from "~/components/edit-group";
 import { AddGroup } from "~/components/add-group";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "~/components/ui/dropdown-menu";
 import { Skeleton } from "~/components/ui/skeleton";
 import {
   Table,
@@ -31,7 +22,8 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { UserGroups } from "~/components/user-groups";
-import { cn } from "~/lib/utils";
+import { RoleDropdown } from "~/components/role-controls";
+import { hasUserRole, resolveUserRoles } from "~/lib/roles";
 
 export const Route = createFileRoute("/_app/directory")({
   component: RouteComponent,
@@ -54,11 +46,7 @@ function RouteComponent() {
   //   });
   // }
 
-  const roleMutation = useConvexMutation(api.etcFunctions.setRole);
-
-  function setRole(user: Id<"users">, role: "admin" | "staff" | "member") {
-    roleMutation({ user: user, role });
-  }
+  const setRoles = useConvexMutation(api.classes.adminSetUserRoles);
 
   if (!convexUser) {
     return (
@@ -71,7 +59,7 @@ function RouteComponent() {
     );
   }
 
-  if (convexUser?.role !== "admin") {
+  if (!hasUserRole(convexUser, "admin")) {
     return (
       <Delayed>
         <div className="flex h-[80vh] justify-center py-4 lg:py-8 items-center">
@@ -145,39 +133,12 @@ function RouteComponent() {
                       {user.displayName}
                     </TableCell>
                     <TableCell className="font-medium">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger>
-                          <Button size="sm" variant="ghost">
-                            <span
-                              className={cn(
-                                "capitalize",
-                                !user.role && "text-muted-foreground",
-                              )}
-                            >
-                              {user.role || "Unassigned"}
-                            </span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuLabel>Role</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => setRole(user._id, "admin")}
-                          >
-                            Admin
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => setRole(user._id, "staff")}
-                          >
-                            Staff
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => setRole(user._id, "member")}
-                          >
-                            Member
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <RoleDropdown
+                        roles={resolveUserRoles(user)}
+                        onRolesChange={(roles) =>
+                          void setRoles({ user: user._id, roles })
+                        }
+                      />
                     </TableCell>
                     <TableCell className="font-medium">
                       <UserGroups groups={groups} user={user} />

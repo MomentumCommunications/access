@@ -30,6 +30,7 @@ import { Spinner } from "~/components/ui/spinner";
 import { Separator } from "~/components/ui/separator";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
+import { hasUserRole } from "~/lib/roles";
 
 export const Route = createFileRoute("/_app/admin/classes/$classId")({
   component: AdminClassDetailPage,
@@ -411,11 +412,7 @@ function AdminClassDetailPage() {
                       <SelectContent>
                         <SelectItem value="none">Use class staff</SelectItem>
                         {accounts
-                          ?.filter(
-                            (account) =>
-                              account.role === "staff" ||
-                              account.role === "admin",
-                          )
+                          ?.filter((account) => hasUserRole(account, "staff"))
                           .map((account) => (
                             <SelectItem key={account._id} value={account._id}>
                               {account.name || account.email || "Unnamed"}
@@ -436,11 +433,7 @@ function AdminClassDetailPage() {
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
                         {accounts
-                          ?.filter(
-                            (account) =>
-                              account.role === "staff" ||
-                              account.role === "admin",
-                          )
+                          ?.filter((account) => hasUserRole(account, "staff"))
                           .map((account) => (
                             <SelectItem key={account._id} value={account._id}>
                               {account.name || account.email || "Unnamed"}

@@ -7,25 +7,18 @@ import { Plus } from "lucide-react";
 import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
 import { Button } from "~/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
 import { getAccountName } from "~/lib/account-name";
+import { RoleDropdown } from "~/components/role-controls";
+import { resolveUserRoles } from "~/lib/roles";
 
 export const Route = createFileRoute("/_app/admin/accounts")({
   component: AdminAccountsPage,
 });
 
-type Role = "admin" | "staff" | "member";
-
 function AdminAccountsPage() {
   const accounts = useConvexQuery(api.classes.adminListAccounts, {});
-  const setRole = useConvexMutation(api.classes.adminSetUserRole);
+  const setRoles = useConvexMutation(api.classes.adminSetUserRoles);
 
   const columns: ColumnDef<Doc<"users">>[] = [
     {
@@ -54,23 +47,17 @@ function AdminAccountsPage() {
     {
       accessorKey: "role",
       header: "Role",
-      cell: ({ row }) => (
-        <Select
-          value={row.original.role || "member"}
-          onValueChange={(role) =>
-            setRole({ user: row.original._id, role: role as Role })
-          }
-        >
-          <SelectTrigger className="w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="member">Member</SelectItem>
-            <SelectItem value="staff">Staff</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
-          </SelectContent>
-        </Select>
-      ),
+      cell: ({ row }) => {
+        const roles = resolveUserRoles(row.original);
+        return (
+          <RoleDropdown
+            roles={roles}
+            onRolesChange={(nextRoles) =>
+              void setRoles({ user: row.original._id, roles: nextRoles })
+            }
+          />
+        );
+      },
     },
   ];
 

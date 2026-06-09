@@ -1,7 +1,10 @@
 import { useConvexQuery } from "@convex-dev/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
+import type { Id } from "convex/_generated/dataModel";
 import { BookOpen, MapPin, Users } from "lucide-react";
+import { useEffect } from "react";
+import { z } from "zod";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -10,14 +13,44 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
 
 export const Route = createFileRoute("/_app/classes/")({
+  validateSearch: z.object({
+    season: z.string().optional(),
+  }),
   component: ClassesPage,
 });
 
 function ClassesPage() {
-  const classes = useConvexQuery(api.classes.listPublishedClasses, {});
+  const navigate = useNavigate();
+  const { season: selectedSeason } = Route.useSearch();
+  const seasons = useConvexQuery(api.classes.listCurrentAndFutureSeasons, {});
+  const selectedSeasonId = seasons?.some(
+    (season) => season._id === selectedSeason,
+  )
+    ? (selectedSeason as Id<"seasons">)
+    : undefined;
+  const classes = useConvexQuery(api.classes.listPublishedClasses, {
+    seasonId: selectedSeasonId,
+  });
+
+  useEffect(() => {
+    if (seasons && selectedSeason && !selectedSeasonId) {
+      void navigate({
+        to: "/classes",
+        search: (previous) => ({ ...previous, season: undefined }),
+        replace: true,
+      });
+    }
+  }, [navigate, seasons, selectedSeason, selectedSeasonId]);
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 lg:p-8">
@@ -27,7 +60,36 @@ function ClassesPage() {
           Browse current classes and request a spot.
         </p>
       </div>
-      {classes === undefined ? (
+      <Select
+        value={selectedSeasonId || "all"}
+        onValueChange={(value) =>
+          navigate({
+            to: "/classes",
+            search: (previous) => ({
+              ...previous,
+              season: value === "all" ? undefined : value,
+            }),
+          })
+        }
+        disabled={seasons === undefined}
+      >
+        <SelectTrigger className="w-full sm:w-64">
+          <SelectValue
+            placeholder={
+              seasons === undefined ? "Loading seasons..." : "Filter by season"
+            }
+          />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All seasons</SelectItem>
+          {seasons?.map((season) => (
+            <SelectItem key={season._id} value={season._id}>
+              {season.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {classes === undefined || seasons === undefined ? (
         <div className="flex min-h-40 items-center justify-center">
           <Spinner className="size-5" />
         </div>
@@ -36,7 +98,9 @@ function ClassesPage() {
           <CardHeader>
             <CardTitle>No classes posted</CardTitle>
             <CardDescription>
-              Published classes will appear here when they are ready for signup.
+              {selectedSeasonId
+                ? "No published classes are available for this season."
+                : "Published classes will appear here when they are ready for signup."}
             </CardDescription>
           </CardHeader>
         </Card>

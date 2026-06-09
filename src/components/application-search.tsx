@@ -3,11 +3,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import {
   BookOpen,
+  CalendarRange,
   GraduationCap,
   Search,
   ShieldCheck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useActiveRole } from "~/contexts/ActiveRoleContext";
 import { Button } from "~/components/ui/button";
 import {
   CommandDialog,
@@ -27,6 +29,7 @@ type SearchResult = {
 
 export function ApplicationSearch() {
   const navigate = useNavigate();
+  const { activeRole } = useActiveRole();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -57,9 +60,10 @@ export function ApplicationSearch() {
   const results = useConvexQuery(
     api.classes.searchApplication,
     open && debouncedSearch
-      ? {
-          search: debouncedSearch,
-        }
+        ? {
+            search: debouncedSearch,
+            activeRole,
+          }
       : "skip",
   );
 
@@ -84,7 +88,8 @@ export function ApplicationSearch() {
     results &&
     (results.accounts.length > 0 ||
       results.students.length > 0 ||
-      results.classes.length > 0);
+      results.classes.length > 0 ||
+      results.seasons.length > 0);
 
   return (
     <>
@@ -108,7 +113,7 @@ export function ApplicationSearch() {
         open={open}
         onOpenChange={handleOpenChange}
         title="Search application"
-        description="Search accounts, students, and classes available to you."
+        description="Search accounts, students, classes, and seasons available to you."
         showCloseButton={false}
         shouldFilter={false}
         className="flex max-w-none gap-0"
@@ -123,7 +128,7 @@ export function ApplicationSearch() {
           className="min-w-0"
           value={search}
           onValueChange={setSearch}
-          placeholder="Search accounts, students, and classes..."
+          placeholder="Search accounts, students, classes, and seasons..."
         />
         <CommandList className="min-h-0 max-h-none flex-1">
           <CommandEmpty>
@@ -155,6 +160,14 @@ export function ApplicationSearch() {
               heading="Classes"
               icon={BookOpen}
               results={results.classes}
+              onSelect={openResult}
+            />
+          ) : null}
+          {hasResults && results.seasons.length > 0 ? (
+            <SearchResultGroup
+              heading="Seasons"
+              icon={CalendarRange}
+              results={results.seasons}
               onSelect={openResult}
             />
           ) : null}

@@ -56,6 +56,7 @@ function AdminClassEditPage() {
                 mode="edit"
                 classId={classData.classItem._id}
                 classItem={classData.classItem}
+                seasonId={classData.seasonId}
               />
             </CardContent>
           </Card>

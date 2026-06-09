@@ -30,14 +30,13 @@ import { Link } from "@tanstack/react-router";
 import { NavUser } from "./user";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import { Spinner } from "./ui/spinner";
-import { canAccessAdmin, canAccessStaff, UserRole } from "~/lib/roles";
+import { useActiveRole } from "~/contexts/ActiveRoleContext";
+import { RoleSwitcher } from "./role-switcher";
 
 const AppSidebarComponent = memo(() => {
   const { convexUser } = useSidebarDataContext();
   const { isMobile, setOpenMobile } = useSidebar();
-  const role = convexUser?.role as UserRole | undefined;
-  const showStaff = canAccessStaff(role);
-  const showAdmin = canAccessAdmin(role);
+  const { activeRole } = useActiveRole();
 
   const closeMobileSidebar = () => {
     if (isMobile) {
@@ -63,51 +62,54 @@ const AppSidebarComponent = memo(() => {
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
+          <RoleSwitcher />
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip="Home"
-                    onClick={closeMobileSidebar}
-                  >
-                    <Link to="/home">
-                      <Home />
-                      <span>Home</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip="Students"
-                    onClick={closeMobileSidebar}
-                  >
-                    <Link to="/students">
-                      <GraduationCap />
-                      <span>Students</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip="Classes"
-                    onClick={closeMobileSidebar}
-                  >
-                    <Link to="/classes">
-                      <BookOpen />
-                      <span>Classes</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-          {showStaff && (
+          {activeRole === "member" ? (
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip="Home"
+                      onClick={closeMobileSidebar}
+                    >
+                      <Link to="/home">
+                        <Home />
+                        <span>Home</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip="Students"
+                      onClick={closeMobileSidebar}
+                    >
+                      <Link to="/students">
+                        <GraduationCap />
+                        <span>My Students</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip="Classes"
+                      onClick={closeMobileSidebar}
+                    >
+                      <Link to="/classes">
+                        <BookOpen />
+                        <span>Classes</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ) : null}
+          {activeRole === "staff" ? (
             <SidebarGroup>
               <SidebarGroupLabel>Staff</SidebarGroupLabel>
               <SidebarGroupContent>
@@ -151,8 +153,8 @@ const AppSidebarComponent = memo(() => {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-          )}
-          {showAdmin && (
+          ) : null}
+          {activeRole === "admin" ? (
             <SidebarGroup>
               <SidebarGroupLabel>Admin</SidebarGroupLabel>
               <SidebarGroupContent>
@@ -220,7 +222,7 @@ const AppSidebarComponent = memo(() => {
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-          )}
+          ) : null}
           <SidebarGroup>
             <SidebarGroupLabel>Etc</SidebarGroupLabel>
             <SidebarGroupContent>

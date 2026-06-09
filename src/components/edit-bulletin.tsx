@@ -40,6 +40,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Switch } from "./ui/switch";
 import type { DateRange } from "react-day-picker";
 import { parseBulletinDate } from "~/lib/bulletin-date";
+import { hasUserRole } from "~/lib/roles";
 
 type Bulletin = {
   _id: Id<"bulletin">;
@@ -63,7 +64,7 @@ export function EditBulletin({ bulletin }: { bulletin: Bulletin }) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
 
-  if (currentUser?.role !== "admin") {
+  if (!hasUserRole(currentUser, "admin")) {
     return null;
   }
 

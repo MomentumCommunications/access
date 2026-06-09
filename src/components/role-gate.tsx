@@ -2,7 +2,7 @@ import { CircleSlash } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
-import { canAccessAdmin, canAccessStaff, UserRole } from "~/lib/roles";
+import { canAccessAdmin, canAccessStaff } from "~/lib/roles";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
@@ -14,9 +14,8 @@ type RoleGateProps = {
 
 export function RoleGate({ allow, children }: RoleGateProps) {
   const { data: user, isLoading } = useCurrentUser();
-  const role = user?.role as UserRole | undefined;
   const allowed =
-    allow === "admin" ? canAccessAdmin(role) : canAccessStaff(role);
+    allow === "admin" ? canAccessAdmin(user) : canAccessStaff(user);
 
   if (isLoading) {
     return (

@@ -51,6 +51,8 @@ function RegisterAccountStep() {
         ? "/register/students"
         : step === "review"
           ? "/register/review"
+          : step === "contract"
+            ? "/register/contract"
           : step === "complete"
             ? "/register/complete"
             : "/register/profile";

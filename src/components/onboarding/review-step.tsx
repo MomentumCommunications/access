@@ -17,6 +17,7 @@ export function ReviewStep() {
   const navigate = useNavigate();
   const state = useConvexQuery(api.onboarding.getState, {});
   const complete = useConvexMutation(api.onboarding.complete);
+  const setStep = useConvexMutation(api.onboarding.setStep);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -24,8 +25,17 @@ export function ReviewStep() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await complete({});
-      await navigate({ to: "/register/complete" });
+      if (
+        state?.user.contractTypeSigned &&
+        state.user.contractVersionSigned &&
+        state.user.contractSignedAt
+      ) {
+        await complete({});
+        await navigate({ to: "/register/complete" });
+      } else {
+        await setStep({ step: "contract" });
+        await navigate({ to: "/register/contract" });
+      }
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -114,7 +124,11 @@ export function ReviewStep() {
             <Link to="/register/students">Back</Link>
           </Button>
           <Button onClick={() => void handleComplete()} disabled={isSubmitting}>
-            {isSubmitting ? "Finishing..." : "Complete registration"}
+            {isSubmitting
+              ? "Continuing..."
+              : state?.user.contractSignedAt
+                ? "Complete registration"
+                : "Continue to agreement"}
           </Button>
         </div>
       </div>

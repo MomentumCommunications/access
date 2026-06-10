@@ -33,23 +33,13 @@ export function SignupForm({
       <CardHeader>
         <CardTitle>Create an account</CardTitle>
         <CardDescription>
-          Enter your information below to create your account
+          Enter your email and choose a password.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit}>
           <input name="flow" type="hidden" value="signUp" />
           <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="name">Full Name</FieldLabel>
-              <Input
-                id="name"
-                name="name"
-                type="text"
-                placeholder="John Doe"
-                required
-              />
-            </Field>
             <Field>
               <FieldLabel htmlFor="email">Email</FieldLabel>
               <Input

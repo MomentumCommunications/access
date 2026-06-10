@@ -13,8 +13,12 @@ const onboardingStepValidator = v.union(
   v.literal("profile"),
   v.literal("students"),
   v.literal("review"),
+  v.literal("contract"),
   v.literal("complete"),
 );
+
+const RECREATIONAL_CONTRACT_TYPE = "recreational";
+const RECREATIONAL_CONTRACT_VERSION = "1";
 
 const studentGenderValidator = v.union(
   v.literal(""),
@@ -250,6 +254,24 @@ export const setStep = mutation({
   },
 });
 
+export const recordContractSignature = mutation({
+  args: {
+    docusealSubmissionId: v.optional(v.string()),
+  },
+  handler: async (ctx, { docusealSubmissionId }) => {
+    const { user, onboarding } = await getOnboarding(ctx);
+    if (!onboarding) throw new Error("Onboarding has not been started.");
+
+    await ctx.db.patch(user._id, {
+      contractTypeSigned: RECREATIONAL_CONTRACT_TYPE,
+      contractVersionSigned: RECREATIONAL_CONTRACT_VERSION,
+      contractSignedAt: Date.now(),
+      docusealSubmissionId: docusealSubmissionId?.trim() || undefined,
+    });
+    await ctx.db.patch(onboarding._id, { currentStep: "contract" });
+  },
+});
+
 export const complete = mutation({
   args: {},
   handler: async (ctx) => {
@@ -259,6 +281,13 @@ export const complete = mutation({
     const students = await getConnectedStudents(ctx, user._id);
     if (students.length === 0) {
       throw new Error("Add at least one student before completing onboarding.");
+    }
+    if (
+      !user.contractTypeSigned ||
+      !user.contractVersionSigned ||
+      !user.contractSignedAt
+    ) {
+      throw new Error("Complete the client agreement before finishing.");
     }
 
     const completedAt = Date.now();

@@ -19,6 +19,7 @@ import { Route as RegisterIndexRouteImport } from './routes/register.index'
 import { Route as RegisterStudentsRouteImport } from './routes/register.students'
 import { Route as RegisterReviewRouteImport } from './routes/register.review'
 import { Route as RegisterProfileRouteImport } from './routes/register.profile'
+import { Route as RegisterContractRouteImport } from './routes/register.contract'
 import { Route as RegisterCompleteRouteImport } from './routes/register.complete'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppSearchRouteImport } from './routes/_app.search'
@@ -104,6 +105,11 @@ const RegisterReviewRoute = RegisterReviewRouteImport.update({
 const RegisterProfileRoute = RegisterProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => RegisterRoute,
+} as any)
+const RegisterContractRoute = RegisterContractRouteImport.update({
+  id: '/contract',
+  path: '/contract',
   getParentRoute: () => RegisterRoute,
 } as any)
 const RegisterCompleteRoute = RegisterCompleteRouteImport.update({
@@ -313,6 +319,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
   '/register/complete': typeof RegisterCompleteRoute
+  '/register/contract': typeof RegisterContractRoute
   '/register/profile': typeof RegisterProfileRoute
   '/register/review': typeof RegisterReviewRoute
   '/register/students': typeof RegisterStudentsRoute
@@ -360,6 +367,7 @@ export interface FileRoutesByTo {
   '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
   '/register/complete': typeof RegisterCompleteRoute
+  '/register/contract': typeof RegisterContractRoute
   '/register/profile': typeof RegisterProfileRoute
   '/register/review': typeof RegisterReviewRoute
   '/register/students': typeof RegisterStudentsRoute
@@ -410,6 +418,7 @@ export interface FileRoutesById {
   '/_app/search': typeof AppSearchRoute
   '/_app/settings': typeof AppSettingsRoute
   '/register/complete': typeof RegisterCompleteRoute
+  '/register/contract': typeof RegisterContractRoute
   '/register/profile': typeof RegisterProfileRoute
   '/register/review': typeof RegisterReviewRoute
   '/register/students': typeof RegisterStudentsRoute
@@ -460,6 +469,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/register/complete'
+    | '/register/contract'
     | '/register/profile'
     | '/register/review'
     | '/register/students'
@@ -507,6 +517,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/register/complete'
+    | '/register/contract'
     | '/register/profile'
     | '/register/review'
     | '/register/students'
@@ -556,6 +567,7 @@ export interface FileRouteTypes {
     | '/_app/search'
     | '/_app/settings'
     | '/register/complete'
+    | '/register/contract'
     | '/register/profile'
     | '/register/review'
     | '/register/students'
@@ -669,6 +681,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/register/profile'
       preLoaderRoute: typeof RegisterProfileRouteImport
+      parentRoute: typeof RegisterRoute
+    }
+    '/register/contract': {
+      id: '/register/contract'
+      path: '/contract'
+      fullPath: '/register/contract'
+      preLoaderRoute: typeof RegisterContractRouteImport
       parentRoute: typeof RegisterRoute
     }
     '/register/complete': {
@@ -1015,6 +1034,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface RegisterRouteChildren {
   RegisterCompleteRoute: typeof RegisterCompleteRoute
+  RegisterContractRoute: typeof RegisterContractRoute
   RegisterProfileRoute: typeof RegisterProfileRoute
   RegisterReviewRoute: typeof RegisterReviewRoute
   RegisterStudentsRoute: typeof RegisterStudentsRoute
@@ -1023,6 +1043,7 @@ interface RegisterRouteChildren {
 
 const RegisterRouteChildren: RegisterRouteChildren = {
   RegisterCompleteRoute: RegisterCompleteRoute,
+  RegisterContractRoute: RegisterContractRoute,
   RegisterProfileRoute: RegisterProfileRoute,
   RegisterReviewRoute: RegisterReviewRoute,
   RegisterStudentsRoute: RegisterStudentsRoute,

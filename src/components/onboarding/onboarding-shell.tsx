@@ -6,6 +6,7 @@ const steps = [
   { label: "Profile", href: "/register/profile" },
   { label: "Students", href: "/register/students" },
   { label: "Review", href: "/register/review" },
+  { label: "Agreement", href: "/register/contract" },
 ] as const;
 
 export function OnboardingShell() {
@@ -35,7 +36,7 @@ export function OnboardingShell() {
         </header>
 
         {showProgress ? (
-          <ol className="mb-8 grid grid-cols-3 gap-2" aria-label="Registration">
+          <ol className="mb-8 grid grid-cols-4 gap-2" aria-label="Registration">
             {steps.map((step, index) => {
               const isComplete = completed || index < activeIndex;
               const isActive = index === activeIndex;

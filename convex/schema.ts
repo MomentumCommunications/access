@@ -36,6 +36,10 @@ export default defineSchema({
       v.union(v.literal("new"), v.literal("imported")),
     ),
     onboardingCompletedAt: v.optional(v.number()),
+    contractTypeSigned: v.optional(v.string()),
+    contractVersionSigned: v.optional(v.string()),
+    contractSignedAt: v.optional(v.number()),
+    docusealSubmissionId: v.optional(v.string()),
     // Legacy Clerk ID. Convex Auth stores its user ID in the subject JWT field.
     externalId: v.optional(v.string()),
   })
@@ -168,6 +172,7 @@ export default defineSchema({
       v.literal("profile"),
       v.literal("students"),
       v.literal("review"),
+      v.literal("contract"),
       v.literal("complete"),
     ),
     matchedImportedRecord: v.boolean(),

@@ -5,6 +5,7 @@ import {
   compareClassesBySchedule,
   compareRowsByClassSchedule,
 } from "./lib/classSorting";
+import { calculateAgeOnDate, classMatchesAge } from "./lib/age";
 import {
   isDateBetween,
   syncAllGeneratedSessions,
@@ -503,29 +504,53 @@ export const searchApplication = query({
 export const listPublishedClasses = query({
   args: {
     seasonId: v.optional(v.id("seasons")),
+    studentId: v.optional(v.id("students")),
+    filterByAge: v.boolean(),
   },
-  handler: async (ctx, { seasonId }) => {
-    const classes = await ctx.db
+  handler: async (ctx, { seasonId, studentId, filterByAge }) => {
+    let classes = await ctx.db
       .query("classes")
       .withIndex("byStatus", (q) => q.eq("status", "published"))
       .collect();
 
-    if (!seasonId) {
-      return classes.sort(compareClassesBySchedule);
+    if (seasonId) {
+      const seasonClassIds = new Set(
+        (
+          await ctx.db
+            .query("seasonClasses")
+            .withIndex("bySeason", (q) => q.eq("season", seasonId))
+            .collect()
+        ).map((link) => link.class),
+      );
+      classes = classes.filter((classItem) =>
+        seasonClassIds.has(classItem._id),
+      );
     }
 
-    const seasonClassIds = new Set(
-      (
+    if (filterByAge && studentId) {
+      const user = await getCurrentUser(ctx);
+      if (!user) {
+        return [];
+      }
+      const contact = (
         await ctx.db
-          .query("seasonClasses")
-          .withIndex("bySeason", (q) => q.eq("season", seasonId))
+          .query("studentContacts")
+          .withIndex("byUser", (q) => q.eq("user", user._id))
           .collect()
-      ).map((link) => link.class),
-    );
+      ).find((candidate) => candidate.student === studentId);
+      if (!contact) {
+        throw new Error("Student is not connected to this account.");
+      }
 
-    return classes
-      .filter((classItem) => seasonClassIds.has(classItem._id))
-      .sort(compareClassesBySchedule);
+      const student = await ctx.db.get(studentId);
+      const age = calculateAgeOnDate(
+        student?.dateOfBirth,
+        todayValue("America/New_York"),
+      );
+      classes = classes.filter((classItem) => classMatchesAge(classItem, age));
+    }
+
+    return classes.sort(compareClassesBySchedule);
   },
 });
 
@@ -536,6 +561,38 @@ export const listCurrentAndFutureSeasons = query({
     return (await ctx.db.query("seasons").collect())
       .filter((season) => season.endDate >= today)
       .sort((a, b) => a.startDate.localeCompare(b.startDate));
+  },
+});
+
+export const listMyStudentsForClassSelection = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      return [];
+    }
+
+    const contacts = await ctx.db
+      .query("studentContacts")
+      .withIndex("byUser", (q) => q.eq("user", user._id))
+      .collect();
+
+    return (
+      await Promise.all(
+        contacts.map(async (contact) => {
+          const student = await ctx.db.get(contact.student);
+          if (!student) {
+            return null;
+          }
+          return {
+            student,
+            photoUrl: student.photo
+              ? await ctx.storage.getUrl(student.photo)
+              : null,
+          };
+        }),
+      )
+    ).filter((row) => row !== null);
   },
 });
 

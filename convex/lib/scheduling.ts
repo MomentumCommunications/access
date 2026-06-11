@@ -13,6 +13,14 @@ const WEEKDAYS = [
 
 type DbCtx = QueryCtx | MutationCtx;
 
+export type RecurringSchedule = {
+  startDate?: string;
+  endDate?: string;
+  startTime?: string;
+  weekdays?: Array<(typeof WEEKDAYS)[number]>;
+  timezone?: string;
+};
+
 type ClassSchedule = Pick<
   Doc<"classes">,
   | "_id"
@@ -27,14 +35,17 @@ type ClassSchedule = Pick<
   | "scheduleVersion"
 >;
 
-export function hasCompleteSchedule(classItem: ClassSchedule) {
+export function hasCompleteRecurringSchedule(schedule: RecurringSchedule) {
   return (
-    !!classItem.startDate &&
-    !!classItem.endDate &&
-    !!classItem.startTime &&
-    !!classItem.endTime &&
-    !!classItem.weekdays?.length
+    !!schedule.startDate &&
+    !!schedule.endDate &&
+    !!schedule.startTime &&
+    !!schedule.weekdays?.length
   );
+}
+
+export function hasCompleteSchedule(classItem: ClassSchedule) {
+  return hasCompleteRecurringSchedule(classItem) && !!classItem.endTime;
 }
 
 function dateFromValue(date: string) {
@@ -72,26 +83,26 @@ function isDateInHoliday(date: string, holidays: Doc<"holidays">[]) {
   );
 }
 
-export function expandClassSchedule(
-  classItem: ClassSchedule,
+export function expandRecurringSchedule(
+  schedule: RecurringSchedule,
   holidays: Doc<"holidays">[],
 ) {
-  if (!hasCompleteSchedule(classItem)) {
+  if (!hasCompleteRecurringSchedule(schedule)) {
     return [];
   }
 
   const dates: string[] = [];
-  const end = dateFromValue(classItem.endDate!);
+  const end = dateFromValue(schedule.endDate!);
 
   for (
-    let cursor = dateFromValue(classItem.startDate!);
+    let cursor = dateFromValue(schedule.startDate!);
     cursor <= end;
     cursor.setDate(cursor.getDate() + 1)
   ) {
     const date = formatDateValue(cursor);
     const weekday = WEEKDAYS[cursor.getDay()];
     if (
-      classItem.weekdays?.includes(weekday) &&
+      schedule.weekdays?.includes(weekday) &&
       !isDateInHoliday(date, holidays)
     ) {
       dates.push(date);
@@ -99,6 +110,16 @@ export function expandClassSchedule(
   }
 
   return dates;
+}
+
+export function expandClassSchedule(
+  classItem: ClassSchedule,
+  holidays: Doc<"holidays">[],
+) {
+  if (!hasCompleteSchedule(classItem)) {
+    return [];
+  }
+  return expandRecurringSchedule(classItem, holidays);
 }
 
 export function isGeneratedSessionProtected(

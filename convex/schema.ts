@@ -244,6 +244,64 @@ export default defineSchema({
     .index("bySession", ["session"])
     .index("byStudent", ["student"])
     .index("bySessionStudent", ["session", "student"]),
+  privates: defineTable({
+    name: v.string(),
+    instructorId: v.id("users"),
+    defaultDurationMinutes: v.number(),
+    schedulePrompt: v.object({
+      startDate: v.string(),
+      endDate: v.string(),
+      startTime: v.string(),
+      weekdays: v.array(
+        v.union(
+          v.literal("sunday"),
+          v.literal("monday"),
+          v.literal("tuesday"),
+          v.literal("wednesday"),
+          v.literal("thursday"),
+          v.literal("friday"),
+          v.literal("saturday"),
+        ),
+      ),
+      timezone: v.string(),
+    }),
+    isActive: v.boolean(),
+    notes: v.optional(v.string()),
+  })
+    .index("byInstructor", ["instructorId"])
+    .index("byActive", ["isActive"]),
+  privateLessons: defineTable({
+    privateId: v.id("privates"),
+    startsAt: v.number(),
+    durationMinutes: v.number(),
+    status: v.union(
+      v.literal("scheduled"),
+      v.literal("completed"),
+      v.literal("cancelled"),
+    ),
+    generatedFromSchedule: v.boolean(),
+    notes: v.optional(v.string()),
+  })
+    .index("byPrivate", ["privateId"])
+    .index("byStartsAt", ["startsAt"])
+    .index("byPrivateStartsAt", ["privateId", "startsAt"]),
+  privateLessonStudents: defineTable({
+    privateLessonId: v.id("privateLessons"),
+    studentId: v.id("students"),
+    status: v.union(
+      v.literal("scheduled"),
+      v.literal("attended"),
+      v.literal("excused"),
+      v.literal("no_show"),
+      v.literal("cancelled"),
+    ),
+    billable: v.boolean(),
+    notes: v.optional(v.string()),
+  })
+    .index("byPrivateLesson", ["privateLessonId"])
+    .index("byStudent", ["studentId"])
+    .index("byPrivateLessonStudent", ["privateLessonId", "studentId"])
+    .index("byBillable", ["billable"]),
   holidays: defineTable({
     name: v.string(),
     startDate: v.string(),

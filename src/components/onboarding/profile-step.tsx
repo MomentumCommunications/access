@@ -23,7 +23,6 @@ import { Input } from "~/components/ui/input";
 const profileSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required.").max(80),
   lastName: z.string().trim().min(1, "Last name is required.").max(80),
-  displayName: z.string().trim().min(1, "Display name is required.").max(80),
   phone: z.string().max(30, "Phone number must be 30 characters or fewer."),
 });
 
@@ -43,13 +42,6 @@ export function ProfileStep() {
       lastName:
         state?.user.lastName ||
         state?.user.name?.trim().split(/\s+/).slice(-1).join(" ") ||
-        "",
-      displayName:
-        state?.user.displayName ||
-        [state?.user.firstName, state?.user.lastName]
-          .filter(Boolean)
-          .join(" ") ||
-        state?.user.name ||
         "",
       phone: state?.user.phone || "",
     },
@@ -125,21 +117,6 @@ export function ProfileStep() {
                   />
                 ))}
               </div>
-              <Controller
-                name="displayName"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>Display name</FieldLabel>
-                    <Input
-                      {...field}
-                      id={field.name}
-                      aria-invalid={fieldState.invalid}
-                    />
-                    <FieldError errors={[fieldState.error]} />
-                  </Field>
-                )}
-              />
               <Controller
                 name="phone"
                 control={form.control}

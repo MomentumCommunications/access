@@ -12,5 +12,5 @@ export function getAccountName(account: AccountName) {
     .join(" ");
   const email = Array.isArray(account.email) ? account.email[0] : account.email;
 
-  return account.displayName || fullName || account.name || email || "Unnamed";
+  return fullName || account.name || email || "Unnamed";
 }

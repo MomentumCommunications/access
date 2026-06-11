@@ -107,14 +107,12 @@ export const saveProfile = mutation({
   args: {
     firstName: v.string(),
     lastName: v.string(),
-    displayName: v.string(),
     phone: v.string(),
   },
   handler: async (ctx, args) => {
     const { user, onboarding } = await getOnboarding(ctx);
     const firstName = args.firstName.trim();
     const lastName = args.lastName.trim();
-    const displayName = args.displayName.trim();
     const roles = resolveUserRoles(user);
 
     if (!firstName || firstName.length > 80) {
@@ -123,14 +121,9 @@ export const saveProfile = mutation({
     if (!lastName || lastName.length > 80) {
       throw new Error("Last name must be between 1 and 80 characters.");
     }
-    if (!displayName || displayName.length > 80) {
-      throw new Error("Display name must be between 1 and 80 characters.");
-    }
-
     await ctx.db.patch(user._id, {
       firstName,
       lastName,
-      displayName,
       phone: args.phone.trim() || undefined,
       role: highestUserRole(roles),
       roles,

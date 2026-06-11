@@ -45,17 +45,22 @@ import { Route as AppAdminSchedulingRouteImport } from './routes/_app.admin/sche
 import { Route as AppAdminAccountsRouteImport } from './routes/_app.admin/accounts'
 import { Route as AppBulletinIdEditRouteImport } from './routes/_app.$bulletinId_.edit'
 import { Route as AppAdminStudentsIndexRouteImport } from './routes/_app.admin/students/index'
+import { Route as AppAdminPrivatesIndexRouteImport } from './routes/_app.admin/privates/index'
 import { Route as AppAdminClassesIndexRouteImport } from './routes/_app.admin/classes/index'
 import { Route as AppStudentsStudentIdEditRouteImport } from './routes/_app.students/$studentId_.edit'
 import { Route as AppStaffAttendanceSessionIdRouteImport } from './routes/_app.staff/attendance_.$sessionId'
 import { Route as AppAdminStudentsCreateRouteImport } from './routes/_app.admin/students/create'
 import { Route as AppAdminStudentsStudentIdRouteImport } from './routes/_app.admin/students/$studentId'
+import { Route as AppAdminPrivatesCreateRouteImport } from './routes/_app.admin/privates/create'
+import { Route as AppAdminPrivatesPrivateIdRouteImport } from './routes/_app.admin/privates/$privateId'
 import { Route as AppAdminClassesCreateRouteImport } from './routes/_app.admin/classes/create'
 import { Route as AppAdminClassesClassIdRouteImport } from './routes/_app.admin/classes/$classId'
 import { Route as AppAdminAccountsCreateRouteImport } from './routes/_app.admin/accounts_.create'
 import { Route as AppAdminAccountsUserIdRouteImport } from './routes/_app.admin/accounts_.$userId'
 import { Route as AppAdminStudentsStudentIdReportRouteImport } from './routes/_app.admin/students/$studentId_.report'
 import { Route as AppAdminStudentsStudentIdEditRouteImport } from './routes/_app.admin/students/$studentId_.edit'
+import { Route as AppAdminPrivatesPrivateIdEditRouteImport } from './routes/_app.admin/privates/$privateId_.edit'
+import { Route as AppAdminPrivatesPrivateIdPrivateLessonIdRouteImport } from './routes/_app.admin/privates/$privateId_/$privateLessonId'
 import { Route as AppAdminClassesClassIdEditRouteImport } from './routes/_app.admin/classes/$classId_.edit'
 
 const SignupRoute = SignupRouteImport.update({
@@ -237,6 +242,11 @@ const AppAdminStudentsIndexRoute = AppAdminStudentsIndexRouteImport.update({
   path: '/admin/students/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminPrivatesIndexRoute = AppAdminPrivatesIndexRouteImport.update({
+  id: '/admin/privates/',
+  path: '/admin/privates/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminClassesIndexRoute = AppAdminClassesIndexRouteImport.update({
   id: '/admin/classes/',
   path: '/admin/classes/',
@@ -263,6 +273,17 @@ const AppAdminStudentsStudentIdRoute =
   AppAdminStudentsStudentIdRouteImport.update({
     id: '/admin/students/$studentId',
     path: '/admin/students/$studentId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAdminPrivatesCreateRoute = AppAdminPrivatesCreateRouteImport.update({
+  id: '/admin/privates/create',
+  path: '/admin/privates/create',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminPrivatesPrivateIdRoute =
+  AppAdminPrivatesPrivateIdRouteImport.update({
+    id: '/admin/privates/$privateId',
+    path: '/admin/privates/$privateId',
     getParentRoute: () => AppRoute,
   } as any)
 const AppAdminClassesCreateRoute = AppAdminClassesCreateRouteImport.update({
@@ -295,6 +316,18 @@ const AppAdminStudentsStudentIdEditRoute =
   AppAdminStudentsStudentIdEditRouteImport.update({
     id: '/admin/students/$studentId_/edit',
     path: '/admin/students/$studentId/edit',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAdminPrivatesPrivateIdEditRoute =
+  AppAdminPrivatesPrivateIdEditRouteImport.update({
+    id: '/admin/privates/$privateId_/edit',
+    path: '/admin/privates/$privateId/edit',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAdminPrivatesPrivateIdPrivateLessonIdRoute =
+  AppAdminPrivatesPrivateIdPrivateLessonIdRouteImport.update({
+    id: '/admin/privates/$privateId_/$privateLessonId',
+    path: '/admin/privates/$privateId/$privateLessonId',
     getParentRoute: () => AppRoute,
   } as any)
 const AppAdminClassesClassIdEditRoute =
@@ -343,13 +376,18 @@ export interface FileRoutesByFullPath {
   '/admin/accounts/create': typeof AppAdminAccountsCreateRoute
   '/admin/classes/$classId': typeof AppAdminClassesClassIdRoute
   '/admin/classes/create': typeof AppAdminClassesCreateRoute
+  '/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
+  '/admin/privates/create': typeof AppAdminPrivatesCreateRoute
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
   '/admin/students/create': typeof AppAdminStudentsCreateRoute
   '/staff/attendance/$sessionId': typeof AppStaffAttendanceSessionIdRoute
   '/students/$studentId/edit': typeof AppStudentsStudentIdEditRoute
   '/admin/classes/': typeof AppAdminClassesIndexRoute
+  '/admin/privates/': typeof AppAdminPrivatesIndexRoute
   '/admin/students/': typeof AppAdminStudentsIndexRoute
   '/admin/classes/$classId/edit': typeof AppAdminClassesClassIdEditRoute
+  '/admin/privates/$privateId/$privateLessonId': typeof AppAdminPrivatesPrivateIdPrivateLessonIdRoute
+  '/admin/privates/$privateId/edit': typeof AppAdminPrivatesPrivateIdEditRoute
   '/admin/students/$studentId/edit': typeof AppAdminStudentsStudentIdEditRoute
   '/admin/students/$studentId/report': typeof AppAdminStudentsStudentIdReportRoute
 }
@@ -391,13 +429,18 @@ export interface FileRoutesByTo {
   '/admin/accounts/create': typeof AppAdminAccountsCreateRoute
   '/admin/classes/$classId': typeof AppAdminClassesClassIdRoute
   '/admin/classes/create': typeof AppAdminClassesCreateRoute
+  '/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
+  '/admin/privates/create': typeof AppAdminPrivatesCreateRoute
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
   '/admin/students/create': typeof AppAdminStudentsCreateRoute
   '/staff/attendance/$sessionId': typeof AppStaffAttendanceSessionIdRoute
   '/students/$studentId/edit': typeof AppStudentsStudentIdEditRoute
   '/admin/classes': typeof AppAdminClassesIndexRoute
+  '/admin/privates': typeof AppAdminPrivatesIndexRoute
   '/admin/students': typeof AppAdminStudentsIndexRoute
   '/admin/classes/$classId/edit': typeof AppAdminClassesClassIdEditRoute
+  '/admin/privates/$privateId/$privateLessonId': typeof AppAdminPrivatesPrivateIdPrivateLessonIdRoute
+  '/admin/privates/$privateId/edit': typeof AppAdminPrivatesPrivateIdEditRoute
   '/admin/students/$studentId/edit': typeof AppAdminStudentsStudentIdEditRoute
   '/admin/students/$studentId/report': typeof AppAdminStudentsStudentIdReportRoute
 }
@@ -442,13 +485,18 @@ export interface FileRoutesById {
   '/_app/admin/accounts_/create': typeof AppAdminAccountsCreateRoute
   '/_app/admin/classes/$classId': typeof AppAdminClassesClassIdRoute
   '/_app/admin/classes/create': typeof AppAdminClassesCreateRoute
+  '/_app/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
+  '/_app/admin/privates/create': typeof AppAdminPrivatesCreateRoute
   '/_app/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
   '/_app/admin/students/create': typeof AppAdminStudentsCreateRoute
   '/_app/staff/attendance_/$sessionId': typeof AppStaffAttendanceSessionIdRoute
   '/_app/students/$studentId_/edit': typeof AppStudentsStudentIdEditRoute
   '/_app/admin/classes/': typeof AppAdminClassesIndexRoute
+  '/_app/admin/privates/': typeof AppAdminPrivatesIndexRoute
   '/_app/admin/students/': typeof AppAdminStudentsIndexRoute
   '/_app/admin/classes/$classId_/edit': typeof AppAdminClassesClassIdEditRoute
+  '/_app/admin/privates/$privateId_/$privateLessonId': typeof AppAdminPrivatesPrivateIdPrivateLessonIdRoute
+  '/_app/admin/privates/$privateId_/edit': typeof AppAdminPrivatesPrivateIdEditRoute
   '/_app/admin/students/$studentId_/edit': typeof AppAdminStudentsStudentIdEditRoute
   '/_app/admin/students/$studentId_/report': typeof AppAdminStudentsStudentIdReportRoute
 }
@@ -493,13 +541,18 @@ export interface FileRouteTypes {
     | '/admin/accounts/create'
     | '/admin/classes/$classId'
     | '/admin/classes/create'
+    | '/admin/privates/$privateId'
+    | '/admin/privates/create'
     | '/admin/students/$studentId'
     | '/admin/students/create'
     | '/staff/attendance/$sessionId'
     | '/students/$studentId/edit'
     | '/admin/classes/'
+    | '/admin/privates/'
     | '/admin/students/'
     | '/admin/classes/$classId/edit'
+    | '/admin/privates/$privateId/$privateLessonId'
+    | '/admin/privates/$privateId/edit'
     | '/admin/students/$studentId/edit'
     | '/admin/students/$studentId/report'
   fileRoutesByTo: FileRoutesByTo
@@ -541,13 +594,18 @@ export interface FileRouteTypes {
     | '/admin/accounts/create'
     | '/admin/classes/$classId'
     | '/admin/classes/create'
+    | '/admin/privates/$privateId'
+    | '/admin/privates/create'
     | '/admin/students/$studentId'
     | '/admin/students/create'
     | '/staff/attendance/$sessionId'
     | '/students/$studentId/edit'
     | '/admin/classes'
+    | '/admin/privates'
     | '/admin/students'
     | '/admin/classes/$classId/edit'
+    | '/admin/privates/$privateId/$privateLessonId'
+    | '/admin/privates/$privateId/edit'
     | '/admin/students/$studentId/edit'
     | '/admin/students/$studentId/report'
   id:
@@ -591,13 +649,18 @@ export interface FileRouteTypes {
     | '/_app/admin/accounts_/create'
     | '/_app/admin/classes/$classId'
     | '/_app/admin/classes/create'
+    | '/_app/admin/privates/$privateId'
+    | '/_app/admin/privates/create'
     | '/_app/admin/students/$studentId'
     | '/_app/admin/students/create'
     | '/_app/staff/attendance_/$sessionId'
     | '/_app/students/$studentId_/edit'
     | '/_app/admin/classes/'
+    | '/_app/admin/privates/'
     | '/_app/admin/students/'
     | '/_app/admin/classes/$classId_/edit'
+    | '/_app/admin/privates/$privateId_/$privateLessonId'
+    | '/_app/admin/privates/$privateId_/edit'
     | '/_app/admin/students/$studentId_/edit'
     | '/_app/admin/students/$studentId_/report'
   fileRoutesById: FileRoutesById
@@ -865,6 +928,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminStudentsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/privates/': {
+      id: '/_app/admin/privates/'
+      path: '/admin/privates'
+      fullPath: '/admin/privates/'
+      preLoaderRoute: typeof AppAdminPrivatesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/classes/': {
       id: '/_app/admin/classes/'
       path: '/admin/classes'
@@ -898,6 +968,20 @@ declare module '@tanstack/react-router' {
       path: '/admin/students/$studentId'
       fullPath: '/admin/students/$studentId'
       preLoaderRoute: typeof AppAdminStudentsStudentIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/privates/create': {
+      id: '/_app/admin/privates/create'
+      path: '/admin/privates/create'
+      fullPath: '/admin/privates/create'
+      preLoaderRoute: typeof AppAdminPrivatesCreateRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/privates/$privateId': {
+      id: '/_app/admin/privates/$privateId'
+      path: '/admin/privates/$privateId'
+      fullPath: '/admin/privates/$privateId'
+      preLoaderRoute: typeof AppAdminPrivatesPrivateIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/classes/create': {
@@ -942,6 +1026,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminStudentsStudentIdEditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/privates/$privateId_/edit': {
+      id: '/_app/admin/privates/$privateId_/edit'
+      path: '/admin/privates/$privateId/edit'
+      fullPath: '/admin/privates/$privateId/edit'
+      preLoaderRoute: typeof AppAdminPrivatesPrivateIdEditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/privates/$privateId_/$privateLessonId': {
+      id: '/_app/admin/privates/$privateId_/$privateLessonId'
+      path: '/admin/privates/$privateId/$privateLessonId'
+      fullPath: '/admin/privates/$privateId/$privateLessonId'
+      preLoaderRoute: typeof AppAdminPrivatesPrivateIdPrivateLessonIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/classes/$classId_/edit': {
       id: '/_app/admin/classes/$classId_/edit'
       path: '/admin/classes/$classId/edit'
@@ -980,13 +1078,18 @@ interface AppRouteChildren {
   AppAdminAccountsCreateRoute: typeof AppAdminAccountsCreateRoute
   AppAdminClassesClassIdRoute: typeof AppAdminClassesClassIdRoute
   AppAdminClassesCreateRoute: typeof AppAdminClassesCreateRoute
+  AppAdminPrivatesPrivateIdRoute: typeof AppAdminPrivatesPrivateIdRoute
+  AppAdminPrivatesCreateRoute: typeof AppAdminPrivatesCreateRoute
   AppAdminStudentsStudentIdRoute: typeof AppAdminStudentsStudentIdRoute
   AppAdminStudentsCreateRoute: typeof AppAdminStudentsCreateRoute
   AppStaffAttendanceSessionIdRoute: typeof AppStaffAttendanceSessionIdRoute
   AppStudentsStudentIdEditRoute: typeof AppStudentsStudentIdEditRoute
   AppAdminClassesIndexRoute: typeof AppAdminClassesIndexRoute
+  AppAdminPrivatesIndexRoute: typeof AppAdminPrivatesIndexRoute
   AppAdminStudentsIndexRoute: typeof AppAdminStudentsIndexRoute
   AppAdminClassesClassIdEditRoute: typeof AppAdminClassesClassIdEditRoute
+  AppAdminPrivatesPrivateIdPrivateLessonIdRoute: typeof AppAdminPrivatesPrivateIdPrivateLessonIdRoute
+  AppAdminPrivatesPrivateIdEditRoute: typeof AppAdminPrivatesPrivateIdEditRoute
   AppAdminStudentsStudentIdEditRoute: typeof AppAdminStudentsStudentIdEditRoute
   AppAdminStudentsStudentIdReportRoute: typeof AppAdminStudentsStudentIdReportRoute
 }
@@ -1019,13 +1122,19 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminAccountsCreateRoute: AppAdminAccountsCreateRoute,
   AppAdminClassesClassIdRoute: AppAdminClassesClassIdRoute,
   AppAdminClassesCreateRoute: AppAdminClassesCreateRoute,
+  AppAdminPrivatesPrivateIdRoute: AppAdminPrivatesPrivateIdRoute,
+  AppAdminPrivatesCreateRoute: AppAdminPrivatesCreateRoute,
   AppAdminStudentsStudentIdRoute: AppAdminStudentsStudentIdRoute,
   AppAdminStudentsCreateRoute: AppAdminStudentsCreateRoute,
   AppStaffAttendanceSessionIdRoute: AppStaffAttendanceSessionIdRoute,
   AppStudentsStudentIdEditRoute: AppStudentsStudentIdEditRoute,
   AppAdminClassesIndexRoute: AppAdminClassesIndexRoute,
+  AppAdminPrivatesIndexRoute: AppAdminPrivatesIndexRoute,
   AppAdminStudentsIndexRoute: AppAdminStudentsIndexRoute,
   AppAdminClassesClassIdEditRoute: AppAdminClassesClassIdEditRoute,
+  AppAdminPrivatesPrivateIdPrivateLessonIdRoute:
+    AppAdminPrivatesPrivateIdPrivateLessonIdRoute,
+  AppAdminPrivatesPrivateIdEditRoute: AppAdminPrivatesPrivateIdEditRoute,
   AppAdminStudentsStudentIdEditRoute: AppAdminStudentsStudentIdEditRoute,
   AppAdminStudentsStudentIdReportRoute: AppAdminStudentsStudentIdReportRoute,
 }

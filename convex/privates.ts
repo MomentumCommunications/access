@@ -237,6 +237,11 @@ export const getPrivate = query({
     return {
       private: privateSeries,
       instructor: await ctx.db.get(privateSeries.instructorId),
+      defaultStudents: await Promise.all(
+        (privateSeries.studentIds || []).map((studentId) =>
+          ctx.db.get(studentId),
+        ),
+      ),
       lessons: await Promise.all(
         lessons
           .sort((a, b) => a.startsAt - b.startsAt)
@@ -257,6 +262,35 @@ export const getPrivate = query({
               ),
             };
           }),
+      ),
+    };
+  },
+});
+
+export const getPrivateLesson = query({
+  args: { privateLessonId: v.id("privateLessons") },
+  handler: async (ctx, { privateLessonId }) => {
+    const { lesson, privateSeries } = await requireLessonAccess(
+      ctx,
+      privateLessonId,
+    );
+    const participation = await ctx.db
+      .query("privateLessonStudents")
+      .withIndex("byPrivateLesson", (q) =>
+        q.eq("privateLessonId", privateLessonId),
+      )
+      .collect();
+
+    return {
+      lesson,
+      private: privateSeries,
+      instructor: await ctx.db.get(privateSeries.instructorId),
+      availableStudents: await ctx.db.query("students").collect(),
+      students: await Promise.all(
+        participation.map(async (row) => ({
+          participation: row,
+          student: await ctx.db.get(row.studentId),
+        })),
       ),
     };
   },
@@ -326,6 +360,7 @@ export const adminCreatePrivate = mutation({
   args: {
     name: v.string(),
     instructorId: v.id("users"),
+    studentIds: v.array(v.id("students")),
     defaultDurationMinutes: v.number(),
     schedulePrompt: schedulePromptValidator,
     isActive: v.boolean(),
@@ -341,6 +376,10 @@ export const adminCreatePrivate = mutation({
     validateDuration(args.defaultDurationMinutes);
     validateSchedulePrompt(args.schedulePrompt);
     await validateInstructor(ctx, args.instructorId);
+    await validateStudents(ctx, args.studentIds);
+    if (args.studentIds.length === 0) {
+      throw new Error("Select at least one student.");
+    }
 
     const privateId = await ctx.db.insert("privates", {
       ...args,
@@ -360,6 +399,7 @@ export const adminUpdatePrivate = mutation({
     privateId: v.id("privates"),
     name: v.string(),
     instructorId: v.id("users"),
+    studentIds: v.array(v.id("students")),
     defaultDurationMinutes: v.number(),
     schedulePrompt: schedulePromptValidator,
     isActive: v.boolean(),
@@ -378,6 +418,10 @@ export const adminUpdatePrivate = mutation({
     validateDuration(patch.defaultDurationMinutes);
     validateSchedulePrompt(patch.schedulePrompt);
     await validateInstructor(ctx, patch.instructorId);
+    await validateStudents(ctx, patch.studentIds);
+    if (patch.studentIds.length === 0) {
+      throw new Error("Select at least one student.");
+    }
 
     await ctx.db.patch(privateId, {
       ...patch,
@@ -530,12 +574,16 @@ export const addPrivateLessonStudent = mutation({
     if (existingStudents.some((row) => row.studentId === studentId)) {
       throw new Error("That student is already on this lesson.");
     }
-    return await ctx.db.insert("privateLessonStudents", {
+    const rowId = await ctx.db.insert("privateLessonStudents", {
       privateLessonId,
       studentId,
       status: "scheduled",
       billable: false,
     });
+    await ctx.db.patch(privateLessonId, {
+      participantsManuallyEdited: true,
+    });
+    return rowId;
   },
 });
 
@@ -554,6 +602,9 @@ export const removePrivateLessonStudent = mutation({
       .unique();
     if (row) {
       await ctx.db.delete(row._id);
+      await ctx.db.patch(privateLessonId, {
+        participantsManuallyEdited: true,
+      });
     }
   },
 });

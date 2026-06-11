@@ -2,6 +2,7 @@ import { memo } from "react";
 import {
   BookOpen,
   CalendarCheck,
+  CalendarClock,
   CalendarDays,
   CoffeeIcon,
   Cog,
@@ -216,6 +217,18 @@ const AppSidebarComponent = memo(() => {
                       <Link to="/admin/scheduling">
                         <CalendarDays />
                         <span>Scheduling</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip="Privates"
+                      onClick={closeMobileSidebar}
+                    >
+                      <Link to="/admin/privates">
+                        <CalendarClock />
+                        <span>Privates</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

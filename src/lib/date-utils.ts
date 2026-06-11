@@ -34,6 +34,15 @@ export function formatFullDate(date?: string) {
   return format(new Date(date), "MMMM d, yyyy");
 }
 
+export function formatDateTime(timestamp?: number) {
+  if (timestamp === undefined) return "Not set";
+  return format(new Date(timestamp), "MMM d, yyyy 'at' h:mm a");
+}
+
+export function toDateTimeLocalValue(timestamp: number) {
+  return format(new Date(timestamp), "yyyy-MM-dd'T'HH:mm");
+}
+
 function parseMilitaryTime(time?: string) {
   const match = time?.match(/^(\d{1,2}):([0-5]\d)(?::[0-5]\d)?$/);
   if (!match) return null;

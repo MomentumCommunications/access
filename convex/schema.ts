@@ -247,6 +247,7 @@ export default defineSchema({
   privates: defineTable({
     name: v.string(),
     instructorId: v.id("users"),
+    studentIds: v.optional(v.array(v.id("students"))),
     defaultDurationMinutes: v.number(),
     schedulePrompt: v.object({
       startDate: v.string(),
@@ -280,6 +281,7 @@ export default defineSchema({
       v.literal("cancelled"),
     ),
     generatedFromSchedule: v.boolean(),
+    participantsManuallyEdited: v.optional(v.boolean()),
     notes: v.optional(v.string()),
   })
     .index("byPrivate", ["privateId"])

@@ -29,14 +29,56 @@ export function expandPrivateLessonStarts(
   return starts;
 }
 
-async function lessonHasStudents(
+async function getLessonStudents(
   ctx: MutationCtx,
   lesson: Id<"privateLessons">,
 ) {
-  return !!(await ctx.db
+  return await ctx.db
     .query("privateLessonStudents")
     .withIndex("byPrivateLesson", (q) => q.eq("privateLessonId", lesson))
-    .first());
+    .collect();
+}
+
+function hasParticipantState(
+  rows: Doc<"privateLessonStudents">[],
+) {
+  return rows.some(
+    (row) =>
+      row.status !== "scheduled" ||
+      row.billable ||
+      !!row.notes,
+  );
+}
+
+async function syncLessonStudents(
+  ctx: MutationCtx,
+  lessonId: Id<"privateLessons">,
+  desiredStudentIds: Id<"students">[],
+) {
+  const rows = await getLessonStudents(ctx, lessonId);
+  const desired = new Set(desiredStudentIds);
+  let changed = false;
+
+  for (const row of rows) {
+    if (!desired.has(row.studentId)) {
+      await ctx.db.delete(row._id);
+      changed = true;
+    } else {
+      desired.delete(row.studentId);
+    }
+  }
+
+  for (const studentId of desired) {
+    await ctx.db.insert("privateLessonStudents", {
+      privateLessonId: lessonId,
+      studentId,
+      status: "scheduled",
+      billable: false,
+    });
+    changed = true;
+  }
+
+  return changed;
 }
 
 export async function syncGeneratedPrivateLessons(
@@ -63,6 +105,7 @@ export async function syncGeneratedPrivateLessons(
   let created = 0;
   let updated = 0;
   let removed = 0;
+  const defaultStudentIds = privateSeries.studentIds || [];
 
   for (const lesson of lessons) {
     if (desiredStarts.has(lesson.startsAt)) {
@@ -72,13 +115,23 @@ export async function syncGeneratedPrivateLessons(
     if (
       !lesson.generatedFromSchedule ||
       lesson.startsAt < now ||
-      lesson.status !== "scheduled" ||
-      (await lessonHasStudents(ctx, lesson._id))
+      lesson.status !== "scheduled"
     ) {
       continue;
     }
 
+    const participantRows = await getLessonStudents(ctx, lesson._id);
+    const participantStateIsProtected =
+      lesson.participantsManuallyEdited ||
+      hasParticipantState(participantRows);
+
     if (!allDesiredStarts.has(lesson.startsAt)) {
+      if (participantStateIsProtected) {
+        continue;
+      }
+      await Promise.all(
+        participantRows.map((row) => ctx.db.delete(row._id)),
+      );
       await ctx.db.delete(lesson._id);
       removed += 1;
       continue;
@@ -90,16 +143,33 @@ export async function syncGeneratedPrivateLessons(
       });
       updated += 1;
     }
+
+    if (
+      !participantStateIsProtected &&
+      (await syncLessonStudents(ctx, lesson._id, defaultStudentIds))
+    ) {
+      updated += 1;
+    }
   }
 
   for (const startsAt of desiredStarts) {
-    await ctx.db.insert("privateLessons", {
+    const privateLessonId = await ctx.db.insert("privateLessons", {
       privateId: privateSeries._id,
       startsAt,
       durationMinutes: privateSeries.defaultDurationMinutes,
       status: "scheduled",
       generatedFromSchedule: true,
     });
+    await Promise.all(
+      defaultStudentIds.map((studentId) =>
+        ctx.db.insert("privateLessonStudents", {
+          privateLessonId,
+          studentId,
+          status: "scheduled",
+          billable: false,
+        }),
+      ),
+    );
     created += 1;
   }
 

@@ -12,7 +12,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "~/components/ui/breadcrumb";
-import { formatMDYYYY } from "~/lib/date-utils";
+import { formatDateTime, formatMDYYYY } from "~/lib/date-utils";
 import { getAccountName } from "~/lib/account-name";
 
 type Crumb = {
@@ -34,6 +34,7 @@ const STATIC_LABELS: Record<string, string> = {
   edit: "Edit",
   help: "Help",
   home: "Home",
+  privates: "Privates",
   report: "Report",
   scheduling: "Scheduling",
   search: "Search",
@@ -76,6 +77,14 @@ function getDynamicIds(pathname: string) {
     segments[0] === "staff" && segments[1] === "attendance"
       ? segments[2]
       : undefined;
+  const privateId =
+    segments[0] === "admin" && segments[1] === "privates"
+      ? segments[2]
+      : undefined;
+  const privateLessonId =
+    segments[0] === "admin" && segments[1] === "privates"
+      ? segments[3]
+      : undefined;
 
   return {
     accountId: accountId && isDynamicId(accountId) ? accountId : undefined,
@@ -95,6 +104,11 @@ function getDynamicIds(pathname: string) {
         : undefined,
     publicClassId:
       publicClassId && isDynamicId(publicClassId) ? publicClassId : undefined,
+    privateId: privateId && isDynamicId(privateId) ? privateId : undefined,
+    privateLessonId:
+      privateLessonId && isDynamicId(privateLessonId)
+        ? privateLessonId
+        : undefined,
   };
 }
 
@@ -149,6 +163,25 @@ export function AppBreadcrumbs() {
         : "skip",
     ),
   );
+  const { data: privateData } = useQuery(
+    convexQuery(
+      api.privates.getPrivate,
+      ids.privateId
+        ? { privateId: ids.privateId as Id<"privates"> }
+        : "skip",
+    ),
+  );
+  const { data: privateLessonData } = useQuery(
+    convexQuery(
+      api.privates.getPrivateLesson,
+      ids.privateLessonId
+        ? {
+            privateLessonId:
+              ids.privateLessonId as Id<"privateLessons">,
+          }
+        : "skip",
+    ),
+  );
 
   const dynamicLabels: Record<string, string | undefined> = {
     ...(ids.accountId
@@ -186,6 +219,16 @@ export function AppBreadcrumbs() {
                 attendanceData.session.date,
               )}`
             : "Session",
+        }
+      : {}),
+    ...(ids.privateId
+      ? { [ids.privateId]: privateData?.private.name || "Private" }
+      : {}),
+    ...(ids.privateLessonId
+      ? {
+          [ids.privateLessonId]: privateLessonData
+            ? formatDateTime(privateLessonData.lesson.startsAt)
+            : "Lesson",
         }
       : {}),
   };

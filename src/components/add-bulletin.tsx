@@ -207,7 +207,7 @@ function BulletinForm({ className }: React.ComponentProps<"form">) {
   // Get mutation function from Convex
   const mutationFn = useConvexMutation(api.bulletins.createBulletin);
 
-  const generateUploadUrl = useMutation(api.messages.generateUploadUrl);
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const attachImage = useMutation(api.bulletins.attachImage);
 
   const imageInput = useRef<HTMLInputElement>(null);

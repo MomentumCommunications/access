@@ -22,7 +22,6 @@ type Bulletin = {
   author?: string;
   group?: string[];
   groups?: Id<"groups">[];
-  reactions?: Id<"reactions">;
   hidden?: boolean;
 };
 

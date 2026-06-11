@@ -168,12 +168,62 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <RootDocument>
+          <LegacyServiceWorkerCleanup />
           <BootSplashDismiss />
           <Outlet />
         </RootDocument>
       </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+const LEGACY_CACHE_CLEANUP_KEY = "access:legacy-cache-cleanup:v1";
+
+function LegacyServiceWorkerCleanup() {
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(LEGACY_CACHE_CLEANUP_KEY)) {
+        return;
+      }
+    } catch {
+      // Continue without persistence when browser storage is unavailable.
+    }
+
+    async function cleanup() {
+      const tasks: Array<Promise<unknown>> = [];
+
+      if ("serviceWorker" in navigator) {
+        tasks.push(
+          navigator.serviceWorker
+            .getRegistrations()
+            .then((registrations) =>
+              Promise.all(
+                registrations.map((registration) => registration.unregister()),
+              ),
+            ),
+        );
+      }
+
+      if ("caches" in window) {
+        tasks.push(
+          caches
+            .keys()
+            .then((keys) => Promise.all(keys.map((key) => caches.delete(key)))),
+        );
+      }
+
+      await Promise.allSettled(tasks);
+      try {
+        window.localStorage.setItem(LEGACY_CACHE_CLEANUP_KEY, "complete");
+      } catch {
+        // Cleanup still succeeds when browser storage is unavailable.
+      }
+    }
+
+    void cleanup();
+  }, []);
+
+  return null;
 }
 
 function BootSplashDismiss() {

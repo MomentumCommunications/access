@@ -37,7 +37,7 @@ const formSchema = z.object({
 
 export function AddGroup() {
   const addGroupMutation = useConvexMutation(api.etcFunctions.addGroup);
-  const generateUploadUrl = useMutation(api.messages.generateUploadUrl);
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedDocument, setSelectedDocument] = useState<File | null>(null);
@@ -273,4 +273,3 @@ export function AddGroup() {
     </Dialog>
   );
 }
-

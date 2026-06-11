@@ -58,7 +58,7 @@ type Group = {
 
 export function EditGroup({ group }: { group: Group }) {
   const editGroupMutation = useConvexMutation(api.etcFunctions.editGroup);
-  const generateUploadUrl = useMutation(api.messages.generateUploadUrl);
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedDocument, setSelectedDocument] = useState<File | null>(null);

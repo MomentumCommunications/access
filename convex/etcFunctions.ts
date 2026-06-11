@@ -72,17 +72,6 @@ export const deleteGroup = mutation({
   },
 });
 
-export const getChannelIdByName = query({
-  args: { name: v.string() },
-  handler: async (ctx, { name }) => {
-    const channel = await ctx.db
-      .query("channels")
-      .withIndex("byName", (q) => q.eq("name", name))
-      .unique();
-    return channel?._id;
-  },
-});
-
 export const getUrlForImage = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, { storageId }) => {

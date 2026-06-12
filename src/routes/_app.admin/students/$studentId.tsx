@@ -41,6 +41,7 @@ export const Route = createFileRoute("/_app/admin/students/$studentId")({
 });
 
 type EnrollmentStatus = "pending" | "enrolled" | "waitlisted" | "dropped";
+type BillingTreatment = "" | "prorate" | "full";
 
 type AdminStudentData = NonNullable<
   FunctionReturnType<typeof api.classes.adminGetStudent>
@@ -114,6 +115,12 @@ const columns: ColumnDef<EnrollmentRow>[] = [
     cell: ({ row }) => row.original.endDate || "Open",
   },
   {
+    id: "proration",
+    header: "Tuition",
+    cell: ({ row }) =>
+      row.original.prorateTuition === false ? "Full period" : "Prorated",
+  },
+  {
     id: "requestedBy",
     header: "Requested by",
     cell: ({ row }) => row.original.requestedBy?.name || "Not set",
@@ -135,6 +142,8 @@ function AdminStudentDetailPage() {
   const [status, setStatus] = useState<EnrollmentStatus>("enrolled");
   const [startDate, setStartDate] = useState(todayValue);
   const [endDate, setEndDate] = useState("");
+  const [billingTreatment, setBillingTreatment] =
+    useState<BillingTreatment>("");
   const studentWeeklyMinutes =
     weeklyClassMinutes?.find((row) => row.studentId === studentId)
       ?.weeklyMinutes || 0;
@@ -155,11 +164,14 @@ function AdminStudentDetailPage() {
       status,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
+      prorateTuition:
+        status === "enrolled" ? billingTreatment === "prorate" : undefined,
     });
     setSelectedClass("");
     setStatus("enrolled");
     setStartDate(todayValue());
     setEndDate("");
+    setBillingTreatment("");
   }
 
   return (
@@ -292,9 +304,10 @@ function AdminStudentDetailPage() {
                     <Label>Status</Label>
                     <Select
                       value={status}
-                      onValueChange={(value) =>
+                      onValueChange={(value) => {
                         setStatus(value as EnrollmentStatus)
-                      }
+                        if (value !== "enrolled") setBillingTreatment("");
+                      }}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue />
@@ -307,6 +320,29 @@ function AdminStudentDetailPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {status === "enrolled" ? (
+                    <div className="space-y-1">
+                      <Label>Tuition treatment</Label>
+                      <Select
+                        value={billingTreatment}
+                        onValueChange={(value) =>
+                          setBillingTreatment(value as BillingTreatment)
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Choose billing treatment" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="prorate">
+                            Prorate for enrollment dates
+                          </SelectItem>
+                          <SelectItem value="full">
+                            Charge the full billing period
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <Label htmlFor="student-enrollment-start">
@@ -315,6 +351,7 @@ function AdminStudentDetailPage() {
                       <Input
                         id="student-enrollment-start"
                         type="date"
+                        required
                         value={startDate}
                         onChange={(event) => setStartDate(event.target.value)}
                       />
@@ -324,6 +361,8 @@ function AdminStudentDetailPage() {
                       <Input
                         id="student-enrollment-end"
                         type="date"
+                        required={status === "dropped"}
+                        min={startDate}
                         value={endDate}
                         onChange={(event) => setEndDate(event.target.value)}
                       />
@@ -332,7 +371,10 @@ function AdminStudentDetailPage() {
                   <Button
                     type="submit"
                     className="w-full"
-                    disabled={!selectedClass}
+                    disabled={
+                      !selectedClass ||
+                      (status === "enrolled" && !billingTreatment)
+                    }
                   >
                     Add to Class
                   </Button>

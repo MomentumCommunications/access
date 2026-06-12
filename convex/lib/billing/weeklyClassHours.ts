@@ -1,4 +1,9 @@
+import { isValidIsoDate } from "../enrollmentValidation.ts";
+
 export type WeeklyClassHoursInput = {
+  enrollmentId?: string;
+  classId?: string;
+  classTitle?: string;
   studentId: string;
   enrollmentStatus: string;
   enrollmentStartDate?: string;
@@ -31,17 +36,26 @@ export type StudentWeeklyMinuteSegments = {
   segments: WeeklyClassMinuteSegment[];
 };
 
+export type BillingEnrollmentExclusion = {
+  enrollmentId?: string;
+  classId?: string;
+  classTitle?: string;
+  studentId: string;
+  code:
+    | "missing_class"
+    | "missing_start_date"
+    | "invalid_start_date"
+    | "invalid_end_date"
+    | "reversed_date_range"
+    | "dropped_missing_end_date";
+  message: string;
+};
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function parseIsoDate(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  if (!isValidIsoDate(value)) return null;
   const timestamp = Date.parse(`${value}T00:00:00Z`);
-  if (
-    !Number.isFinite(timestamp) ||
-    new Date(timestamp).toISOString().slice(0, 10) !== value
-  ) {
-    return null;
-  }
   return timestamp;
 }
 
@@ -77,6 +91,91 @@ function hasValidDateBoundaries(row: WeeklyClassHoursInput) {
     row.classStartDate,
     row.classEndDate,
   ].every((value) => value === undefined || parseIsoDate(value) !== null);
+}
+
+function exclusionIdentity(row: WeeklyClassHoursInput) {
+  return {
+    enrollmentId: row.enrollmentId,
+    classId: row.classId,
+    classTitle: row.classTitle,
+    studentId: row.studentId,
+  };
+}
+
+export function getBillingEnrollmentExclusion(
+  row: WeeklyClassHoursInput,
+): BillingEnrollmentExclusion | null {
+  if (
+    row.enrollmentStatus !== "enrolled" &&
+    row.enrollmentStatus !== "dropped"
+  ) {
+    return null;
+  }
+  if (row.classStatus === "missing") {
+    return {
+      ...exclusionIdentity(row),
+      code: "missing_class",
+      message: "Enrollment references a class that no longer exists.",
+    };
+  }
+  if (row.enrollmentStartDate === undefined) {
+    return {
+      ...exclusionIdentity(row),
+      code: "missing_start_date",
+      message: "Enrollment is missing its start date.",
+    };
+  }
+  if (!isValidIsoDate(row.enrollmentStartDate)) {
+    return {
+      ...exclusionIdentity(row),
+      code: "invalid_start_date",
+      message: "Enrollment has an invalid start date.",
+    };
+  }
+  if (row.enrollmentStatus === "dropped" && row.enrollmentEndDate === undefined) {
+    return {
+      ...exclusionIdentity(row),
+      code: "dropped_missing_end_date",
+      message: "Dropped enrollment is missing its end date.",
+    };
+  }
+  if (
+    row.enrollmentEndDate !== undefined &&
+    !isValidIsoDate(row.enrollmentEndDate)
+  ) {
+    return {
+      ...exclusionIdentity(row),
+      code: "invalid_end_date",
+      message: "Enrollment has an invalid end date.",
+    };
+  }
+  if (
+    row.enrollmentEndDate !== undefined &&
+    row.enrollmentStartDate > row.enrollmentEndDate
+  ) {
+    return {
+      ...exclusionIdentity(row),
+      code: "reversed_date_range",
+      message: "Enrollment start date is after its end date.",
+    };
+  }
+  return null;
+}
+
+export function collectBillingEnrollmentExclusions(
+  rows: WeeklyClassHoursInput[],
+) {
+  return rows
+    .flatMap((row) => {
+      const exclusion = getBillingEnrollmentExclusion(row);
+      return exclusion ? [exclusion] : [];
+    })
+    .sort(
+      (left, right) =>
+        left.studentId.localeCompare(right.studentId) ||
+        (left.classId || "").localeCompare(right.classId || "") ||
+        (left.enrollmentId || "").localeCompare(right.enrollmentId || ""),
+    );
 }
 
 function isWithinDateRange(
@@ -123,6 +222,7 @@ export function shouldCountForWeeklyTuition(
 ) {
   return (
     parseIsoDate(asOfDate) !== null &&
+    getBillingEnrollmentExclusion(row) === null &&
     hasEligibleStatus(row) &&
     row.classStatus !== "archived" &&
     hasValidDateBoundaries(row) &&
@@ -169,6 +269,7 @@ function activeIntervalWithinPeriod(
   periodEnd: string,
 ) {
   if (
+    getBillingEnrollmentExclusion(row) !== null ||
     !hasEligibleStatus(row) ||
     row.classStatus === "archived" ||
     !hasValidDateBoundaries(row) ||

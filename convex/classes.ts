@@ -19,6 +19,7 @@ import {
   resolveUserRoles,
   type UserRole,
 } from "./lib/roles";
+import { validateEnrollmentDates } from "./lib/enrollmentValidation";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
 
 const roleValidator = v.union(
@@ -1245,10 +1246,19 @@ export const adminEnrollStudentInClass = mutation({
     notes: v.optional(v.string()),
     startDate: v.optional(v.string()),
     endDate: v.optional(v.string()),
+    prorateTuition: v.optional(v.boolean()),
   },
   handler: async (
     ctx,
-    { student, classId, status, notes, startDate, endDate },
+    {
+      student,
+      classId,
+      status,
+      notes,
+      startDate,
+      endDate,
+      prorateTuition,
+    },
   ) => {
     const user = await requireAdmin(ctx);
     const studentDoc = await ctx.db.get(student);
@@ -1256,6 +1266,10 @@ export const adminEnrollStudentInClass = mutation({
     if (!studentDoc || !classItem) {
       throw new Error("Student or class not found");
     }
+    if (status === "enrolled" && prorateTuition === undefined) {
+      throw new Error("Choose whether this enrollment should be prorated.");
+    }
+    validateEnrollmentDates({ status, startDate, endDate });
 
     const existing = await ctx.db
       .query("classEnrollments")
@@ -1265,7 +1279,16 @@ export const adminEnrollStudentInClass = mutation({
       .unique();
 
     if (existing) {
-      await ctx.db.patch(existing._id, { status, notes, startDate, endDate });
+      await ctx.db.patch(existing._id, {
+        status,
+        notes,
+        startDate,
+        endDate,
+        prorateTuition:
+          status === "enrolled"
+            ? prorateTuition
+            : existing.prorateTuition,
+      });
       return existing._id;
     }
 
@@ -1277,6 +1300,7 @@ export const adminEnrollStudentInClass = mutation({
       notes,
       startDate,
       endDate,
+      prorateTuition,
     });
   },
 });
@@ -1469,10 +1493,36 @@ export const adminUpdateEnrollmentStatus = mutation({
   args: {
     enrollment: v.id("classEnrollments"),
     status: enrollmentStatusValidator,
+    endDate: v.optional(v.string()),
+    prorateTuition: v.optional(v.boolean()),
   },
-  handler: async (ctx, { enrollment, status }) => {
+  handler: async (ctx, { enrollment, status, endDate, prorateTuition }) => {
     await requireAdmin(ctx);
-    await ctx.db.patch(enrollment, { status });
+    const existing = await ctx.db.get(enrollment);
+    if (!existing) {
+      throw new Error("Enrollment not found.");
+    }
+    if (
+      status === "enrolled" &&
+      existing.status !== "enrolled" &&
+      prorateTuition === undefined
+    ) {
+      throw new Error("Choose whether this enrollment should be prorated.");
+    }
+    const nextEndDate = endDate ?? existing.endDate;
+    validateEnrollmentDates({
+      status,
+      startDate: existing.startDate,
+      endDate: nextEndDate,
+    });
+    await ctx.db.patch(enrollment, {
+      status,
+      endDate: nextEndDate,
+      prorateTuition:
+        status === "enrolled" && prorateTuition !== undefined
+          ? prorateTuition
+          : existing.prorateTuition,
+    });
   },
 });
 

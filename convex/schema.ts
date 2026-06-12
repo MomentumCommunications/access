@@ -214,6 +214,7 @@ export default defineSchema({
     notes: v.optional(v.string()),
     startDate: v.optional(v.string()),
     endDate: v.optional(v.string()),
+    prorateTuition: v.optional(v.boolean()),
   })
     .index("byClass", ["classId"])
     .index("byStudent", ["student"])

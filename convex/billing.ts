@@ -5,8 +5,12 @@ import { mutation, query } from "./_generated/server";
 import {
   calculateWeeklyClassMinuteSegments,
   calculateWeeklyClassMinutes,
-  type WeeklyClassHoursInput,
+  collectBillingEnrollmentExclusions,
 } from "./lib/billing/weeklyClassHours";
+import {
+  calculatePeriodTuitionsWithExclusions,
+  type TuitionCalculationInput,
+} from "./lib/billing/tuitionCalculation";
 import { hasUserRole } from "./lib/roles";
 import { getCurrentUserOrThrow } from "./users";
 import {
@@ -94,7 +98,7 @@ function normalizedStoredTiers(
 
 async function getWeeklyClassHoursInputs(
   ctx: QueryCtx,
-): Promise<WeeklyClassHoursInput[]> {
+): Promise<TuitionCalculationInput[]> {
   const enrollments = await ctx.db.query("classEnrollments").collect();
   const classes = new Map(
     (await ctx.db.query("classes").collect()).map((classItem) => [
@@ -103,23 +107,24 @@ async function getWeeklyClassHoursInputs(
     ]),
   );
 
-  return enrollments.flatMap((enrollment) => {
+  return enrollments.map((enrollment) => {
     const classItem = classes.get(enrollment.classId);
-    if (!classItem) return [];
-    return [
-      {
-        studentId: enrollment.student,
-        enrollmentStatus: enrollment.status,
-        enrollmentStartDate: enrollment.startDate,
-        enrollmentEndDate: enrollment.endDate,
-        classStatus: classItem.status,
-        classStartDate: classItem.startDate,
-        classEndDate: classItem.endDate,
-        startTime: classItem.startTime,
-        endTime: classItem.endTime,
-        weekdays: classItem.weekdays,
-      },
-    ];
+    return {
+      enrollmentId: enrollment._id,
+      classId: enrollment.classId,
+      classTitle: classItem?.title,
+      studentId: enrollment.student,
+      enrollmentStatus: enrollment.status,
+      enrollmentStartDate: enrollment.startDate,
+      enrollmentEndDate: enrollment.endDate,
+      classStatus: classItem?.status || "missing",
+      classStartDate: classItem?.startDate,
+      classEndDate: classItem?.endDate,
+      startTime: classItem?.startTime,
+      endTime: classItem?.endTime,
+      weekdays: classItem?.weekdays,
+      prorateTuition: enrollment.prorateTuition,
+    };
   });
 }
 
@@ -197,6 +202,104 @@ export const adminTuitionReview = query({
         };
       }),
     ).then((rows) => rows.filter((row) => row !== null));
+  },
+});
+
+export const adminPeriodTuitionReview = query({
+  args: {
+    periodStart: v.string(),
+    periodEnd: v.string(),
+  },
+  handler: async (ctx, { periodStart, periodEnd }) => {
+    await requireAdmin(ctx);
+    validateIsoDate(periodStart, "periodStart");
+    validateIsoDate(periodEnd, "periodEnd");
+    if (periodEnd < periodStart) {
+      throw new Error("periodEnd must be on or after periodStart.");
+    }
+
+    const inputs = await getWeeklyClassHoursInputs(ctx);
+    const exclusions = collectBillingEnrollmentExclusions(inputs);
+    const excludedEnrollments = await Promise.all(
+      exclusions.map(async (exclusion) => {
+        const student = await ctx.db.get(
+          exclusion.studentId as Id<"students">,
+        );
+        return {
+          ...exclusion,
+          studentName: student
+            ? `${student.firstName} ${student.lastName}`
+            : "Missing student",
+        };
+      }),
+    );
+    const activeSchema = await ctx.db
+      .query("pricingSchemas")
+      .withIndex("byStatus", (q) => q.eq("status", "active"))
+      .first();
+    if (!activeSchema) {
+      return { pricingSchema: null, rows: [], excludedEnrollments };
+    }
+    const storedTiers = await getPricingSchemaTiers(ctx, activeSchema._id);
+    const calculationResult = calculatePeriodTuitionsWithExclusions(
+      inputs,
+      normalizedStoredTiers(storedTiers),
+      periodStart,
+      periodEnd,
+    );
+    const calculations = calculationResult.tuitions;
+
+    const rows = await Promise.all(
+      calculations.map(async (calculation) => {
+        const student = await ctx.db.get(
+          calculation.studentId as Id<"students">,
+        );
+        if (!student) return null;
+        const contacts = await ctx.db
+          .query("studentContacts")
+          .withIndex("byStudent", (q) =>
+            q.eq("student", student._id),
+          )
+          .collect();
+        const primaryContact =
+          contacts.find((contact) => contact.isPrimary) || contacts[0];
+        const account = primaryContact?.user
+          ? await ctx.db.get(primaryContact.user)
+          : null;
+        const pricedDays = calculation.segments
+          .filter((segment) => segment.monthlyAmountCents !== undefined)
+          .reduce((days, segment) => days + segment.days, 0);
+        const pricedAmounts = new Set(
+          calculation.segments.flatMap((segment) =>
+            segment.monthlyAmountCents === undefined
+              ? []
+              : [segment.monthlyAmountCents],
+          ),
+        );
+
+        return {
+          ...calculation,
+          student,
+          householdName: account
+            ? accountName(account)
+            : primaryContact?.name ||
+              primaryContact?.inviteEmail ||
+              "Not set",
+          isProrated:
+            pricedDays < calculation.periodDays || pricedAmounts.size > 1,
+        };
+      }),
+    );
+
+    return {
+      pricingSchema: {
+        _id: activeSchema._id,
+        name: activeSchema.name,
+        version: activeSchema.version,
+      },
+      rows: rows.filter((row) => row !== null),
+      excludedEnrollments,
+    };
   },
 });
 

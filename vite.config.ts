@@ -12,6 +12,10 @@ export default defineConfig({
   },
   resolve: {
     tsconfigPaths: true,
+    // Radix primitives must share the exact React instance used by the app.
+    // This also prevents stale dependency-optimizer chunks from producing
+    // invalid hook calls after Vite discovers a Select on a later route.
+    dedupe: ["react", "react-dom"],
   },
   plugins: [
     tanstackStart(),
@@ -59,6 +63,8 @@ export default defineConfig({
       "react",
       "react-dom",
       "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "@radix-ui/react-select",
       "@tanstack/react-query",
       "@tanstack/react-router",
     ], // Pre-bundle these for better compatibility

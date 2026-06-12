@@ -215,3 +215,18 @@ export function nextPricingSchemaVersion(
     ) + 1
   );
 }
+
+export function matchTuitionTier(
+  tiers: NormalizedTuitionTier[],
+  weeklyMinutes: number,
+) {
+  if (weeklyMinutes <= 0) return undefined;
+  return tiers
+    .slice()
+    .sort((left, right) => left.sortOrder - right.sortOrder)
+    .find(
+      (tier) =>
+        tier.maxWeeklyMinutes === undefined ||
+        weeklyMinutes <= tier.maxWeeklyMinutes,
+    );
+}

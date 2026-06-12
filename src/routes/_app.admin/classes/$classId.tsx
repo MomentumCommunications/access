@@ -7,6 +7,16 @@ import type { FunctionReturnType } from "convex/server";
 import { FormEvent, useMemo, useState } from "react";
 import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import {
   Combobox,
@@ -38,6 +48,7 @@ export const Route = createFileRoute("/_app/admin/classes/$classId")({
 
 type SessionStatus = "scheduled" | "cancelled" | "completed";
 type EnrollmentStatus = "pending" | "enrolled" | "waitlisted" | "dropped";
+type BillingTreatment = "" | "prorate" | "full";
 
 function todayValue() {
   return new Date().toISOString().slice(0, 10);
@@ -75,6 +86,10 @@ function AdminClassDetailPage() {
     useState<EnrollmentStatus>("enrolled");
   const [enrollmentStartDate, setEnrollmentStartDate] = useState(todayValue);
   const [enrollmentEndDate, setEnrollmentEndDate] = useState("");
+  const [billingTreatment, setBillingTreatment] =
+    useState<BillingTreatment>("");
+  const [enrollmentToActivate, setEnrollmentToActivate] =
+    useState<EnrollmentRow | null>(null);
   const studentOptions = useMemo(
     () =>
       (students || []).map((row) => {
@@ -106,12 +121,27 @@ function AdminClassDetailPage() {
       cell: ({ row }) => (
         <Select
           value={row.original.status}
-          onValueChange={(nextStatus) =>
-            updateEnrollment({
+          onValueChange={(nextStatus) => {
+            if (
+              nextStatus === "enrolled" &&
+              row.original.status !== "enrolled"
+            ) {
+              setEnrollmentToActivate(row.original);
+              return;
+            }
+            void updateEnrollment({
               enrollment: row.original._id,
               status: nextStatus as EnrollmentStatus,
-            })
-          }
+              endDate:
+                nextStatus === "dropped"
+                  ? row.original.endDate ||
+                    [todayValue(), row.original.startDate]
+                      .filter((date): date is string => !!date)
+                      .sort()
+                      .at(-1)
+                  : row.original.endDate,
+            });
+          }}
         >
           <SelectTrigger className="w-36">
             <SelectValue />
@@ -124,6 +154,14 @@ function AdminClassDetailPage() {
           </SelectContent>
         </Select>
       ),
+    },
+    {
+      id: "proration",
+      header: "Tuition",
+      cell: ({ row }) =>
+        row.original.prorateTuition === false
+          ? "Full period"
+          : "Prorated",
     },
     {
       id: "requestedBy",
@@ -177,11 +215,16 @@ function AdminClassDetailPage() {
       status: newEnrollmentStatus,
       startDate: enrollmentStartDate || undefined,
       endDate: enrollmentEndDate || undefined,
+      prorateTuition:
+        newEnrollmentStatus === "enrolled"
+          ? billingTreatment === "prorate"
+          : undefined,
     });
     setSelectedStudent("");
     setNewEnrollmentStatus("enrolled");
     setEnrollmentStartDate(todayValue());
     setEnrollmentEndDate("");
+    setBillingTreatment("");
   }
 
   return (
@@ -297,9 +340,10 @@ function AdminClassDetailPage() {
                     <Label>Status</Label>
                     <Select
                       value={newEnrollmentStatus}
-                      onValueChange={(value) =>
+                      onValueChange={(value) => {
                         setNewEnrollmentStatus(value as EnrollmentStatus)
-                      }
+                        if (value !== "enrolled") setBillingTreatment("");
+                      }}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue />
@@ -312,12 +356,36 @@ function AdminClassDetailPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {newEnrollmentStatus === "enrolled" ? (
+                    <div className="space-y-1">
+                      <Label>Tuition treatment</Label>
+                      <Select
+                        value={billingTreatment}
+                        onValueChange={(value) =>
+                          setBillingTreatment(value as BillingTreatment)
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Choose billing treatment" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="prorate">
+                            Prorate for enrollment dates
+                          </SelectItem>
+                          <SelectItem value="full">
+                            Charge the full billing period
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : null}
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div className="space-y-1">
                       <Label htmlFor="enrollment-start-date">Start date</Label>
                       <Input
                         id="enrollment-start-date"
                         type="date"
+                        required
                         value={enrollmentStartDate}
                         onChange={(event) =>
                           setEnrollmentStartDate(event.target.value)
@@ -329,6 +397,8 @@ function AdminClassDetailPage() {
                       <Input
                         id="enrollment-end-date"
                         type="date"
+                        required={newEnrollmentStatus === "dropped"}
+                        min={enrollmentStartDate}
                         value={enrollmentEndDate}
                         onChange={(event) =>
                           setEnrollmentEndDate(event.target.value)
@@ -340,7 +410,11 @@ function AdminClassDetailPage() {
                     type="submit"
                     variant="outline"
                     className="w-full"
-                    disabled={!selectedStudent}
+                    disabled={
+                      !selectedStudent ||
+                      (newEnrollmentStatus === "enrolled" &&
+                        !billingTreatment)
+                    }
                   >
                     Add Student
                   </Button>
@@ -516,6 +590,52 @@ function AdminClassDetailPage() {
           </section>
         </main>
       )}
+      <AlertDialog
+        open={!!enrollmentToActivate}
+        onOpenChange={(open) => {
+          if (!open) setEnrollmentToActivate(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>How should tuition be charged?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Choose whether this enrollment should be prorated when its dates
+              cover only part of a billing period.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="outline"
+              onClick={() => {
+                if (!enrollmentToActivate) return;
+                void updateEnrollment({
+                  enrollment: enrollmentToActivate._id,
+                  status: "enrolled",
+                  prorateTuition: false,
+                });
+                setEnrollmentToActivate(null);
+              }}
+            >
+              Charge full period
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => {
+                if (!enrollmentToActivate) return;
+                void updateEnrollment({
+                  enrollment: enrollmentToActivate._id,
+                  status: "enrolled",
+                  prorateTuition: true,
+                });
+                setEnrollmentToActivate(null);
+              }}
+            >
+              Prorate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </RoleGate>
   );
 }

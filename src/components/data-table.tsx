@@ -11,7 +11,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "~/components/ui/button";
 import {
   DropdownMenu,
@@ -20,13 +20,6 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { Input } from "~/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
 import {
   Table,
   TableBody,
@@ -55,6 +48,7 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const hasSetMobileVisibility = useRef(false);
+  const pageSizeId = useId();
 
   const table = useReactTable({
     data,
@@ -189,26 +183,24 @@ export function DataTable<TData, TValue>({
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Rows per page</span>
-          <Select
-            value={`${table.getState().pagination.pageSize}`}
-            onValueChange={(value) => table.setPageSize(Number(value))}
+          <label
+            htmlFor={pageSizeId}
+            className="text-sm text-muted-foreground"
           >
-            <SelectTrigger
-              size="sm"
-              className="w-20"
-              aria-label="Rows per page"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent align="start">
-              {[20, 50, 100].map((pageSize) => (
-                <SelectItem key={pageSize} value={`${pageSize}`}>
-                  {pageSize}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            Rows per page
+          </label>
+          <select
+            id={pageSizeId}
+            value={`${table.getState().pagination.pageSize}`}
+            onChange={(event) => table.setPageSize(Number(event.target.value))}
+            className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-20 rounded-md border px-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+          >
+            {[20, 50, 100].map((pageSize) => (
+              <option key={pageSize} value={`${pageSize}`}>
+                {pageSize}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="flex items-center gap-2">
           <Button

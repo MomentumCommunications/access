@@ -218,6 +218,30 @@ export default defineSchema({
     .index("byClass", ["classId"])
     .index("byStudent", ["student"])
     .index("byClassStudent", ["classId", "student"]),
+  pricingSchemas: defineTable({
+    name: v.string(),
+    version: v.number(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("active"),
+      v.literal("archived"),
+    ),
+    sourceSchemaId: v.optional(v.id("pricingSchemas")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    activatedAt: v.optional(v.number()),
+  })
+    .index("byStatus", ["status"])
+    .index("byNameVersion", ["name", "version"]),
+  tuitionPricingTiers: defineTable({
+    pricingSchemaId: v.id("pricingSchemas"),
+    label: v.string(),
+    maxWeeklyMinutes: v.optional(v.number()),
+    monthlyAmountCents: v.number(),
+    sortOrder: v.number(),
+  })
+    .index("byPricingSchema", ["pricingSchemaId"])
+    .index("byPricingSchemaOrder", ["pricingSchemaId", "sortOrder"]),
   attendanceRecords: defineTable({
     session: v.id("sessions"),
     student: v.id("students"),

@@ -665,11 +665,15 @@ export const adminListBillablePrivateLessonStudents = query({
           ) {
             return null;
           }
+          const privateSeries = await ctx.db.get(lesson.privateId);
           return {
             participation,
             lesson,
-            private: await ctx.db.get(lesson.privateId),
+            private: privateSeries,
             student: await ctx.db.get(participation.studentId),
+            instructor: privateSeries
+              ? await ctx.db.get(privateSeries.instructorId)
+              : null,
           };
         }),
       )

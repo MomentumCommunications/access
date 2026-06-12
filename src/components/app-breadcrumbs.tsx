@@ -25,6 +25,7 @@ const STATIC_LABELS: Record<string, string> = {
   accounts: "Accounts",
   admin: "Admin",
   attendance: "Attendance",
+  billing: "Billing",
   channel: "Channels",
   classes: "Classes",
   create: "Create",

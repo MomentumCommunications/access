@@ -4,8 +4,10 @@ import {
   CalendarCheck,
   CalendarClock,
   CalendarDays,
+  ChevronRight,
   CoffeeIcon,
   Cog,
+  DollarSign,
   GraduationCap,
   HelpCircle,
   Home,
@@ -13,6 +15,11 @@ import {
   LogIn,
   Users,
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "~/components/ui/collapsible";
 import {
   Sidebar,
   SidebarContent,
@@ -24,6 +31,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   useSidebar,
 } from "~/components/ui/sidebar";
 import { useSidebarDataContext } from "~/contexts/SidebarDataContext";
@@ -232,6 +242,43 @@ const AppSidebarComponent = memo(() => {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                  <Collapsible
+                    asChild
+                    defaultOpen
+                    className="group/collapsible"
+                  >
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton tooltip="Billing">
+                          <DollarSign />
+                          <span>Billing</span>
+                          <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {[
+                            ["Pricing", "/admin/billing/pricing"],
+                            ["Tuitions", "/admin/billing/tuitions"],
+                            [
+                              "Private Charges",
+                              "/admin/billing/private-charges",
+                            ],
+                            ["Runs", "/admin/billing/runs"],
+                          ].map(([label, to]) => (
+                            <SidebarMenuSubItem key={to}>
+                              <SidebarMenuSubButton
+                                asChild
+                                onClick={closeMobileSidebar}
+                              >
+                                <Link to={to as never}>{label}</Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

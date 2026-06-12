@@ -48,7 +48,19 @@ type AdminStudentData = NonNullable<
 type EnrollmentRow = AdminStudentData["enrollments"][number];
 
 function todayValue() {
-  return new Date().toISOString().slice(0, 10);
+  const today = new Date();
+  return [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function formatWeeklyHours(weeklyMinutes: number) {
+  const hours = weeklyMinutes / 60;
+  return `${new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 2,
+  }).format(hours)} ${hours === 1 ? "hour" : "hours"}`;
 }
 
 function formatClassOptionLabel(
@@ -114,11 +126,18 @@ function AdminStudentDetailPage() {
     student: studentId as Id<"students">,
   });
   const classes = useConvexQuery(api.classes.adminListClasses, {});
+  const weeklyClassMinutes = useConvexQuery(
+    api.billing.adminWeeklyClassMinutes,
+    { asOfDate: todayValue() },
+  );
   const enrollStudent = useConvexMutation(api.classes.adminEnrollStudentInClass);
   const [selectedClass, setSelectedClass] = useState("");
   const [status, setStatus] = useState<EnrollmentStatus>("enrolled");
   const [startDate, setStartDate] = useState(todayValue);
   const [endDate, setEndDate] = useState("");
+  const studentWeeklyMinutes =
+    weeklyClassMinutes?.find((row) => row.studentId === studentId)
+      ?.weeklyMinutes || 0;
   const classOptions = useMemo(
     () =>
       (classes || []).map((row) => ({
@@ -215,6 +234,14 @@ function AdminStudentDetailPage() {
                 </div>
                 <div>Age: {formatAge(studentData.student.dateOfBirth)}</div>
                 <div>Contacts: {studentData.contacts.length}</div>
+                <div>
+                  Weekly class hours:{" "}
+                  {weeklyClassMinutes === undefined ? (
+                    <Spinner className="inline size-3.5" />
+                  ) : (
+                    formatWeeklyHours(studentWeeklyMinutes)
+                  )}
+                </div>
                 {studentData.student.notes ? (
                   <div>
                     <div className="font-medium">Notes</div>

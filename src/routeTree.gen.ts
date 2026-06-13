@@ -60,6 +60,7 @@ import { Route as AppAdminBillingTuitionsRouteImport } from './routes/_app.admin
 import { Route as AppAdminBillingRunsRouteImport } from './routes/_app.admin/billing/runs'
 import { Route as AppAdminBillingPrivateChargesRouteImport } from './routes/_app.admin/billing/private-charges'
 import { Route as AppAdminBillingPricingRouteImport } from './routes/_app.admin/billing/pricing'
+import { Route as AppAdminBillingChargesRouteImport } from './routes/_app.admin/billing/charges'
 import { Route as AppAdminAccountsCreateRouteImport } from './routes/_app.admin/accounts_.create'
 import { Route as AppAdminAccountsUserIdRouteImport } from './routes/_app.admin/accounts_.$userId'
 import { Route as AppAdminStudentsStudentIdReportRouteImport } from './routes/_app.admin/students/$studentId_.report'
@@ -328,6 +329,11 @@ const AppAdminBillingPricingRoute = AppAdminBillingPricingRouteImport.update({
   path: '/admin/billing/pricing',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminBillingChargesRoute = AppAdminBillingChargesRouteImport.update({
+  id: '/admin/billing/charges',
+  path: '/admin/billing/charges',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminAccountsCreateRoute = AppAdminAccountsCreateRouteImport.update({
   id: '/admin/accounts_/create',
   path: '/admin/accounts/create',
@@ -412,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/students/': typeof AppStudentsIndexRoute
   '/admin/accounts/$userId': typeof AppAdminAccountsUserIdRoute
   '/admin/accounts/create': typeof AppAdminAccountsCreateRoute
+  '/admin/billing/charges': typeof AppAdminBillingChargesRoute
   '/admin/billing/pricing': typeof AppAdminBillingPricingRoute
   '/admin/billing/private-charges': typeof AppAdminBillingPrivateChargesRoute
   '/admin/billing/runs': typeof AppAdminBillingRunsRoute
@@ -471,6 +478,7 @@ export interface FileRoutesByTo {
   '/students': typeof AppStudentsIndexRoute
   '/admin/accounts/$userId': typeof AppAdminAccountsUserIdRoute
   '/admin/accounts/create': typeof AppAdminAccountsCreateRoute
+  '/admin/billing/charges': typeof AppAdminBillingChargesRoute
   '/admin/billing/pricing': typeof AppAdminBillingPricingRoute
   '/admin/billing/private-charges': typeof AppAdminBillingPrivateChargesRoute
   '/admin/billing/runs': typeof AppAdminBillingRunsRoute
@@ -533,6 +541,7 @@ export interface FileRoutesById {
   '/_app/students/': typeof AppStudentsIndexRoute
   '/_app/admin/accounts_/$userId': typeof AppAdminAccountsUserIdRoute
   '/_app/admin/accounts_/create': typeof AppAdminAccountsCreateRoute
+  '/_app/admin/billing/charges': typeof AppAdminBillingChargesRoute
   '/_app/admin/billing/pricing': typeof AppAdminBillingPricingRoute
   '/_app/admin/billing/private-charges': typeof AppAdminBillingPrivateChargesRoute
   '/_app/admin/billing/runs': typeof AppAdminBillingRunsRoute
@@ -595,6 +604,7 @@ export interface FileRouteTypes {
     | '/students/'
     | '/admin/accounts/$userId'
     | '/admin/accounts/create'
+    | '/admin/billing/charges'
     | '/admin/billing/pricing'
     | '/admin/billing/private-charges'
     | '/admin/billing/runs'
@@ -654,6 +664,7 @@ export interface FileRouteTypes {
     | '/students'
     | '/admin/accounts/$userId'
     | '/admin/accounts/create'
+    | '/admin/billing/charges'
     | '/admin/billing/pricing'
     | '/admin/billing/private-charges'
     | '/admin/billing/runs'
@@ -715,6 +726,7 @@ export interface FileRouteTypes {
     | '/_app/students/'
     | '/_app/admin/accounts_/$userId'
     | '/_app/admin/accounts_/create'
+    | '/_app/admin/billing/charges'
     | '/_app/admin/billing/pricing'
     | '/_app/admin/billing/private-charges'
     | '/_app/admin/billing/runs'
@@ -1107,6 +1119,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminBillingPricingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/billing/charges': {
+      id: '/_app/admin/billing/charges'
+      path: '/admin/billing/charges'
+      fullPath: '/admin/billing/charges'
+      preLoaderRoute: typeof AppAdminBillingChargesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/accounts_/create': {
       id: '/_app/admin/accounts_/create'
       path: '/admin/accounts/create'
@@ -1192,6 +1211,7 @@ interface AppRouteChildren {
   AppStudentsIndexRoute: typeof AppStudentsIndexRoute
   AppAdminAccountsUserIdRoute: typeof AppAdminAccountsUserIdRoute
   AppAdminAccountsCreateRoute: typeof AppAdminAccountsCreateRoute
+  AppAdminBillingChargesRoute: typeof AppAdminBillingChargesRoute
   AppAdminBillingPricingRoute: typeof AppAdminBillingPricingRoute
   AppAdminBillingPrivateChargesRoute: typeof AppAdminBillingPrivateChargesRoute
   AppAdminBillingRunsRoute: typeof AppAdminBillingRunsRoute
@@ -1242,6 +1262,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppStudentsIndexRoute: AppStudentsIndexRoute,
   AppAdminAccountsUserIdRoute: AppAdminAccountsUserIdRoute,
   AppAdminAccountsCreateRoute: AppAdminAccountsCreateRoute,
+  AppAdminBillingChargesRoute: AppAdminBillingChargesRoute,
   AppAdminBillingPricingRoute: AppAdminBillingPricingRoute,
   AppAdminBillingPrivateChargesRoute: AppAdminBillingPrivateChargesRoute,
   AppAdminBillingRunsRoute: AppAdminBillingRunsRoute,

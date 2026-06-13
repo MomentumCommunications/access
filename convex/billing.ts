@@ -28,6 +28,7 @@ import {
   calculatePerSessionChargeCandidates,
   resolvedClassEnrollmentMode,
 } from "../shared/per-session-signup";
+import { aggregatePerSessionCharges } from "../shared/billing-charges";
 
 function accountName(account: {
   displayName?: string;
@@ -513,6 +514,141 @@ export const adminPeriodPerSessionCharges = query({
       periodStart,
       periodEnd,
     );
+  },
+});
+
+export const adminPeriodChargesReview = query({
+  args: {
+    periodStart: v.string(),
+    periodEnd: v.string(),
+    startsAtOrAfter: v.number(),
+    startsBefore: v.number(),
+  },
+  handler: async (
+    ctx,
+    { periodStart, periodEnd, startsAtOrAfter, startsBefore },
+  ) => {
+    await requireAdmin(ctx);
+    validateIsoDate(periodStart, "periodStart");
+    validateIsoDate(periodEnd, "periodEnd");
+    if (periodEnd < periodStart) {
+      throw new Error("periodEnd must be on or after periodStart.");
+    }
+    if (startsBefore <= startsAtOrAfter) {
+      throw new Error("Billing range end must be after its start.");
+    }
+
+    const householdData = await getHouseholdResolutionData(ctx);
+    const [signups, privateParticipations] = await Promise.all([
+      ctx.db.query("classSessionSignups").collect(),
+      ctx.db
+        .query("privateLessonStudents")
+        .withIndex("byBillable", (q) => q.eq("billable", true))
+        .collect(),
+    ]);
+
+    const perSessionRows = (
+      await Promise.all(
+        signups.map(async (signup) => {
+          const [student, classItem, session] = await Promise.all([
+            ctx.db.get(signup.student),
+            ctx.db.get(signup.classId),
+            ctx.db.get(signup.session),
+          ]);
+          if (!student || !classItem || !session) return null;
+          return {
+            signupId: signup._id,
+            studentId: student._id,
+            studentStatus: student.status,
+            classId: classItem._id,
+            classMode: resolvedClassEnrollmentMode(
+              classItem.enrollmentMode,
+            ),
+            sessionId: session._id,
+            sessionDate: session.date,
+            sessionActive: session.active,
+            sessionStatus: session.status,
+            signupStatus: signup.status,
+            unitPriceCents: signup.unitPriceCents,
+            student,
+            classItem,
+            session,
+          };
+        }),
+      )
+    ).filter((row) => row !== null);
+    const candidates = calculatePerSessionChargeCandidates(
+      perSessionRows,
+      periodStart,
+      periodEnd,
+    );
+    const candidateByStudentClass = new Map(
+      candidates.map((row) => [
+        `${row.studentId}:${row.classId}`,
+        row,
+      ]),
+    );
+    const perSessionCharges = aggregatePerSessionCharges(
+      candidates,
+      periodStart,
+      periodEnd,
+    ).map((aggregate) => {
+      const source = candidateByStudentClass.get(
+        `${aggregate.studentId}:${aggregate.classId}`,
+      )!;
+      return {
+        ...aggregate,
+        student: source.student,
+        classItem: source.classItem,
+        household: resolveStudentHousehold(source.student._id, householdData),
+      };
+    });
+
+    const privateCharges = (
+      await Promise.all(
+        privateParticipations.map(async (participation) => {
+          const lesson = await ctx.db.get(participation.privateLessonId);
+          if (
+            !lesson ||
+            lesson.status !== "completed" ||
+            lesson.startsAt < startsAtOrAfter ||
+            lesson.startsAt >= startsBefore ||
+            participation.status === "scheduled" ||
+            participation.status === "cancelled"
+          ) {
+            return null;
+          }
+          const [privateSeries, student] = await Promise.all([
+            ctx.db.get(lesson.privateId),
+            ctx.db.get(participation.studentId),
+          ]);
+          if (!student) return null;
+          return {
+            participation,
+            lesson,
+            private: privateSeries,
+            student,
+            instructor: privateSeries
+              ? await ctx.db.get(privateSeries.instructorId)
+              : null,
+            household: resolveStudentHousehold(student._id, householdData),
+          };
+        }),
+      )
+    )
+      .filter((row) => row !== null)
+      .sort(
+        (left, right) =>
+          left.lesson.startsAt - right.lesson.startsAt ||
+          left.student._id.localeCompare(right.student._id),
+      );
+
+    return {
+      periodStart,
+      periodEnd,
+      privateCharges,
+      perSessionCharges,
+    };
   },
 });
 

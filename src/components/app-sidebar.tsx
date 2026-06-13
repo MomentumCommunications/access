@@ -261,10 +261,7 @@ const AppSidebarComponent = memo(() => {
                           {[
                             ["Pricing", "/admin/billing/pricing"],
                             ["Tuitions", "/admin/billing/tuitions"],
-                            [
-                              "Private Charges",
-                              "/admin/billing/private-charges",
-                            ],
+                            ["Charges", "/admin/billing/charges"],
                             ["Runs", "/admin/billing/runs"],
                           ].map(([label, to]) => (
                             <SidebarMenuSubItem key={to}>

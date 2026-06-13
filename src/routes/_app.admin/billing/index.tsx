@@ -34,9 +34,10 @@ const destinations = [
     icon: <Banknote />,
   },
   {
-    title: "Private Charges",
-    description: "Review billable private lesson participation separately.",
-    to: "/admin/billing/private-charges",
+    title: "Charges",
+    description:
+      "Review app-calculated private lesson and per-session class charges.",
+    to: "/admin/billing/charges",
     icon: <ReceiptText />,
   },
   {

@@ -2,7 +2,7 @@ import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
-import { ArrowLeft, Home, Unlink } from "lucide-react";
+import { ArrowLeft, Home, Unlink, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { RoleGate } from "~/components/role-gate";
@@ -294,11 +294,22 @@ function AdminAccountDetailPage() {
             </Card>
           </section>
           <section className="space-y-4">
-            <div>
-              <h1 className="text-3xl font-bold">Connected students</h1>
-              <p className="text-muted-foreground">
-                Student profiles linked to this account.
-              </p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h1 className="text-3xl font-bold">Connected students</h1>
+                <p className="text-muted-foreground">
+                  Student profiles linked to this account.
+                </p>
+              </div>
+              <Button asChild className="w-full sm:w-auto">
+                <Link
+                  to="/admin/accounts/$userId/students/create"
+                  params={{ userId: accountData.account._id }}
+                >
+                  <UserPlus />
+                  Add student
+                </Link>
+              </Button>
             </div>
             {accountData.students.length === 0 ? (
               <Card className="rounded-lg">

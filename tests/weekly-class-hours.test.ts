@@ -68,6 +68,20 @@ describe("calculateWeeklyClassMinutes", () => {
     assert.deepEqual(calculateWeeklyClassMinutes(rows, "2026-06-15"), []);
   });
 
+  it("excludes inactive and archived students from tuition", () => {
+    assert.deepEqual(
+      calculateWeeklyClassMinutes(
+        [
+          row({ studentId: "active", studentStatus: "active" }),
+          row({ studentId: "inactive", studentStatus: "inactive" }),
+          row({ studentId: "archived", studentStatus: "archived" }),
+        ],
+        "2026-06-15",
+      ),
+      [{ studentId: "active", weeklyMinutes: 60 }],
+    );
+  });
+
   it("counts dropped enrollment through its inclusive end date", () => {
     const dropped = row({
       enrollmentStatus: "dropped",

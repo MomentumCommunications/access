@@ -241,6 +241,13 @@ export default defineSchema({
       v.literal("archived"),
     ),
     sourceSchemaId: v.optional(v.id("pricingSchemas")),
+    siblingDiscount: v.optional(
+      v.object({
+        enabled: v.boolean(),
+        percentOffBasisPoints: v.number(),
+        appliesTo: v.literal("all_but_highest"),
+      }),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
     activatedAt: v.optional(v.number()),

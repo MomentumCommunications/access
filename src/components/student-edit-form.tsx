@@ -3,9 +3,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Doc, Id } from "convex/_generated/dataModel";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
+import { requiresStudentStatusConfirmation } from "../../shared/student-status";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -120,6 +131,9 @@ function StudentEditForm({
     [selectedPhoto],
   );
   const displayedPhoto = previewUrl || photoUrl;
+  const [pendingAdminValues, setPendingAdminValues] =
+    useState<StudentFormValues | null>(null);
+  const [isConfirmingStatus, setIsConfirmingStatus] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -149,7 +163,7 @@ function StudentEditForm({
     return storageId;
   }
 
-  async function onSubmit(values: StudentFormValues) {
+  async function saveStudent(values: StudentFormValues) {
     form.clearErrors("root");
 
     try {
@@ -165,13 +179,13 @@ function StudentEditForm({
         allergies: values.allergies.trim(),
         recital: values.recital,
         notes: values.notes.trim() || undefined,
-        status: values.status,
         ...(photo ? { photo } : {}),
       };
 
       if (mode === "admin") {
         await adminUpdateStudent({
           ...updates,
+          status: values.status,
           groupId: values.groupId
             ? (values.groupId as Id<"groups">)
             : null,
@@ -191,8 +205,31 @@ function StudentEditForm({
     }
   }
 
+  async function onSubmit(values: StudentFormValues) {
+    if (
+      mode === "admin" &&
+      requiresStudentStatusConfirmation(student.status, values.status)
+    ) {
+      setPendingAdminValues(values);
+      return;
+    }
+    await saveStudent(values);
+  }
+
+  async function confirmStatusChange() {
+    if (!pendingAdminValues) return;
+    setIsConfirmingStatus(true);
+    try {
+      await saveStudent(pendingAdminValues);
+      setPendingAdminValues(null);
+    } finally {
+      setIsConfirmingStatus(false);
+    }
+  }
+
   return (
-    <Card className="rounded-lg">
+    <>
+      <Card className="rounded-lg">
       <CardHeader>
         <CardTitle>Student details</CardTitle>
       </CardHeader>
@@ -407,34 +444,36 @@ function StudentEditForm({
               )}
             />
 
-            <Controller
-              name="status"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor={field.name}>Status</FieldLabel>
-                  <Select
-                    name={field.name}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger
-                      id={field.name}
-                      aria-invalid={fieldState.invalid}
-                      className="w-full"
+            {mode === "admin" ? (
+              <Controller
+                name="status"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Status</FieldLabel>
+                    <Select
+                      name={field.name}
+                      value={field.value}
+                      onValueChange={field.onChange}
                     >
-                      <SelectValue placeholder="Select a status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="archived">Archived</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FieldError errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
+                      <SelectTrigger
+                        id={field.name}
+                        aria-invalid={fieldState.invalid}
+                        className="w-full"
+                      >
+                        <SelectValue placeholder="Select a status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="archived">Archived</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FieldError errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+            ) : null}
 
             <Controller
               name="recital"
@@ -499,7 +538,45 @@ function StudentEditForm({
           </div>
         </form>
       </CardContent>
-    </Card>
+      </Card>
+
+      <AlertDialog
+        open={pendingAdminValues !== null}
+        onOpenChange={(open) => {
+          if (!open && !isConfirmingStatus) {
+            setPendingAdminValues(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Change this student to {pendingAdminValues?.status}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Active enrollments will be ended today, pending and waitlisted
+              requests will be removed, and this student will no longer appear
+              in tuition calculations. Existing dropped enrollment history
+              will be preserved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isConfirmingStatus}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isConfirmingStatus}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmStatusChange();
+              }}
+            >
+              {isConfirmingStatus ? "Updating..." : "Confirm change"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

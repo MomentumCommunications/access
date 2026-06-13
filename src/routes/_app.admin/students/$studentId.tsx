@@ -4,10 +4,19 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
-import { ChartPie, Pencil } from "lucide-react";
+import {
+  ChartPie,
+  Check,
+  Mail,
+  Pencil,
+  ShieldCheck,
+  UserPlus,
+} from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -34,7 +43,9 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
+import { Checkbox } from "~/components/ui/checkbox";
 import { formatAge, formatTimeRange } from "~/lib/date-utils";
+import { getAccountName } from "~/lib/account-name";
 
 export const Route = createFileRoute("/_app/admin/students/$studentId")({
   component: AdminStudentDetailPage,
@@ -133,17 +144,26 @@ function AdminStudentDetailPage() {
     student: studentId as Id<"students">,
   });
   const classes = useConvexQuery(api.classes.adminListClasses, {});
+  const accounts = useConvexQuery(api.classes.adminListAccounts, {});
   const weeklyClassMinutes = useConvexQuery(
     api.billing.adminWeeklyClassMinutes,
     { asOfDate: todayValue() },
   );
   const enrollStudent = useConvexMutation(api.classes.adminEnrollStudentInClass);
+  const connectAccount = useConvexMutation(
+    api.classes.adminConnectStudentAccount,
+  );
   const [selectedClass, setSelectedClass] = useState("");
   const [status, setStatus] = useState<EnrollmentStatus>("enrolled");
   const [startDate, setStartDate] = useState(todayValue);
   const [endDate, setEndDate] = useState("");
   const [billingTreatment, setBillingTreatment] =
     useState<BillingTreatment>("");
+  const [selectedAccount, setSelectedAccount] = useState("");
+  const [relationship, setRelationship] = useState("");
+  const [canManage, setCanManage] = useState(true);
+  const [isPrimary, setIsPrimary] = useState(false);
+  const [connectingAccount, setConnectingAccount] = useState(false);
   const studentWeeklyMinutes =
     weeklyClassMinutes?.find((row) => row.studentId === studentId)
       ?.weeklyMinutes || 0;
@@ -155,6 +175,27 @@ function AdminStudentDetailPage() {
       })),
     [classes],
   );
+  const accountOptions = useMemo(() => {
+    const connectedAccountIds = new Set(
+      studentData?.contacts.flatMap((contact) =>
+        contact.user ? [contact.user._id] : [],
+      ) || [],
+    );
+    return (accounts || [])
+      .filter((account) => !connectedAccountIds.has(account._id))
+      .map((account) => ({
+        value: account._id,
+        label: getAccountName(account),
+        email: Array.isArray(account.email)
+          ? account.email[0]
+          : account.email,
+      }))
+      .sort(
+        (left, right) =>
+          left.label.localeCompare(right.label) ||
+          left.value.localeCompare(right.value),
+      );
+  }, [accounts, studentData?.contacts]);
 
   async function handleEnroll(event: FormEvent) {
     event.preventDefault();
@@ -174,9 +215,37 @@ function AdminStudentDetailPage() {
     setBillingTreatment("");
   }
 
+  async function handleConnectAccount(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedAccount) return;
+    setConnectingAccount(true);
+    try {
+      await connectAccount({
+        student: studentId as Id<"students">,
+        user: selectedAccount as Id<"users">,
+        relationship: relationship || undefined,
+        canManage,
+        isPrimary,
+      });
+      setSelectedAccount("");
+      setRelationship("");
+      setCanManage(true);
+      setIsPrimary(false);
+      toast.success("Account connected to student.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to connect account.",
+      );
+    } finally {
+      setConnectingAccount(false);
+    }
+  }
+
   return (
     <RoleGate allow="admin">
-      {studentData === undefined || classes === undefined ? (
+      {studentData === undefined ||
+      classes === undefined ||
+      accounts === undefined ? (
         <main className="flex min-h-[calc(100svh-54px)] items-center justify-center">
           <Spinner className="size-5" />
         </main>
@@ -383,6 +452,204 @@ function AdminStudentDetailPage() {
             </Card>
           </section>
           <section className="space-y-4">
+            <div>
+              <h1 className="text-3xl font-bold">Contacts</h1>
+              <p className="text-muted-foreground">
+                Accounts and contact records connected to this student.
+              </p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {studentData.contacts.map((contact) => (
+                <Card key={contact._id} className="rounded-lg">
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <CardTitle className="truncate text-base">
+                          {contact.user
+                            ? getAccountName(contact.user)
+                            : contact.name ||
+                              contact.inviteEmail ||
+                              "Unnamed contact"}
+                        </CardTitle>
+                        <CardDescription>
+                          {contact.relationship || "Relationship not set"}
+                        </CardDescription>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                        {contact.isPrimary ? (
+                          <Badge variant="secondary">Primary</Badge>
+                        ) : null}
+                        {contact.canManage ? (
+                          <Badge variant="outline">Can manage</Badge>
+                        ) : null}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="size-4 shrink-0" />
+                      <span className="truncate">
+                        {contact.user
+                          ? Array.isArray(contact.user.email)
+                            ? contact.user.email.join(", ")
+                            : contact.user.email || "Email not set"
+                          : contact.inviteEmail || "Email not set"}
+                      </span>
+                    </div>
+                    {contact.user ? (
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                      >
+                        <Link
+                          to="/admin/accounts/$userId"
+                          params={{ userId: contact.user._id }}
+                        >
+                          View account
+                        </Link>
+                      </Button>
+                    ) : (
+                      <div className="rounded-md border border-dashed p-2 text-xs text-muted-foreground">
+                        Contact record is not connected to an account yet.
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+              {studentData.contacts.length === 0 ? (
+                <Card className="rounded-lg md:col-span-2">
+                  <CardHeader>
+                    <CardTitle>No contacts</CardTitle>
+                    <CardDescription>
+                      Connect an existing account below.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              ) : null}
+            </div>
+
+            <Card className="rounded-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="size-4" />
+                  Connect existing account
+                </CardTitle>
+                <CardDescription>
+                  Add another guardian or contact using an account already in
+                  Access Momentum.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form
+                  className="grid gap-4 md:grid-cols-2"
+                  onSubmit={handleConnectAccount}
+                >
+                  <div className="space-y-1 md:col-span-2">
+                    <Label>Account</Label>
+                    <Combobox
+                      items={accountOptions.map((option) => option.value)}
+                      value={selectedAccount || null}
+                      onValueChange={(value) =>
+                        setSelectedAccount(value || "")
+                      }
+                      itemToStringLabel={(value) => {
+                        const option = accountOptions.find(
+                          (candidate) => candidate.value === value,
+                        );
+                        return option
+                          ? [option.label, option.email]
+                              .filter(Boolean)
+                              .join(" · ")
+                          : "";
+                      }}
+                    >
+                      <ComboboxInput
+                        className="w-full"
+                        placeholder={
+                          accountOptions.length === 0
+                            ? "No available accounts"
+                            : "Search accounts"
+                        }
+                        disabled={accountOptions.length === 0}
+                        showClear
+                      />
+                      <ComboboxContent>
+                        <ComboboxEmpty>No accounts found.</ComboboxEmpty>
+                        <ComboboxList>
+                          {(value: string) => {
+                            const option = accountOptions.find(
+                              (candidate) => candidate.value === value,
+                            );
+                            return (
+                              <ComboboxItem key={value} value={value}>
+                                <div className="min-w-0">
+                                  <div className="truncate font-medium">
+                                    {option?.label || value}
+                                  </div>
+                                  {option?.email ? (
+                                    <div className="truncate text-xs text-muted-foreground">
+                                      {option.email}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </ComboboxItem>
+                            );
+                          }}
+                        </ComboboxList>
+                      </ComboboxContent>
+                    </Combobox>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="contact-relationship">Relationship</Label>
+                    <Input
+                      id="contact-relationship"
+                      value={relationship}
+                      onChange={(event) => setRelationship(event.target.value)}
+                      placeholder="Parent, guardian, grandparent..."
+                      maxLength={80}
+                    />
+                  </div>
+                  <div className="flex flex-col justify-end gap-3 pb-1">
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={canManage}
+                        onCheckedChange={(checked) =>
+                          setCanManage(checked === true)
+                        }
+                      />
+                      <ShieldCheck className="size-4 text-muted-foreground" />
+                      Can manage this student
+                    </label>
+                    <label className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        checked={isPrimary}
+                        onCheckedChange={(checked) =>
+                          setIsPrimary(checked === true)
+                        }
+                      />
+                      <Check className="size-4 text-muted-foreground" />
+                      Set as primary contact
+                    </label>
+                  </div>
+                  <div className="md:col-span-2">
+                    <Button
+                      type="submit"
+                      disabled={!selectedAccount || connectingAccount}
+                    >
+                      {connectingAccount ? (
+                        <Spinner className="size-4" />
+                      ) : (
+                        <UserPlus />
+                      )}
+                      Connect account
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+
             <div>
               <h1 className="text-3xl font-bold">Enrollments</h1>
               <p className="text-muted-foreground">

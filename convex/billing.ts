@@ -19,8 +19,10 @@ import { hasUserRole } from "./lib/roles";
 import { getCurrentUserOrThrow } from "./users";
 import {
   nextPricingSchemaVersion,
+  type SiblingDiscountConfig,
   type NormalizedTuitionTier,
   validateNormalizedTuitionTiers,
+  validateSiblingDiscountConfig,
 } from "../shared/tuition-pricing";
 
 function accountName(account: {
@@ -58,6 +60,18 @@ const pricingTierValidator = v.object({
   monthlyAmountCents: v.number(),
   sortOrder: v.number(),
 });
+
+const siblingDiscountValidator = v.object({
+  enabled: v.boolean(),
+  percentOffBasisPoints: v.number(),
+  appliesTo: v.literal("all_but_highest"),
+});
+
+const disabledSiblingDiscount: SiblingDiscountConfig = {
+  enabled: false,
+  percentOffBasisPoints: 0,
+  appliesTo: "all_but_highest",
+};
 
 async function requireAdmin(ctx: BillingCtx) {
   const user = await getCurrentUserOrThrow(ctx);
@@ -115,6 +129,12 @@ async function getWeeklyClassHoursInputs(
   ctx: QueryCtx,
 ): Promise<TuitionCalculationInput[]> {
   const enrollments = await ctx.db.query("classEnrollments").collect();
+  const students = new Map(
+    (await ctx.db.query("students").collect()).map((student) => [
+      student._id,
+      student,
+    ]),
+  );
   const classes = new Map(
     (await ctx.db.query("classes").collect()).map((classItem) => [
       classItem._id,
@@ -129,6 +149,7 @@ async function getWeeklyClassHoursInputs(
       classId: enrollment.classId,
       classTitle: classItem?.title,
       studentId: enrollment.student,
+      studentStatus: students.get(enrollment.student)?.status || "missing",
       enrollmentStatus: enrollment.status,
       enrollmentStartDate: enrollment.startDate,
       enrollmentEndDate: enrollment.endDate,
@@ -426,7 +447,10 @@ export const adminPeriodTuitionReview = query({
         version: activeSchema.version,
       },
       rows: tuitionRows,
-      households: aggregateHouseholdTuitions(tuitionRows),
+      households: aggregateHouseholdTuitions(
+        tuitionRows,
+        activeSchema.siblingDiscount || disabledSiblingDiscount,
+      ),
       excludedEnrollments,
     };
   },
@@ -568,8 +592,31 @@ export const adminCreatePricingSchema = mutation({
       name: normalizedName,
       version: nextPricingSchemaVersion(schemas, normalizedName),
       status: "draft",
+      siblingDiscount: disabledSiblingDiscount,
       createdAt: now,
       updatedAt: now,
+    });
+  },
+});
+
+export const adminSaveSiblingDiscount = mutation({
+  args: {
+    pricingSchemaId: v.id("pricingSchemas"),
+    siblingDiscount: siblingDiscountValidator,
+  },
+  handler: async (ctx, { pricingSchemaId, siblingDiscount }) => {
+    await requireAdmin(ctx);
+    const schema = await ctx.db.get(pricingSchemaId);
+    if (!schema) {
+      throw new Error("Pricing schema not found.");
+    }
+    if (schema.status !== "draft") {
+      throw new Error("Only draft pricing schemas can be edited.");
+    }
+    validateSiblingDiscountConfig(siblingDiscount);
+    await ctx.db.patch(pricingSchemaId, {
+      siblingDiscount,
+      updatedAt: Date.now(),
     });
   },
 });
@@ -625,6 +672,8 @@ export const adminDuplicatePricingSchema = mutation({
       version: nextPricingSchemaVersion(schemas, source.name),
       status: "draft",
       sourceSchemaId: source._id,
+      siblingDiscount:
+        source.siblingDiscount || disabledSiblingDiscount,
       createdAt: now,
       updatedAt: now,
     });
@@ -656,6 +705,9 @@ export const adminActivatePricingSchema = mutation({
     }
     const tiers = await getPricingSchemaTiers(ctx, pricingSchemaId);
     validateNormalizedTuitionTiers(normalizedStoredTiers(tiers));
+    validateSiblingDiscountConfig(
+      schema.siblingDiscount || disabledSiblingDiscount,
+    );
 
     const now = Date.now();
     const activeSchemas = await ctx.db

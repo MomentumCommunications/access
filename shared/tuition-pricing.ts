@@ -11,6 +11,12 @@ export type NormalizedTuitionTier = {
   sortOrder: number;
 };
 
+export type SiblingDiscountConfig = {
+  enabled: boolean;
+  percentOffBasisPoints: number;
+  appliesTo: "all_but_highest";
+};
+
 export type TuitionTierField = keyof TuitionTierDraftRow;
 
 export type TuitionTierValidation = {
@@ -47,6 +53,41 @@ export function parseCurrencyToCents(value: string) {
   const [whole, fractional = ""] = normalized.split(".");
   const cents = Number(whole) * 100 + Number(fractional.padEnd(2, "0"));
   return Number.isSafeInteger(cents) ? cents : null;
+}
+
+export function parsePercentToBasisPoints(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed || !/^\d+(?:\.\d{1,2})?$/.test(trimmed)) {
+    return null;
+  }
+  const [whole, fractional = ""] = trimmed.split(".");
+  const basisPoints =
+    Number(whole) * 100 + Number(fractional.padEnd(2, "0"));
+  return Number.isSafeInteger(basisPoints) && basisPoints <= 10_000
+    ? basisPoints
+    : null;
+}
+
+export function formatPercentFromBasisPoints(basisPoints: number) {
+  return (basisPoints / 100).toFixed(2).replace(/\.?0+$/, "");
+}
+
+export function validateSiblingDiscountConfig(
+  config: SiblingDiscountConfig,
+) {
+  if (config.appliesTo !== "all_but_highest") {
+    throw new Error("Sibling discount rule is not supported.");
+  }
+  if (
+    !Number.isSafeInteger(config.percentOffBasisPoints) ||
+    config.percentOffBasisPoints < 0 ||
+    config.percentOffBasisPoints > 10_000
+  ) {
+    throw new Error("Sibling discount percent must be between 0 and 100.");
+  }
+  if (config.enabled && config.percentOffBasisPoints === 0) {
+    throw new Error("Enabled sibling discounts must be greater than 0%.");
+  }
 }
 
 export function formatWeeklyHours(minutes?: number) {

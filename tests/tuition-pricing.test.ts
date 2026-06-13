@@ -4,8 +4,10 @@ import {
   applyTuitionTierPaste,
   nextPricingSchemaVersion,
   parseCurrencyToCents,
+  parsePercentToBasisPoints,
   parseTabularText,
   parseWeeklyHours,
+  validateSiblingDiscountConfig,
   validateNormalizedTuitionTiers,
   validateTuitionTierDraftRows,
 } from "../shared/tuition-pricing.ts";
@@ -23,6 +25,40 @@ describe("tuition pricing parsing", () => {
     assert.equal(parseCurrencyToCents("95.5"), 9550);
     assert.equal(parseCurrencyToCents("0"), 0);
     assert.equal(parseCurrencyToCents("-10"), null);
+  });
+
+  it("parses sibling discount percentages into exact basis points", () => {
+    assert.equal(parsePercentToBasisPoints("10"), 1000);
+    assert.equal(parsePercentToBasisPoints("12.5"), 1250);
+    assert.equal(parsePercentToBasisPoints("12.50"), 1250);
+    assert.equal(parsePercentToBasisPoints("100.01"), null);
+    assert.equal(parsePercentToBasisPoints("1.234"), null);
+  });
+
+  it("validates enabled and disabled sibling discount settings", () => {
+    assert.doesNotThrow(() =>
+      validateSiblingDiscountConfig({
+        enabled: false,
+        percentOffBasisPoints: 0,
+        appliesTo: "all_but_highest",
+      }),
+    );
+    assert.doesNotThrow(() =>
+      validateSiblingDiscountConfig({
+        enabled: true,
+        percentOffBasisPoints: 1250,
+        appliesTo: "all_but_highest",
+      }),
+    );
+    assert.throws(
+      () =>
+        validateSiblingDiscountConfig({
+          enabled: true,
+          percentOffBasisPoints: 0,
+          appliesTo: "all_but_highest",
+        }),
+      /greater than 0/,
+    );
   });
 
   it("parses tab and newline separated clipboard text", () => {

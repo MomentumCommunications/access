@@ -23,6 +23,10 @@ import {
   resolveEnrollmentStatusDates,
   validateEnrollmentDates,
 } from "./lib/enrollmentValidation";
+import {
+  requiresStudentStatusConfirmation,
+  studentEnrollmentCleanup,
+} from "../shared/student-status";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
 
 const roleValidator = v.union(
@@ -788,7 +792,6 @@ export const updateMyStudent = mutation({
     recital: v.boolean(),
     photo: v.optional(v.id("_storage")),
     notes: v.optional(v.string()),
-    status: studentStatusValidator,
   },
   handler: async (ctx, { student, ...updates }) => {
     const user = await getCurrentUserOrThrow(ctx);
@@ -1134,6 +1137,83 @@ export const adminGetStudent = query({
   },
 });
 
+export const adminConnectStudentAccount = mutation({
+  args: {
+    student: v.id("students"),
+    user: v.id("users"),
+    relationship: v.optional(v.string()),
+    canManage: v.boolean(),
+    isPrimary: v.boolean(),
+  },
+  handler: async (
+    ctx,
+    { student, user, relationship, canManage, isPrimary },
+  ) => {
+    await requireAdmin(ctx);
+    const [studentDoc, account] = await Promise.all([
+      ctx.db.get(student),
+      ctx.db.get(user),
+    ]);
+    if (!studentDoc) {
+      throw new Error("Student not found.");
+    }
+    if (!account) {
+      throw new Error("Account not found.");
+    }
+
+    const contacts = await ctx.db
+      .query("studentContacts")
+      .withIndex("byStudent", (q) => q.eq("student", student))
+      .collect();
+    if (contacts.some((contact) => contact.user === user)) {
+      throw new Error("This account is already connected to the student.");
+    }
+
+    const accountEmails = (
+      Array.isArray(account.email) ? account.email : [account.email]
+    )
+      .filter((email): email is string => Boolean(email))
+      .map((email) => email.trim().toLowerCase());
+    const matchingInvite = contacts.find(
+      (contact) =>
+        !contact.user &&
+        contact.inviteEmail &&
+        accountEmails.includes(contact.inviteEmail.trim().toLowerCase()),
+    );
+    const nextIsPrimary = isPrimary || matchingInvite?.isPrimary === true;
+    if (nextIsPrimary) {
+      await Promise.all(
+        contacts
+          .filter(
+            (contact) =>
+              contact.isPrimary && contact._id !== matchingInvite?._id,
+          )
+          .map((contact) => ctx.db.patch(contact._id, { isPrimary: false })),
+      );
+    }
+    const normalizedRelationship = relationship?.trim() || undefined;
+
+    if (matchingInvite) {
+      await ctx.db.patch(matchingInvite._id, {
+        user,
+        inviteEmail: undefined,
+        relationship: normalizedRelationship || matchingInvite.relationship,
+        canManage,
+        isPrimary: nextIsPrimary,
+      });
+      return matchingInvite._id;
+    }
+
+    return await ctx.db.insert("studentContacts", {
+      student,
+      user,
+      relationship: normalizedRelationship,
+      canManage,
+      isPrimary,
+    });
+  },
+});
+
 export const adminGetStudentAttendanceReport = query({
   args: { student: v.id("students") },
   handler: async (ctx, { student }) => {
@@ -1200,16 +1280,35 @@ export const adminCreateStudent = mutation({
     allergies: v.string(),
     recital: v.boolean(),
     notes: v.optional(v.string()),
+    accountUser: v.optional(v.id("users")),
+    relationship: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, { accountUser, relationship, ...studentValues }) => {
     await requireAdmin(ctx);
-    if (args.groupId && !(await ctx.db.get(args.groupId))) {
+    if (
+      studentValues.groupId &&
+      !(await ctx.db.get(studentValues.groupId))
+    ) {
       throw new Error("The selected group no longer exists.");
     }
-    return await ctx.db.insert("students", {
-      ...args,
+    if (accountUser && !(await ctx.db.get(accountUser))) {
+      throw new Error("The selected account no longer exists.");
+    }
+
+    const student = await ctx.db.insert("students", {
+      ...studentValues,
       status: "active",
     });
+    if (accountUser) {
+      await ctx.db.insert("studentContacts", {
+        student,
+        user: accountUser,
+        relationship: relationship?.trim() || undefined,
+        canManage: true,
+        isPrimary: true,
+      });
+    }
+    return student;
   },
 });
 
@@ -1231,8 +1330,33 @@ export const adminUpdateStudent = mutation({
   },
   handler: async (ctx, { student, groupId, ...updates }) => {
     await requireAdmin(ctx);
+    const existing = await ctx.db.get(student);
+    if (!existing) {
+      throw new Error("Student not found.");
+    }
     if (groupId && !(await ctx.db.get(groupId))) {
       throw new Error("The selected group no longer exists.");
+    }
+    if (
+      requiresStudentStatusConfirmation(existing.status, updates.status)
+    ) {
+      const today = todayValue();
+      const enrollments = await ctx.db
+        .query("classEnrollments")
+        .withIndex("byStudent", (q) => q.eq("student", student))
+        .collect();
+      for (const enrollment of enrollments) {
+        const cleanup = studentEnrollmentCleanup(enrollment, today);
+        if (cleanup.action === "delete") {
+          await ctx.db.delete(enrollment._id);
+        } else if (cleanup.action === "drop") {
+          await ctx.db.patch(enrollment._id, {
+            status: "dropped",
+            startDate: cleanup.startDate,
+            endDate: cleanup.endDate,
+          });
+        }
+      }
     }
     await ctx.db.patch(student, {
       ...updates,

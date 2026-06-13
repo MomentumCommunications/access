@@ -77,9 +77,14 @@ const defaultValues: StudentCreateValues = {
 type StudentCreateFormProps = {
   mode: "admin" | "member";
   groups?: Array<{ _id: Id<"groups">; name: string }>;
+  accountId?: Id<"users">;
 };
 
-function StudentCreateForm({ mode, groups = [] }: StudentCreateFormProps) {
+function StudentCreateForm({
+  mode,
+  groups = [],
+  accountId,
+}: StudentCreateFormProps) {
   const navigate = useNavigate();
   const createMyStudent = useConvexMutation(
     api.classes.createStudentForCurrentUser,
@@ -113,8 +118,19 @@ function StudentCreateForm({ mode, groups = [] }: StudentCreateFormProps) {
             ? (values.groupId as Id<"groups">)
             : undefined,
           notes: values.notes.trim() || undefined,
+          accountUser: accountId,
+          relationship: accountId
+            ? values.relationship.trim() || undefined
+            : undefined,
         });
-        await navigate({ to: "/admin/students" });
+        if (accountId) {
+          await navigate({
+            to: "/admin/accounts/$userId",
+            params: { userId: accountId },
+          });
+        } else {
+          await navigate({ to: "/admin/students" });
+        }
       } else {
         await createMyStudent({
           ...common,
@@ -240,38 +256,60 @@ function StudentCreateForm({ mode, groups = [] }: StudentCreateFormProps) {
               />
 
               {mode === "admin" ? (
-                <Controller
-                  name="groupId"
-                  control={form.control}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor={field.name}>Group</FieldLabel>
-                      <Select
-                        value={field.value || "unassigned"}
-                        onValueChange={(value) =>
-                          field.onChange(value === "unassigned" ? "" : value)
-                        }
-                      >
-                        <SelectTrigger
-                          id={field.name}
-                          aria-invalid={fieldState.invalid}
-                          className="w-full"
+                <>
+                  <Controller
+                    name="groupId"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={field.name}>Group</FieldLabel>
+                        <Select
+                          value={field.value || "unassigned"}
+                          onValueChange={(value) =>
+                            field.onChange(value === "unassigned" ? "" : value)
+                          }
                         >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="unassigned">Unassigned</SelectItem>
-                          {groups.map((group) => (
-                            <SelectItem key={group._id} value={group._id}>
-                              {group.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FieldError errors={[fieldState.error]} />
-                    </Field>
-                  )}
-                />
+                          <SelectTrigger
+                            id={field.name}
+                            aria-invalid={fieldState.invalid}
+                            className="w-full"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unassigned">Unassigned</SelectItem>
+                            {groups.map((group) => (
+                              <SelectItem key={group._id} value={group._id}>
+                                {group.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FieldError errors={[fieldState.error]} />
+                      </Field>
+                    )}
+                  />
+                  {accountId ? (
+                    <Controller
+                      name="relationship"
+                      control={form.control}
+                      render={({ field, fieldState }) => (
+                        <Field data-invalid={fieldState.invalid}>
+                          <FieldLabel htmlFor={field.name}>
+                            Account relationship
+                          </FieldLabel>
+                          <Input
+                            {...field}
+                            id={field.name}
+                            aria-invalid={fieldState.invalid}
+                            placeholder="Parent, guardian..."
+                          />
+                          <FieldError errors={[fieldState.error]} />
+                        </Field>
+                      )}
+                    />
+                  ) : null}
+                </>
               ) : (
                 <Controller
                   name="relationship"
@@ -381,9 +419,18 @@ function StudentCreateForm({ mode, groups = [] }: StudentCreateFormProps) {
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" asChild type="button">
-              <Link to={mode === "admin" ? "/admin/students" : "/students"}>
-                Cancel
-              </Link>
+              {mode === "admin" && accountId ? (
+                <Link
+                  to="/admin/accounts/$userId"
+                  params={{ userId: accountId }}
+                >
+                  Cancel
+                </Link>
+              ) : (
+                <Link to={mode === "admin" ? "/admin/students" : "/students"}>
+                  Cancel
+                </Link>
+              )}
             </Button>
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "Adding..." : "Add Student"}
@@ -399,8 +446,18 @@ export function MemberStudentCreateForm() {
   return <StudentCreateForm mode="member" />;
 }
 
-export function AdminStudentCreateForm() {
+export function AdminStudentCreateForm({
+  accountId,
+}: {
+  accountId?: Id<"users">;
+} = {}) {
   const groups = useConvexQuery(api.classes.adminListStudentGroups, {});
 
-  return <StudentCreateForm mode="admin" groups={groups ?? []} />;
+  return (
+    <StudentCreateForm
+      mode="admin"
+      groups={groups ?? []}
+      accountId={accountId}
+    />
+  );
 }

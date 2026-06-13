@@ -6,7 +6,12 @@ import type { FunctionReturnType } from "convex/server";
 import { Copy, Plus } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import type { NormalizedTuitionTier } from "../../../../shared/tuition-pricing";
+import {
+  formatPercentFromBasisPoints,
+  parsePercentToBasisPoints,
+  type NormalizedTuitionTier,
+  type SiblingDiscountConfig,
+} from "../../../../shared/tuition-pricing";
 import { RoleGate } from "~/components/role-gate";
 import { TuitionTierGrid } from "~/components/tuition-tier-grid";
 import {
@@ -29,7 +34,9 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
 import { Spinner } from "~/components/ui/spinner";
+import { Switch } from "~/components/ui/switch";
 import { cn } from "~/lib/utils";
 
 export const Route = createFileRoute("/_app/admin/billing/pricing")({
@@ -231,10 +238,9 @@ function PricingAdminPage() {
           </div>
         )}
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           {[
             ["Packages", "Reserved for package-based pricing."],
-            ["Sibling discounts", "Reserved for household-level discounts."],
             ["Adjustments", "Reserved for scholarships and manual changes."],
           ].map(([title, description]) => (
             <Card key={title} className="rounded-lg">
@@ -274,6 +280,7 @@ function PricingSchemaEditor({
   const [isActivating, setIsActivating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [isSiblingDirty, setIsSiblingDirty] = useState(false);
   const [showActivate, setShowActivate] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
 
@@ -395,7 +402,9 @@ function PricingSchemaEditor({
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={isDirty || tiers.length === 0}
+                    disabled={
+                      isDirty || isSiblingDirty || tiers.length === 0
+                    }
                     onClick={() => setShowActivate(true)}
                   >
                     Activate
@@ -421,7 +430,7 @@ function PricingSchemaEditor({
               )}
             </div>
           </div>
-          {isDraft && isDirty ? (
+          {isDraft && (isDirty || isSiblingDirty) ? (
             <p className="text-sm text-muted-foreground">
               Save changes before activating this schema.
             </p>
@@ -435,6 +444,19 @@ function PricingSchemaEditor({
             isSaving={isSaving}
             onSave={handleSave}
             onDirtyChange={setIsDirty}
+          />
+          <SiblingDiscountEditor
+            key={`sibling-${schema._id}-${schema.updatedAt}`}
+            pricingSchemaId={schema._id}
+            config={
+              schema.siblingDiscount || {
+                enabled: false,
+                percentOffBasisPoints: 0,
+                appliesTo: "all_but_highest",
+              }
+            }
+            readOnly={!isDraft}
+            onDirtyChange={setIsSiblingDirty}
           />
         </CardContent>
       </Card>
@@ -487,5 +509,133 @@ function PricingSchemaEditor({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+function SiblingDiscountEditor({
+  pricingSchemaId,
+  config,
+  readOnly,
+  onDirtyChange,
+}: {
+  pricingSchemaId: Id<"pricingSchemas">;
+  config: SiblingDiscountConfig;
+  readOnly: boolean;
+  onDirtyChange: (isDirty: boolean) => void;
+}) {
+  const saveSiblingDiscount = useConvexMutation(
+    api.billing.adminSaveSiblingDiscount,
+  );
+  const [enabled, setEnabled] = useState(config.enabled);
+  const [percent, setPercent] = useState(
+    formatPercentFromBasisPoints(config.percentOffBasisPoints),
+  );
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const parsedPercent = parsePercentToBasisPoints(percent);
+  const hasChanges =
+    enabled !== config.enabled ||
+    parsedPercent !== config.percentOffBasisPoints;
+
+  useEffect(() => {
+    onDirtyChange(hasChanges);
+    return () => onDirtyChange(false);
+  }, [hasChanges, onDirtyChange]);
+
+  async function handleSave() {
+    const percentOffBasisPoints = parsePercentToBasisPoints(percent);
+    if (percentOffBasisPoints === null) {
+      setError("Enter a percentage from 0 to 100 with up to two decimals.");
+      return;
+    }
+    if (enabled && percentOffBasisPoints === 0) {
+      setError("An enabled sibling discount must be greater than 0%.");
+      return;
+    }
+
+    setError("");
+    setIsSaving(true);
+    try {
+      await saveSiblingDiscount({
+        pricingSchemaId,
+        siblingDiscount: {
+          enabled,
+          percentOffBasisPoints,
+          appliesTo: "all_but_highest",
+        },
+      });
+      toast.success("Sibling discount saved.");
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "The sibling discount could not be saved.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <section className="mt-6 border-t pt-6">
+      <div className="flex flex-col gap-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-semibold">Sibling discount</h3>
+            <p className="text-sm text-muted-foreground">
+              Keep the highest tuition at full price and discount every
+              additional tuition-bearing student in the household.
+            </p>
+          </div>
+          <Switch
+            aria-label="Enable sibling discount"
+            checked={enabled}
+            disabled={readOnly || isSaving}
+            onCheckedChange={setEnabled}
+          />
+        </div>
+        <div className="max-w-xs space-y-2">
+          <Label htmlFor={`sibling-percent-${pricingSchemaId}`}>
+            Discount percent
+          </Label>
+          <div className="relative">
+            <Input
+              id={`sibling-percent-${pricingSchemaId}`}
+              inputMode="decimal"
+              value={percent}
+              disabled={readOnly || isSaving}
+              aria-invalid={!!error}
+              onChange={(event) => {
+                setPercent(event.target.value);
+                setError("");
+              }}
+              className="pr-9"
+            />
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
+              %
+            </span>
+          </div>
+          {error ? (
+            <p className="text-sm text-destructive">{error}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Supports up to two decimal places.
+            </p>
+          )}
+        </div>
+        {!readOnly ? (
+          <div>
+            <Button
+              type="button"
+              disabled={!hasChanges || isSaving}
+              onClick={() => void handleSave()}
+            >
+              {isSaving ? "Saving..." : "Save sibling discount"}
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </section>
   );
 }

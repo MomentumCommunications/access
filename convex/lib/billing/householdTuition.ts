@@ -18,6 +18,8 @@ export type HouseholdTuitionAdjustment = {
   type: "sibling_discount" | "scholarship" | "package" | "manual";
   label: string;
   amountCents: number;
+  studentId?: string;
+  studentName?: string;
 };
 
 export type HouseholdTuitionResult<
@@ -64,7 +66,10 @@ function compareStudents(
 
 export function aggregateHouseholdTuitions<
   TStudent extends HouseholdTuitionStudentInput,
->(students: TStudent[]): HouseholdTuitionResult<TStudent>[] {
+>(
+  students: TStudent[],
+  siblingDiscount?: SiblingDiscountConfig,
+): HouseholdTuitionResult<TStudent>[] {
   const grouped = new Map<
     string,
     {
@@ -100,6 +105,34 @@ export function aggregateHouseholdTuitions<
         (total, student) => total + (student.baseTuitionCents || 0),
         0,
       );
+      const discountEnabled =
+        siblingDiscount?.enabled === true &&
+        siblingDiscount.appliesTo === "all_but_highest" &&
+        siblingDiscount.percentOffBasisPoints > 0;
+      const discountOrder = [...tuitionBearingStudents].sort(
+        (left, right) =>
+          right.baseTuitionCents! - left.baseTuitionCents! ||
+          compareStudents(left, right),
+      );
+      const adjustments: HouseholdTuitionAdjustment[] = discountEnabled
+        ? discountOrder.slice(1).map((student) => ({
+            type: "sibling_discount",
+            label: `Sibling discount for ${student.studentName}`,
+            amountCents: -Math.round(
+              (student.baseTuitionCents! *
+                siblingDiscount.percentOffBasisPoints) /
+                10_000,
+            ),
+            studentId: student.studentId,
+            studentName: student.studentName,
+          }))
+        : [];
+      const totalTuitionCents =
+        subtotalBaseTuitionCents +
+        adjustments.reduce(
+          (total, adjustment) => total + adjustment.amountCents,
+          0,
+        );
 
       return {
         householdId,
@@ -107,14 +140,14 @@ export function aggregateHouseholdTuitions<
         householdLinkSource: household.householdLinkSource,
         students: sortedStudents,
         subtotalBaseTuitionCents,
-        totalTuitionCents: subtotalBaseTuitionCents,
+        totalTuitionCents,
         hasIncompleteTuition: sortedStudents.some(
           (student) => student.baseTuitionCents === undefined,
         ),
         siblingDiscountCandidate: tuitionBearingStudents.length >= 2,
         scholarshipCandidates: [],
         packageCandidates: [],
-        adjustments: [],
+        adjustments,
       };
     })
     .sort(
@@ -123,3 +156,4 @@ export function aggregateHouseholdTuitions<
         left.householdId.localeCompare(right.householdId),
     );
 }
+import type { SiblingDiscountConfig } from "../../../shared/tuition-pricing.ts";

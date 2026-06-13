@@ -185,24 +185,37 @@ function HouseholdTuitionCard({
               Scholarships: not evaluated
             </Badge>
             <Badge variant="outline">Packages: not evaluated</Badge>
-            <Badge variant="outline">Adjustments: none applied</Badge>
+            {household.adjustments.length === 0 ? (
+              <Badge variant="outline">Sibling discount: none applied</Badge>
+            ) : null}
           </div>
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">
-              Base tuition subtotal
+          <div className="min-w-56 space-y-2 text-right">
+            <div className="flex justify-between gap-6 text-sm">
+              <span className="text-muted-foreground">Base subtotal</span>
+              <span>
+                {formatCurrency(household.subtotalBaseTuitionCents)}
+              </span>
             </div>
-            <div className="text-xl font-semibold">
-              {formatCurrency(household.subtotalBaseTuitionCents)}
+            {household.adjustments.map((adjustment, index) => (
+              <div
+                key={`${adjustment.type}-${adjustment.studentId || index}`}
+                className="flex justify-between gap-6 text-sm"
+              >
+                <span className="text-muted-foreground">
+                  {adjustment.label}
+                </span>
+                <span>{formatCurrency(adjustment.amountCents)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between gap-6 border-t pt-2 text-lg font-semibold">
+              <span>Total</span>
+              <span>{formatCurrency(household.totalTuitionCents)}</span>
             </div>
             {household.hasIncompleteTuition ? (
               <div className="text-xs text-destructive">
                 Total excludes unpriced students
               </div>
-            ) : (
-              <div className="text-xs text-muted-foreground">
-                No adjustments applied
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       </CardContent>

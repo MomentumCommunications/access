@@ -5,6 +5,7 @@ export type WeeklyClassHoursInput = {
   classId?: string;
   classTitle?: string;
   studentId: string;
+  studentStatus?: string;
   enrollmentStatus: string;
   enrollmentStartDate?: string;
   enrollmentEndDate?: string;
@@ -105,6 +106,9 @@ function exclusionIdentity(row: WeeklyClassHoursInput) {
 export function getBillingEnrollmentExclusion(
   row: WeeklyClassHoursInput,
 ): BillingEnrollmentExclusion | null {
+  if (row.studentStatus !== undefined && row.studentStatus !== "active") {
+    return null;
+  }
   if (
     row.enrollmentStatus !== "enrolled" &&
     row.enrollmentStatus !== "dropped"
@@ -221,6 +225,7 @@ export function shouldCountForWeeklyTuition(
   asOfDate: string,
 ) {
   return (
+    (row.studentStatus === undefined || row.studentStatus === "active") &&
     parseIsoDate(asOfDate) !== null &&
     getBillingEnrollmentExclusion(row) === null &&
     hasEligibleStatus(row) &&
@@ -269,6 +274,7 @@ function activeIntervalWithinPeriod(
   periodEnd: string,
 ) {
   if (
+    (row.studentStatus !== undefined && row.studentStatus !== "active") ||
     getBillingEnrollmentExclusion(row) !== null ||
     !hasEligibleStatus(row) ||
     row.classStatus === "archived" ||

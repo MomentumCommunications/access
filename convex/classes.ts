@@ -36,6 +36,11 @@ import {
   validateClassEnrollmentConfig,
   type SessionSignupStatus,
 } from "../shared/per-session-signup";
+import {
+  buildPerSessionSignupEvent,
+  getSessionSelectionChange,
+} from "../shared/activity-log";
+import { recordActivityEvent } from "./lib/activityLog";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
 
 const roleValidator = v.union(
@@ -147,6 +152,103 @@ async function canManageStudent(
   return contacts.some(
     (contact) => contact.student === student && contact.canManage,
   );
+}
+
+function studentDisplayName(student: Doc<"students">) {
+  return (
+    student.preferredName ||
+    `${student.firstName} ${student.lastName}`.trim()
+  );
+}
+
+async function getStudentPerSessionClasses(
+  ctx: DbCtx,
+  student: Id<"students">,
+) {
+  const signups = (
+    await ctx.db
+      .query("classSessionSignups")
+      .withIndex("byStudent", (q) => q.eq("student", student))
+      .collect()
+  ).filter((signup) => isActiveSessionSignup(signup.status));
+  const signupsByClass = new Map<
+    Id<"classes">,
+    Doc<"classSessionSignups">[]
+  >();
+  for (const signup of signups) {
+    const rows = signupsByClass.get(signup.classId) || [];
+    rows.push(signup);
+    signupsByClass.set(signup.classId, rows);
+  }
+
+  const rows = await Promise.all(
+    [...signupsByClass.entries()].map(async ([classId, classSignups]) => {
+      const classItem = await ctx.db.get(classId);
+      if (
+        !classItem ||
+        resolvedClassEnrollmentMode(classItem.enrollmentMode) !== "per_session"
+      ) {
+        return null;
+      }
+      const sessions = await ctx.db
+        .query("sessions")
+        .withIndex("byClass", (q) => q.eq("classId", classId))
+        .collect();
+      const sessionsById = new Map(
+        sessions.map((session) => [session._id, session]),
+      );
+      const selectedSessions = classSignups
+        .map((signup) => ({
+          signup,
+          session: sessionsById.get(signup.session) || null,
+        }))
+        .filter(
+          (
+            row,
+          ): row is {
+            signup: Doc<"classSessionSignups">;
+            session: Doc<"sessions">;
+          } => row.session !== null,
+        )
+        .sort(
+          (left, right) =>
+            left.session.date.localeCompare(right.session.date) ||
+            (left.session.startTime || "").localeCompare(
+              right.session.startTime || "",
+            ),
+        );
+      const today = todayValue(classItem.timezone);
+      const availableSessions =
+        classItem.status === "published"
+          ? sessions
+              .filter(
+                (session) =>
+                  session.active &&
+                  session.status !== "cancelled" &&
+                  session.date >= today,
+              )
+              .sort(
+                (left, right) =>
+                  left.date.localeCompare(right.date) ||
+                  (left.startTime || "").localeCompare(
+                    right.startTime || "",
+                  ),
+              )
+          : [];
+
+      return {
+        classItem,
+        selectedSessions,
+        availableSessions,
+      };
+    }),
+  );
+
+  return rows
+    .filter((row) => row !== null)
+    .sort((left, right) =>
+      compareClassesBySchedule(left.classItem, right.classItem),
+    );
 }
 
 async function requireAdmin(ctx: QueryCtx) {
@@ -791,6 +893,14 @@ export const listMyStudents = query({
           classes: classes
             .filter(({ classItem }) => classItem !== null)
             .sort(compareRowsByClassSchedule),
+          perSessionClasses: student
+            ? (await getStudentPerSessionClasses(ctx, student._id)).map(
+                (row) => ({
+                  classItem: row.classItem,
+                  selectedCount: row.selectedSessions.length,
+                }),
+              )
+            : [],
         };
       }),
     );
@@ -838,6 +948,7 @@ export const getMyStudent = query({
         ? await ctx.storage.getUrl(studentDoc.photo)
         : null,
       enrollments: enrollmentRows.sort(compareRowsByClassSchedule),
+      perSessionClasses: await getStudentPerSessionClasses(ctx, student),
     };
   },
 });
@@ -1047,6 +1158,9 @@ async function syncStudentSessionSignups(
       q.eq("classId", classItem._id).eq("student", student),
     )
     .collect();
+  const previousSessionIds = existing
+    .filter((signup) => isActiveSessionSignup(signup.status))
+    .map((signup) => signup.session);
   const now = Date.now();
   const today = todayValue(classItem.timezone);
   const existingBySession = new Map(
@@ -1139,6 +1253,34 @@ async function syncStudentSessionSignups(
       updatedAt: now,
     });
   }
+
+  const resultingSignups = await ctx.db
+    .query("classSessionSignups")
+    .withIndex("byClassStudent", (q) =>
+      q.eq("classId", classItem._id).eq("student", student),
+    )
+    .collect();
+  const change = getSessionSelectionChange(
+    previousSessionIds,
+    resultingSignups
+      .filter((signup) => isActiveSessionSignup(signup.status))
+      .map((signup) => signup.session),
+  );
+  if (change) {
+    const studentDoc = await ctx.db.get(student);
+    if (studentDoc) {
+      await recordActivityEvent(ctx, {
+        ...buildPerSessionSignupEvent({
+          studentId: student,
+          studentName: studentDisplayName(studentDoc),
+          classId: classItem._id,
+          className: classItem.title,
+          actorId: requestedBy,
+          change,
+        }),
+      });
+    }
+  }
 }
 
 export const signUpStudentForSessions = mutation({
@@ -1160,7 +1302,15 @@ export const signUpStudentForSessions = mutation({
       throw new Error("Unauthorized");
     }
     if (sessions.length === 0) {
-      throw new Error("Select at least one session.");
+      const existing = await ctx.db
+        .query("classSessionSignups")
+        .withIndex("byClassStudent", (q) =>
+          q.eq("classId", classId).eq("student", student),
+        )
+        .collect();
+      if (!existing.some((signup) => isActiveSessionSignup(signup.status))) {
+        throw new Error("Select at least one session.");
+      }
     }
 
     await syncStudentSessionSignups(ctx, {
@@ -1444,6 +1594,13 @@ export const adminGetStudent = query({
           : null,
       })),
     );
+    const activityLog = await ctx.db
+      .query("activityLog")
+      .withIndex("byEntity", (q) =>
+        q.eq("entityType", "student").eq("entityId", student),
+      )
+      .order("desc")
+      .take(20);
 
     return {
       student: studentDoc,
@@ -1457,6 +1614,12 @@ export const adminGetStudent = query({
         })),
       ),
       enrollments: enrollmentRows.sort(compareRowsByClassSchedule),
+      activityLog: await Promise.all(
+        activityLog.map(async (event) => ({
+          ...event,
+          actor: event.actorId ? await ctx.db.get(event.actorId) : null,
+        })),
+      ),
     };
   },
 });

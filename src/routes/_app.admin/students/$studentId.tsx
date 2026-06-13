@@ -44,7 +44,11 @@ import {
 } from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
 import { Checkbox } from "~/components/ui/checkbox";
-import { formatAge, formatTimeRange } from "~/lib/date-utils";
+import {
+  formatAge,
+  formatDateTime,
+  formatTimeRange,
+} from "~/lib/date-utils";
 import { getAccountName } from "~/lib/account-name";
 
 export const Route = createFileRoute("/_app/admin/students/$studentId")({
@@ -450,6 +454,32 @@ function AdminStudentDetailPage() {
                 </form>
               </CardContent>
             </Card>
+            {studentData.activityLog.length > 0 ? (
+              <Card className="rounded-lg">
+                <CardHeader>
+                  <CardTitle>Recent activity</CardTitle>
+                  <CardDescription>
+                    Recent operational changes connected to this student.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {studentData.activityLog.map((event) => (
+                    <div
+                      key={event._id}
+                      className="border-b pb-3 text-sm last:border-0 last:pb-0"
+                    >
+                      <p>{event.summary}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatDateTime(event._creationTime)}
+                        {event.actor
+                          ? ` · ${getAccountName(event.actor)}`
+                          : ""}
+                      </p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ) : null}
           </section>
           <section className="space-y-4">
             <div>

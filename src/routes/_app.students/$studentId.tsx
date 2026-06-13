@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
 import { Pencil } from "lucide-react";
+import { PerSessionClassCard } from "~/components/per-session-class-card";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -176,6 +177,23 @@ function StudentDetailPage() {
             )}
           </CardContent>
         </Card>
+        {studentData.perSessionClasses.length > 0 ? (
+          <section className="space-y-3">
+            <div>
+              <h2 className="text-2xl font-bold">Per-session classes</h2>
+              <p className="text-muted-foreground">
+                Review and update this student&apos;s selected class dates.
+              </p>
+            </div>
+            {studentData.perSessionClasses.map((row) => (
+              <PerSessionClassCard
+                key={row.classItem._id}
+                studentId={student._id}
+                row={row}
+              />
+            ))}
+          </section>
+        ) : null}
       </section>
     </main>
   );

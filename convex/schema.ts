@@ -231,6 +231,16 @@ export default defineSchema({
     .index("byStudent", ["student"])
     .index("bySessionStudent", ["session", "student"])
     .index("byClassStudent", ["classId", "student"]),
+  activityLog: defineTable({
+    entityType: v.string(),
+    entityId: v.string(),
+    actorId: v.optional(v.id("users")),
+    eventType: v.string(),
+    summary: v.string(),
+    metadata: v.optional(v.any()),
+  })
+    .index("byEntity", ["entityType", "entityId"])
+    .index("byActor", ["actorId"]),
   seasonClasses: defineTable({
     season: v.id("seasons"),
     class: v.id("classes"),

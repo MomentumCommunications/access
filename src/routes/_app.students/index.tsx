@@ -9,6 +9,7 @@ import {
   AccordionTrigger,
 } from "~/components/ui/accordion";
 import { Button } from "~/components/ui/button";
+import { Badge } from "~/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -134,7 +135,8 @@ function StudentsPage() {
                     <AccordionItem value="classes">
                       <AccordionTrigger>View classes</AccordionTrigger>
                       <AccordionContent>
-                        {row.classes.length === 0 ? (
+                        {row.classes.length === 0 &&
+                        row.perSessionClasses.length === 0 ? (
                           <p className="text-sm text-muted-foreground">
                             No classes connected yet.
                           </p>
@@ -163,6 +165,25 @@ function StudentsPage() {
                                     </TableCell>
                                   </TableRow>
                                 ) : null,
+                              )}
+                              {row.perSessionClasses.map(
+                                ({ classItem, selectedCount }) => (
+                                  <TableRow key={`per-session-${classItem._id}`}>
+                                    <TableCell className="font-medium">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        {classItem.title}
+                                        <Badge variant="secondary">
+                                          Per-session
+                                        </Badge>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">
+                                      {selectedCount}{" "}
+                                      {selectedCount === 1 ? "date" : "dates"}{" "}
+                                      selected
+                                    </TableCell>
+                                  </TableRow>
+                                ),
                               )}
                             </TableBody>
                           </Table>

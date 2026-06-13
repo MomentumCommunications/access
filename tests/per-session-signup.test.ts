@@ -210,6 +210,32 @@ describe("per-session participation and charges", () => {
     );
   });
 
+  it("supports removing every editable selection", () => {
+    assert.deepEqual(
+      planSessionSignupSync(
+        [
+          {
+            signupId: "signup-1",
+            sessionId: "session-1",
+            status: "pending",
+          },
+          {
+            signupId: "signup-2",
+            sessionId: "session-2",
+            status: "waitlisted",
+          },
+        ],
+        [],
+        "pending",
+        true,
+      ),
+      [
+        { action: "cancel", signupId: "signup-1" },
+        { action: "cancel", signupId: "signup-2" },
+      ],
+    );
+  });
+
   it("does not let a customer selection downgrade or remove confirmed dates", () => {
     assert.deepEqual(
       planSessionSignupSync(

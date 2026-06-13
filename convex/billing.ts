@@ -11,6 +11,10 @@ import {
   calculatePeriodTuitionsWithExclusions,
   type TuitionCalculationInput,
 } from "./lib/billing/tuitionCalculation";
+import {
+  aggregateHouseholdTuitions,
+  type HouseholdLinkSource,
+} from "./lib/billing/householdTuition";
 import { hasUserRole } from "./lib/roles";
 import { getCurrentUserOrThrow } from "./users";
 import {
@@ -73,6 +77,17 @@ function validatePricingSchemaName(name: string) {
   return trimmed;
 }
 
+function validateHouseholdName(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error("Household name is required.");
+  }
+  if (trimmed.length > 100) {
+    throw new Error("Household name must be 100 characters or fewer.");
+  }
+  return trimmed;
+}
+
 async function getPricingSchemaTiers(
   ctx: BillingCtx,
   pricingSchemaId: Id<"pricingSchemas">,
@@ -126,6 +141,121 @@ async function getWeeklyClassHoursInputs(
       prorateTuition: enrollment.prorateTuition,
     };
   });
+}
+
+async function replaceAccountHousehold(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  householdId: Id<"households">,
+) {
+  const account = await ctx.db.get(userId);
+  if (!account) {
+    throw new Error("Account not found.");
+  }
+  const household = await ctx.db.get(householdId);
+  if (!household) {
+    throw new Error("Household not found.");
+  }
+
+  const existingMemberships = await ctx.db
+    .query("householdMembers")
+    .withIndex("byUser", (q) => q.eq("userId", userId))
+    .collect();
+  const matchingMembership = existingMemberships.find(
+    (membership) => membership.householdId === householdId,
+  );
+  await Promise.all(
+    existingMemberships
+      .filter((membership) => membership._id !== matchingMembership?._id)
+      .map((membership) => ctx.db.delete(membership._id)),
+  );
+  if (!matchingMembership) {
+    await ctx.db.insert("householdMembers", { householdId, userId });
+  }
+}
+
+async function getHouseholdResolutionData(ctx: QueryCtx) {
+  const [contacts, memberships, households, users] = await Promise.all([
+    ctx.db.query("studentContacts").collect(),
+    ctx.db.query("householdMembers").collect(),
+    ctx.db.query("households").collect(),
+    ctx.db.query("users").collect(),
+  ]);
+  const contactsByStudent = new Map<string, typeof contacts>();
+  for (const contact of contacts) {
+    const studentContacts = contactsByStudent.get(contact.student) || [];
+    studentContacts.push(contact);
+    contactsByStudent.set(contact.student, studentContacts);
+  }
+
+  return {
+    contactsByStudent,
+    membershipByUser: new Map(
+      memberships.map((membership) => [membership.userId, membership]),
+    ),
+    householdsById: new Map(
+      households.map((household) => [household._id, household]),
+    ),
+    usersById: new Map(users.map((user) => [user._id, user])),
+  };
+}
+
+function resolveStudentHousehold(
+  studentId: Id<"students">,
+  data: Awaited<ReturnType<typeof getHouseholdResolutionData>>,
+): {
+  householdId?: string;
+  householdName?: string;
+  householdLinkSource?: HouseholdLinkSource;
+  householdLinkWarning?: string;
+} {
+  const contacts = [...(data.contactsByStudent.get(studentId) || [])].sort(
+    (left, right) =>
+      Number(right.isPrimary) - Number(left.isPrimary) ||
+      left._creationTime - right._creationTime,
+  );
+  const linkedHouseholds = contacts.flatMap((contact) => {
+    if (!contact.user) return [];
+    const membership = data.membershipByUser.get(contact.user);
+    const household = membership
+      ? data.householdsById.get(membership.householdId)
+      : undefined;
+    return household ? [household] : [];
+  });
+  const uniqueHouseholds = [
+    ...new Map(
+      linkedHouseholds.map((household) => [household._id, household]),
+    ).values(),
+  ];
+  const household = uniqueHouseholds[0];
+  if (household) {
+    return {
+      householdId: household._id,
+      householdName: household.name,
+      householdLinkSource: "household",
+      householdLinkWarning:
+        uniqueHouseholds.length > 1
+          ? "Student contacts belong to multiple households; using the primary linked household."
+          : undefined,
+    };
+  }
+
+  const account = contacts.find((contact) => contact.user)?.user;
+  const user = account ? data.usersById.get(account) : undefined;
+  if (user) {
+    return {
+      householdId: `account:${user._id}`,
+      householdName: `${accountName(user)} household`,
+      householdLinkSource: "account_fallback",
+      householdLinkWarning:
+        "No household is assigned; grouped by the student's connected account.",
+    };
+  }
+
+  return {
+    householdLinkWarning:
+      "No household or connected account is assigned; using a standalone student bucket.",
+  };
 }
 
 export const adminWeeklyClassMinutes = query({
@@ -238,7 +368,12 @@ export const adminPeriodTuitionReview = query({
       .withIndex("byStatus", (q) => q.eq("status", "active"))
       .first();
     if (!activeSchema) {
-      return { pricingSchema: null, rows: [], excludedEnrollments };
+      return {
+        pricingSchema: null,
+        rows: [],
+        households: [],
+        excludedEnrollments,
+      };
     }
     const storedTiers = await getPricingSchemaTiers(ctx, activeSchema._id);
     const calculationResult = calculatePeriodTuitionsWithExclusions(
@@ -249,23 +384,13 @@ export const adminPeriodTuitionReview = query({
     );
     const calculations = calculationResult.tuitions;
 
+    const householdData = await getHouseholdResolutionData(ctx);
     const rows = await Promise.all(
       calculations.map(async (calculation) => {
         const student = await ctx.db.get(
           calculation.studentId as Id<"students">,
         );
         if (!student) return null;
-        const contacts = await ctx.db
-          .query("studentContacts")
-          .withIndex("byStudent", (q) =>
-            q.eq("student", student._id),
-          )
-          .collect();
-        const primaryContact =
-          contacts.find((contact) => contact.isPrimary) || contacts[0];
-        const account = primaryContact?.user
-          ? await ctx.db.get(primaryContact.user)
-          : null;
         const pricedDays = calculation.segments
           .filter((segment) => segment.monthlyAmountCents !== undefined)
           .reduce((days, segment) => days + segment.days, 0);
@@ -277,19 +402,22 @@ export const adminPeriodTuitionReview = query({
           ),
         );
 
+        const household = resolveStudentHousehold(student._id, householdData);
+
         return {
           ...calculation,
           student,
-          householdName: account
-            ? accountName(account)
-            : primaryContact?.name ||
-              primaryContact?.inviteEmail ||
-              "Not set",
+          studentId: student._id,
+          studentName: `${student.firstName} ${student.lastName}`,
+          ...household,
+          baseTuitionCents: calculation.totalTuitionCents,
+          pricingSource: `${activeSchema.name} v${activeSchema.version}`,
           isProrated:
             pricedDays < calculation.periodDays || pricedAmounts.size > 1,
         };
       }),
     );
+    const tuitionRows = rows.filter((row) => row !== null);
 
     return {
       pricingSchema: {
@@ -297,9 +425,97 @@ export const adminPeriodTuitionReview = query({
         name: activeSchema.name,
         version: activeSchema.version,
       },
-      rows: rows.filter((row) => row !== null),
+      rows: tuitionRows,
+      households: aggregateHouseholdTuitions(tuitionRows),
       excludedEnrollments,
     };
+  },
+});
+
+export const adminListHouseholds = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const households = await ctx.db.query("households").collect();
+    const memberships = await ctx.db.query("householdMembers").collect();
+    const memberCountByHousehold = new Map<string, number>();
+    for (const membership of memberships) {
+      memberCountByHousehold.set(
+        membership.householdId,
+        (memberCountByHousehold.get(membership.householdId) || 0) + 1,
+      );
+    }
+
+    return households
+      .map((household) => ({
+        household,
+        memberCount: memberCountByHousehold.get(household._id) || 0,
+      }))
+      .sort(
+        (left, right) =>
+          left.household.name.localeCompare(right.household.name) ||
+          left.household._id.localeCompare(right.household._id),
+      );
+  },
+});
+
+export const adminGetAccountHousehold = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await requireAdmin(ctx);
+    const membership = await ctx.db
+      .query("householdMembers")
+      .withIndex("byUser", (q) => q.eq("userId", userId))
+      .first();
+    if (!membership) {
+      return null;
+    }
+    const household = await ctx.db.get(membership.householdId);
+    return household ? { membership, household } : null;
+  },
+});
+
+export const adminAttachAccountToHousehold = mutation({
+  args: {
+    userId: v.id("users"),
+    householdId: v.id("households"),
+  },
+  handler: async (ctx, { userId, householdId }) => {
+    await requireAdmin(ctx);
+    await replaceAccountHousehold(ctx, userId, householdId);
+  },
+});
+
+export const adminCreateHouseholdForAccount = mutation({
+  args: {
+    userId: v.id("users"),
+    name: v.string(),
+  },
+  handler: async (ctx, { userId, name }) => {
+    await requireAdmin(ctx);
+    const normalizedName = validateHouseholdName(name);
+    const now = Date.now();
+    const householdId = await ctx.db.insert("households", {
+      name: normalizedName,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await replaceAccountHousehold(ctx, userId, householdId);
+    return householdId;
+  },
+});
+
+export const adminRemoveAccountFromHousehold = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await requireAdmin(ctx);
+    const memberships = await ctx.db
+      .query("householdMembers")
+      .withIndex("byUser", (q) => q.eq("userId", userId))
+      .collect();
+    await Promise.all(
+      memberships.map((membership) => ctx.db.delete(membership._id)),
+    );
   },
 });
 

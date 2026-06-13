@@ -19,7 +19,10 @@ import {
   resolveUserRoles,
   type UserRole,
 } from "./lib/roles";
-import { validateEnrollmentDates } from "./lib/enrollmentValidation";
+import {
+  resolveEnrollmentStatusDates,
+  validateEnrollmentDates,
+} from "./lib/enrollmentValidation";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
 
 const roleValidator = v.union(
@@ -1493,7 +1496,7 @@ export const adminUpdateEnrollmentStatus = mutation({
   args: {
     enrollment: v.id("classEnrollments"),
     status: enrollmentStatusValidator,
-    endDate: v.optional(v.string()),
+    endDate: v.optional(v.union(v.string(), v.null())),
     prorateTuition: v.optional(v.boolean()),
   },
   handler: async (ctx, { enrollment, status, endDate, prorateTuition }) => {
@@ -1509,15 +1512,17 @@ export const adminUpdateEnrollmentStatus = mutation({
     ) {
       throw new Error("Choose whether this enrollment should be prorated.");
     }
-    const nextEndDate = endDate ?? existing.endDate;
-    validateEnrollmentDates({
-      status,
-      startDate: existing.startDate,
-      endDate: nextEndDate,
+    const dates = resolveEnrollmentStatusDates({
+      existingStatus: existing.status,
+      nextStatus: status,
+      existingStartDate: existing.startDate,
+      existingEndDate: existing.endDate,
+      endDate,
+      today: todayValue(),
     });
     await ctx.db.patch(enrollment, {
       status,
-      endDate: nextEndDate,
+      ...dates,
       prorateTuition:
         status === "enrolled" && prorateTuition !== undefined
           ? prorateTuition

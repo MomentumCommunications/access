@@ -112,6 +112,19 @@ export default defineSchema({
     .index("byStudent", ["student"])
     .index("byUser", ["user"])
     .index("byInviteEmail", ["inviteEmail"]),
+  households: defineTable({
+    name: v.string(),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("byName", ["name"]),
+  householdMembers: defineTable({
+    householdId: v.id("households"),
+    userId: v.id("users"),
+  })
+    .index("byHousehold", ["householdId"])
+    .index("byUser", ["userId"])
+    .index("byHouseholdUser", ["householdId", "userId"]),
   onboarding: defineTable({
     user: v.id("users"),
     currentStep: v.union(

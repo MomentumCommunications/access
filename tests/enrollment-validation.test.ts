@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { validateEnrollmentDates } from "../convex/lib/enrollmentValidation.ts";
+import {
+  resolveEnrollmentStatusDates,
+  validateEnrollmentDates,
+} from "../convex/lib/enrollmentValidation.ts";
 
 describe("validateEnrollmentDates", () => {
   it("rejects a dropped enrollment without an end date", () => {
@@ -67,6 +70,78 @@ describe("validateEnrollmentDates", () => {
         startDate: "2026-06-01",
         endDate: "2026-06-30",
       }),
+    );
+  });
+});
+
+describe("resolveEnrollmentStatusDates", () => {
+  it("clears a stale drop end date when re-enrolling", () => {
+    assert.deepEqual(
+      resolveEnrollmentStatusDates({
+        existingStatus: "dropped",
+        nextStatus: "enrolled",
+        existingStartDate: "2026-05-01",
+        existingEndDate: "2026-05-31",
+        today: "2026-06-12",
+      }),
+      {
+        startDate: "2026-05-01",
+        endDate: undefined,
+      },
+    );
+  });
+
+  it("allows an explicit re-enrollment end date", () => {
+    assert.deepEqual(
+      resolveEnrollmentStatusDates({
+        existingStatus: "dropped",
+        nextStatus: "enrolled",
+        existingStartDate: "2026-05-01",
+        existingEndDate: "2026-05-31",
+        endDate: "2026-08-31",
+        today: "2026-06-12",
+      }),
+      {
+        startDate: "2026-05-01",
+        endDate: "2026-08-31",
+      },
+    );
+  });
+
+  it("backfills a missing legacy start date during status updates", () => {
+    assert.deepEqual(
+      resolveEnrollmentStatusDates({
+        existingStatus: "pending",
+        nextStatus: "enrolled",
+        today: "2026-06-12",
+      }),
+      {
+        startDate: "2026-06-12",
+        endDate: undefined,
+      },
+    );
+    assert.deepEqual(
+      resolveEnrollmentStatusDates({
+        existingStatus: "enrolled",
+        nextStatus: "dropped",
+        today: "2026-06-12",
+      }),
+      {
+        startDate: "2026-06-12",
+        endDate: "2026-06-12",
+      },
+    );
+    assert.deepEqual(
+      resolveEnrollmentStatusDates({
+        existingStatus: "enrolled",
+        nextStatus: "waitlisted",
+        existingEndDate: "2026-05-31",
+        today: "2026-06-12",
+      }),
+      {
+        startDate: "2026-05-31",
+        endDate: "2026-05-31",
+      },
     );
   });
 });

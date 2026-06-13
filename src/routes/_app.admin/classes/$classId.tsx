@@ -134,12 +134,8 @@ function AdminClassDetailPage() {
               status: nextStatus as EnrollmentStatus,
               endDate:
                 nextStatus === "dropped"
-                  ? row.original.endDate ||
-                    [todayValue(), row.original.startDate]
-                      .filter((date): date is string => !!date)
-                      .sort()
-                      .at(-1)
-                  : row.original.endDate,
+                  ? todayValue()
+                  : undefined,
             });
           }}
         >
@@ -613,6 +609,7 @@ function AdminClassDetailPage() {
                 void updateEnrollment({
                   enrollment: enrollmentToActivate._id,
                   status: "enrolled",
+                  endDate: null,
                   prorateTuition: false,
                 });
                 setEnrollmentToActivate(null);
@@ -626,6 +623,7 @@ function AdminClassDetailPage() {
                 void updateEnrollment({
                   enrollment: enrollmentToActivate._id,
                   status: "enrolled",
+                  endDate: null,
                   prorateTuition: true,
                 });
                 setEnrollmentToActivate(null);

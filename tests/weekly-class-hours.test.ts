@@ -82,6 +82,25 @@ describe("calculateWeeklyClassMinutes", () => {
     );
   });
 
+  it("does not include per-session classes in regular tuition hours", () => {
+    assert.deepEqual(
+      calculateWeeklyClassMinutes(
+        [
+          row({
+            studentId: "standard",
+            classEnrollmentMode: "standard",
+          }),
+          row({
+            studentId: "per-session",
+            classEnrollmentMode: "per_session",
+          }),
+        ],
+        "2026-06-15",
+      ),
+      [{ studentId: "standard", weeklyMinutes: 60 }],
+    );
+  });
+
   it("counts dropped enrollment through its inclusive end date", () => {
     const dropped = row({
       enrollmentStatus: "dropped",

@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_app/admin/classes/")({
 type ClassRow = {
   classItem: Doc<"classes">;
   enrollments: Doc<"classEnrollments">[];
+  sessionSignups: Doc<"classSessionSignups">[];
   sessions: Doc<"sessions">[];
   seasonId?: Id<"seasons">;
 };
@@ -55,8 +56,36 @@ const columns: ColumnDef<ClassRow>[] = [
   {
     id: "capacity",
     header: "Capacity",
+    cell: ({ row }) => {
+      const { classItem, enrollments, sessionSignups } = row.original;
+      if (classItem.enrollmentMode === "per_session") {
+        const countBySession = new Map<string, number>();
+        for (const signup of sessionSignups) {
+          if (signup.status !== "pending" && signup.status !== "enrolled") {
+            continue;
+          }
+          countBySession.set(
+            signup.session,
+            (countBySession.get(signup.session) || 0) + 1,
+          );
+        }
+        const highestSessionCount = Math.max(0, ...countBySession.values());
+        return classItem.capacity === undefined
+          ? `${highestSessionCount} selected`
+          : `${highestSessionCount}/${classItem.capacity} per session`;
+      }
+      return classItem.capacity === undefined
+        ? `${enrollments.length} enrolled`
+        : `${enrollments.length}/${classItem.capacity}`;
+    },
+  },
+  {
+    id: "signupMode",
+    header: "Signup",
     cell: ({ row }) =>
-      `${row.original.enrollments.length}/${row.original.classItem.capacity}`,
+      row.original.classItem.enrollmentMode === "per_session"
+        ? "Per session"
+        : "All sessions",
   },
   {
     accessorKey: "classItem.status",

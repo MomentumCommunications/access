@@ -24,6 +24,10 @@ import {
   validateNormalizedTuitionTiers,
   validateSiblingDiscountConfig,
 } from "../shared/tuition-pricing";
+import {
+  calculatePerSessionChargeCandidates,
+  resolvedClassEnrollmentMode,
+} from "../shared/per-session-signup";
 
 function accountName(account: {
   displayName?: string;
@@ -151,6 +155,9 @@ async function getWeeklyClassHoursInputs(
       studentId: enrollment.student,
       studentStatus: students.get(enrollment.student)?.status || "missing",
       enrollmentStatus: enrollment.status,
+      classEnrollmentMode: resolvedClassEnrollmentMode(
+        classItem?.enrollmentMode,
+      ),
       enrollmentStartDate: enrollment.startDate,
       enrollmentEndDate: enrollment.endDate,
       classStatus: classItem?.status || "missing",
@@ -453,6 +460,59 @@ export const adminPeriodTuitionReview = query({
       ),
       excludedEnrollments,
     };
+  },
+});
+
+export const adminPeriodPerSessionCharges = query({
+  args: {
+    periodStart: v.string(),
+    periodEnd: v.string(),
+  },
+  handler: async (ctx, { periodStart, periodEnd }) => {
+    await requireAdmin(ctx);
+    validateIsoDate(periodStart, "periodStart");
+    validateIsoDate(periodEnd, "periodEnd");
+    if (periodEnd < periodStart) {
+      throw new Error("periodEnd must be on or after periodStart.");
+    }
+
+    const signups = await ctx.db.query("classSessionSignups").collect();
+    const rows = (
+      await Promise.all(
+        signups.map(async (signup) => {
+          const [student, classItem, session] = await Promise.all([
+            ctx.db.get(signup.student),
+            ctx.db.get(signup.classId),
+            ctx.db.get(signup.session),
+          ]);
+          if (!student || !classItem || !session) return null;
+          return {
+            signupId: signup._id,
+            studentId: student._id,
+            studentStatus: student.status,
+            classId: classItem._id,
+            classMode: resolvedClassEnrollmentMode(
+              classItem.enrollmentMode,
+            ),
+            sessionId: session._id,
+            sessionDate: session.date,
+            sessionActive: session.active,
+            sessionStatus: session.status,
+            signupStatus: signup.status,
+            unitPriceCents: signup.unitPriceCents,
+            student,
+            classItem,
+            session,
+          };
+        }),
+      )
+    ).filter((row) => row !== null);
+
+    return calculatePerSessionChargeCandidates(
+      rows,
+      periodStart,
+      periodEnd,
+    );
   },
 });
 

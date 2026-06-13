@@ -1,6 +1,7 @@
 import { memo } from "react";
 import {
   BookOpen,
+  BookOpenCheck,
   CalendarCheck,
   CalendarClock,
   CalendarDays,
@@ -111,8 +112,8 @@ const AppSidebarComponent = memo(() => {
                       onClick={closeMobileSidebar}
                     >
                       <Link to="/classes">
-                        <BookOpen />
-                        <span>Classes</span>
+                        <BookOpenCheck />
+                        <span>Enroll in Classes</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

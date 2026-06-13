@@ -177,6 +177,10 @@ export default defineSchema({
     timezone: v.optional(v.string()),
     scheduleVersion: v.optional(v.number()),
     assignedStaff: v.optional(v.array(v.id("users"))),
+    enrollmentMode: v.optional(
+      v.union(v.literal("standard"), v.literal("per_session")),
+    ),
+    perSessionPriceCents: v.optional(v.number()),
   }).index("byStatus", ["status"]),
   sessions: defineTable({
     classId: v.id("classes"),
@@ -207,6 +211,26 @@ export default defineSchema({
     .index("bySession", ["session"])
     .index("byStudent", ["student"])
     .index("bySessionStudent", ["session", "student"]),
+  classSessionSignups: defineTable({
+    classId: v.id("classes"),
+    session: v.id("sessions"),
+    student: v.id("students"),
+    requestedBy: v.optional(v.id("users")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("enrolled"),
+      v.literal("waitlisted"),
+      v.literal("cancelled"),
+    ),
+    unitPriceCents: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byClass", ["classId"])
+    .index("bySession", ["session"])
+    .index("byStudent", ["student"])
+    .index("bySessionStudent", ["session", "student"])
+    .index("byClassStudent", ["classId", "student"]),
   seasonClasses: defineTable({
     season: v.id("seasons"),
     class: v.id("classes"),

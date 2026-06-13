@@ -2,7 +2,8 @@ import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { resolvedClassEnrollmentMode } from "../../../shared/per-session-signup";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -11,6 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Label } from "~/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -32,19 +35,75 @@ function ClassDetailPage() {
   });
   const students = useConvexQuery(api.classes.listMyStudents, {});
   const signUp = useConvexMutation(api.classes.signUpStudentForClass);
+  const signUpForSessions = useConvexMutation(
+    api.classes.signUpStudentForSessions,
+  );
   const [selectedStudent, setSelectedStudent] = useState("");
+  const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
   const [message, setMessage] = useState("");
+  const classMode = resolvedClassEnrollmentMode(
+    classData?.classItem.enrollmentMode,
+  );
+  const studentSignups = useMemo(
+    () =>
+      (classData?.sessionSignups || []).filter(
+        (signup) =>
+          signup.student === selectedStudent && signup.status !== "cancelled",
+      ),
+    [classData?.sessionSignups, selectedStudent],
+  );
+  const lockedSessionIds = useMemo(
+    () =>
+      new Set(
+        studentSignups
+          .filter((signup) => signup.status === "enrolled")
+          .map((signup) => signup.session),
+      ),
+    [studentSignups],
+  );
+
+  useEffect(() => {
+    const availableSessionIds = new Set(
+      (classData?.sessions || []).map((session) => session._id),
+    );
+    setSelectedSessions(
+      studentSignups
+        .map((signup) => signup.session)
+        .filter((sessionId) => availableSessionIds.has(sessionId)),
+    );
+  }, [classData?.sessions, studentSignups]);
 
   async function handleSignup() {
     if (!selectedStudent) {
       setMessage("Select a student first.");
       return;
     }
-    await signUp({
-      classId: classId as Id<"classes">,
-      student: selectedStudent as Id<"students">,
-    });
-    setMessage("Signup request submitted.");
+    try {
+      if (classMode === "per_session") {
+        if (selectedSessions.length === 0) {
+          setMessage("Select at least one session.");
+          return;
+        }
+        await signUpForSessions({
+          classId: classId as Id<"classes">,
+          student: selectedStudent as Id<"students">,
+          sessions: selectedSessions as Id<"sessions">[],
+        });
+        setMessage("Session signup request submitted.");
+      } else {
+        await signUp({
+          classId: classId as Id<"classes">,
+          student: selectedStudent as Id<"students">,
+        });
+        setMessage("Signup request submitted.");
+      }
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "The signup request could not be submitted.",
+      );
+    }
   }
 
   if (classData === undefined || students === undefined) {
@@ -93,35 +152,102 @@ function ClassDetailPage() {
               <div>
                 <dt className="font-medium text-foreground">Capacity</dt>
                 <dd>
-                  {classData.activeEnrollmentCount}
-                  {classItem.capacity ? ` / ${classItem.capacity}` : ""} active
-                  requests
+                  {classMode === "per_session"
+                    ? classItem.capacity === undefined
+                      ? "No limit per session"
+                      : `${classItem.capacity} per session`
+                    : `${classData.activeEnrollmentCount}${
+                        classItem.capacity ? ` / ${classItem.capacity}` : ""
+                      } active requests`}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-foreground">Signup</dt>
+                <dd>
+                  {classMode === "per_session"
+                    ? `${new Intl.NumberFormat("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                      }).format(
+                        (classItem.perSessionPriceCents || 0) / 100,
+                      )} per selected session`
+                    : "All sessions"}
                 </dd>
               </div>
             </dl>
           </CardContent>
         </Card>
         <Card className="rounded-lg">
-          <CardHeader>
-            <CardTitle>Sessions</CardTitle>
-            <CardDescription>Upcoming dated class sessions.</CardDescription>
+          <CardHeader className="gap-3">
+            <div>
+              <CardTitle>Sessions</CardTitle>
+              <CardDescription>Upcoming dated class sessions.</CardDescription>
+            </div>
+            {classMode === "per_session" && selectedStudent ? (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="select-all-sessions"
+                  checked={
+                    classData.sessions.length > 0 &&
+                    selectedSessions.length === classData.sessions.length
+                  }
+                  onCheckedChange={(checked) =>
+                    setSelectedSessions(
+                      checked
+                        ? classData.sessions.map((session) => session._id)
+                        : [...lockedSessionIds],
+                    )
+                  }
+                />
+                <Label htmlFor="select-all-sessions">Select all</Label>
+              </div>
+            ) : null}
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             {classData.sessions.length === 0 ? (
               <p className="text-muted-foreground">No sessions scheduled.</p>
             ) : (
-              classData.sessions.map((session) => (
-                <div
-                  key={session._id}
-                  className="flex items-center justify-between rounded-md border p-3"
-                >
-                  <span>{formatMDYYYY(session.date)}</span>
-                  <span className="text-muted-foreground">
-                    {formatTimeRange(session.startTime, session.endTime) ||
-                      "Time TBD"}
-                  </span>
-                </div>
-              ))
+              classData.sessions.map((session) => {
+                const selected = selectedSessions.includes(session._id);
+                const locked = lockedSessionIds.has(session._id);
+                return (
+                  <label
+                    key={session._id}
+                    className="flex items-center justify-between gap-3 rounded-md border p-3"
+                  >
+                    <span className="flex items-center gap-3">
+                      {classMode === "per_session" && selectedStudent ? (
+                        <Checkbox
+                          checked={selected}
+                          disabled={locked}
+                          onCheckedChange={(checked) =>
+                            setSelectedSessions((current) =>
+                              checked
+                                ? [...new Set([...current, session._id])]
+                                : current.filter(
+                                    (sessionId) =>
+                                      sessionId !== session._id,
+                                  ),
+                            )
+                          }
+                        />
+                      ) : null}
+                      <span>
+                        {formatMDYYYY(session.date)}
+                        {locked ? (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            Confirmed
+                          </span>
+                        ) : null}
+                      </span>
+                    </span>
+                    <span className="text-muted-foreground">
+                      {formatTimeRange(session.startTime, session.endTime) ||
+                        "Time TBD"}
+                    </span>
+                  </label>
+                );
+              })
             )}
           </CardContent>
         </Card>
@@ -129,9 +255,15 @@ function ClassDetailPage() {
       <aside className="space-y-4">
         <Card className="rounded-lg">
           <CardHeader>
-            <CardTitle>Request a spot</CardTitle>
+            <CardTitle>
+              {classMode === "per_session"
+                ? "Choose sessions"
+                : "Request a spot"}
+            </CardTitle>
             <CardDescription>
-              Select a student profile, then submit the signup request.
+              {classMode === "per_session"
+                ? "Select a student and one or more dates. Each selected session uses the listed per-session price."
+                : "Select a student profile, then submit the signup request."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -168,7 +300,11 @@ function ClassDetailPage() {
                   </SelectContent>
                 </Select>
                 <Button className="w-full" onClick={handleSignup}>
-                  Submit Signup
+                  {classMode === "per_session"
+                    ? `Request ${selectedSessions.length} session${
+                        selectedSessions.length === 1 ? "" : "s"
+                      }`
+                    : "Submit Signup"}
                 </Button>
               </>
             )}

@@ -233,6 +233,18 @@ describe("isGeneratedSessionProtected", () => {
     );
   });
 
+  it("protects generated sessions with selected-session signups", () => {
+    assert.equal(
+      isGeneratedSessionProtected(
+        { date: "2026-06-20", hasManualOverride: false },
+        today,
+        false,
+        true,
+      ),
+      true,
+    );
+  });
+
   it("leaves today and future untouched sessions eligible for synchronization", () => {
     assert.equal(
       isGeneratedSessionProtected(

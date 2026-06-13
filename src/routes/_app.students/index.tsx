@@ -25,11 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import {
-  formatAge,
-  formatFullDate,
-  formatTimeRange,
-} from "~/lib/date-utils";
+import { formatAge, formatFullDate, formatTimeRange } from "~/lib/date-utils";
 
 export const Route = createFileRoute("/_app/students/")({
   component: StudentsPage,
@@ -83,7 +79,7 @@ function StudentsPage() {
               `${student.firstName} ${student.lastName}`;
 
             return (
-              <Card key={student._id} className="rounded-lg">
+              <Card key={student._id} className="rounded-lg h-min">
                 <CardHeader>
                   <div className="flex items-start gap-3">
                     <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">

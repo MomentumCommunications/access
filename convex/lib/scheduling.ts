@@ -126,8 +126,14 @@ export function isGeneratedSessionProtected(
   session: Pick<Doc<"sessions">, "date" | "hasManualOverride">,
   today: string,
   hasAttendance: boolean,
+  hasSessionSignups = false,
 ) {
-  return session.date < today || !!session.hasManualOverride || hasAttendance;
+  return (
+    session.date < today ||
+    !!session.hasManualOverride ||
+    hasAttendance ||
+    hasSessionSignups
+  );
 }
 
 async function sessionHasAttendance(ctx: DbCtx, session: Id<"sessions">) {
@@ -136,6 +142,14 @@ async function sessionHasAttendance(ctx: DbCtx, session: Id<"sessions">) {
     .withIndex("bySession", (q) => q.eq("session", session))
     .first();
   return !!attendance;
+}
+
+async function sessionHasSignups(ctx: DbCtx, session: Id<"sessions">) {
+  const signup = await ctx.db
+    .query("classSessionSignups")
+    .withIndex("bySession", (q) => q.eq("session", session))
+    .first();
+  return !!signup;
 }
 
 export async function syncGeneratedSessionsForClass(
@@ -159,7 +173,15 @@ export async function syncGeneratedSessionsForClass(
 
   for (const session of generatedSessions) {
     const hasAttendance = await sessionHasAttendance(ctx, session._id);
-    if (isGeneratedSessionProtected(session, today, hasAttendance)) {
+    const hasSignups = await sessionHasSignups(ctx, session._id);
+    if (
+      isGeneratedSessionProtected(
+        session,
+        today,
+        hasAttendance,
+        hasSignups,
+      )
+    ) {
       continue;
     }
 

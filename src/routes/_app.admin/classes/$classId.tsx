@@ -4,7 +4,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { resolvedClassEnrollmentMode } from "../../../../shared/per-session-signup";
 import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
 import {
@@ -18,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
 import {
   Combobox,
   ComboboxContent,
@@ -58,6 +60,7 @@ type AdminClassData = NonNullable<
   FunctionReturnType<typeof api.classes.adminGetClass>
 >;
 type EnrollmentRow = AdminClassData["enrollments"][number];
+type SessionSignupRow = AdminClassData["sessionSignups"][number];
 
 function AdminClassDetailPage() {
   const { classId } = Route.useParams();
@@ -73,6 +76,9 @@ function AdminClassDetailPage() {
   );
   const updateEnrollment = useConvexMutation(
     api.classes.adminUpdateEnrollmentStatus,
+  );
+  const setStudentSessionSignups = useConvexMutation(
+    api.classes.adminSetStudentSessionSignups,
   );
   const [sessionDate, setSessionDate] = useState("");
   const [sessionStart, setSessionStart] = useState("");
@@ -90,6 +96,22 @@ function AdminClassDetailPage() {
     useState<BillingTreatment>("");
   const [enrollmentToActivate, setEnrollmentToActivate] =
     useState<EnrollmentRow | null>(null);
+  const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
+  const [sessionSignupStatus, setSessionSignupStatus] =
+    useState<"pending" | "enrolled" | "waitlisted">("enrolled");
+  const classMode = resolvedClassEnrollmentMode(
+    classData?.classItem.enrollmentMode,
+  );
+  const availableSignupSessions = useMemo(
+    () =>
+      (classData?.sessions || []).filter(
+        (session) =>
+          session.active &&
+          session.status !== "cancelled" &&
+          session.date >= todayValue(),
+      ),
+    [classData?.sessions],
+  );
   const studentOptions = useMemo(
     () =>
       (students || []).map((row) => {
@@ -103,6 +125,42 @@ function AdminClassDetailPage() {
       }),
     [students],
   );
+  const existingSelectedSignups = useMemo(
+    () =>
+      (classData?.sessionSignups || []).filter(
+        (signup) =>
+          signup.student?._id === selectedStudent &&
+          signup.status !== "cancelled",
+      ),
+    [classData?.sessionSignups, selectedStudent],
+  );
+
+  useEffect(() => {
+    setSelectedSessionIds(
+      existingSelectedSignups
+        .filter(
+          (signup) =>
+            signup.session?.active &&
+            signup.session.status !== "cancelled" &&
+            signup.session.date >= todayValue(),
+        )
+        .map((signup) => signup.session?._id)
+        .filter((sessionId): sessionId is string => Boolean(sessionId)),
+    );
+    const statuses = new Set(
+      existingSelectedSignups
+        .map((signup) => signup.status)
+        .filter(
+          (
+            status,
+          ): status is "pending" | "enrolled" | "waitlisted" =>
+            status !== "cancelled",
+        ),
+    );
+    if (statuses.size === 1) {
+      setSessionSignupStatus([...statuses][0]);
+    }
+  }, [existingSelectedSignups]);
 
   const enrollmentColumns: ColumnDef<EnrollmentRow>[] = [
     {
@@ -175,6 +233,47 @@ function AdminClassDetailPage() {
       cell: ({ row }) => row.original.endDate || "Open",
     },
   ];
+  const sessionSignupColumns: ColumnDef<SessionSignupRow>[] = [
+    {
+      accessorFn: (row) =>
+        row.student
+          ? `${row.student.firstName} ${row.student.lastName}`
+          : "",
+      id: "student",
+      header: "Student",
+      cell: ({ row }) =>
+        row.original.student
+          ? `${row.original.student.firstName} ${row.original.student.lastName}`
+          : "Missing student",
+    },
+    {
+      accessorFn: (row) => row.session?.date || "",
+      id: "date",
+      header: "Session",
+      cell: ({ row }) =>
+        row.original.session
+          ? formatMDYYYY(row.original.session.date)
+          : "Missing session",
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => (
+        <span className="capitalize">
+          {row.original.status.replace("_", " ")}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "unitPriceCents",
+      header: "Price",
+      cell: ({ row }) =>
+        new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+        }).format(row.original.unitPriceCents / 100),
+    },
+  ];
 
   async function handleCreateSession(event: FormEvent) {
     event.preventDefault();
@@ -205,6 +304,18 @@ function AdminClassDetailPage() {
 
   async function handleAddStudent(event: FormEvent) {
     event.preventDefault();
+    if (classMode === "per_session") {
+      await setStudentSessionSignups({
+        classId: classId as Id<"classes">,
+        student: selectedStudent as Id<"students">,
+        sessions: selectedSessionIds as Id<"sessions">[],
+        status: sessionSignupStatus,
+      });
+      setSelectedStudent("");
+      setSelectedSessionIds([]);
+      setSessionSignupStatus("enrolled");
+      return;
+    }
     await enrollStudent({
       classId: classId as Id<"classes">,
       student: selectedStudent as Id<"students">,
@@ -289,6 +400,20 @@ function AdminClassDetailPage() {
                     {classData.classItem.location || "Not set"}
                   </div>
                 </div>
+                <div>
+                  <div className="text-muted-foreground">Signup mode</div>
+                  <div className="font-medium">
+                    {classMode === "per_session"
+                      ? `Per session · ${new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        }).format(
+                          (classData.classItem.perSessionPriceCents || 0) /
+                            100,
+                        )}`
+                      : "Standard · all sessions"}
+                  </div>
+                </div>
                 <Button asChild className="w-full">
                   <Link to="/admin/classes/$classId/edit" params={{ classId }}>
                     Edit Class
@@ -332,84 +457,185 @@ function AdminClassDetailPage() {
                       </ComboboxContent>
                     </Combobox>
                   </div>
-                  <div className="space-y-1">
-                    <Label>Status</Label>
-                    <Select
-                      value={newEnrollmentStatus}
-                      onValueChange={(value) => {
-                        setNewEnrollmentStatus(value as EnrollmentStatus)
-                        if (value !== "enrolled") setBillingTreatment("");
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="enrolled">Enrolled</SelectItem>
-                        <SelectItem value="waitlisted">Waitlisted</SelectItem>
-                        <SelectItem value="dropped">Dropped</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {newEnrollmentStatus === "enrolled" ? (
-                    <div className="space-y-1">
-                      <Label>Tuition treatment</Label>
-                      <Select
-                        value={billingTreatment}
-                        onValueChange={(value) =>
-                          setBillingTreatment(value as BillingTreatment)
-                        }
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Choose billing treatment" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="prorate">
-                            Prorate for enrollment dates
-                          </SelectItem>
-                          <SelectItem value="full">
-                            Charge the full billing period
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ) : null}
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="enrollment-start-date">Start date</Label>
-                      <Input
-                        id="enrollment-start-date"
-                        type="date"
-                        required
-                        value={enrollmentStartDate}
-                        onChange={(event) =>
-                          setEnrollmentStartDate(event.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="enrollment-end-date">End date</Label>
-                      <Input
-                        id="enrollment-end-date"
-                        type="date"
-                        required={newEnrollmentStatus === "dropped"}
-                        min={enrollmentStartDate}
-                        value={enrollmentEndDate}
-                        onChange={(event) =>
-                          setEnrollmentEndDate(event.target.value)
-                        }
-                      />
-                    </div>
-                  </div>
+                  {classMode === "per_session" ? (
+                    <>
+                      <div className="space-y-1">
+                        <Label>Status</Label>
+                        <Select
+                          value={sessionSignupStatus}
+                          onValueChange={(value) =>
+                            setSessionSignupStatus(
+                              value as typeof sessionSignupStatus,
+                            )
+                          }
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="enrolled">Enrolled</SelectItem>
+                            <SelectItem value="waitlisted">
+                              Waitlisted
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="admin-select-all-sessions"
+                            checked={
+                              availableSignupSessions.length > 0 &&
+                              selectedSessionIds.length ===
+                                availableSignupSessions.length
+                            }
+                            onCheckedChange={(checked) =>
+                              setSelectedSessionIds(
+                                checked
+                                  ? availableSignupSessions.map(
+                                      (session) => session._id,
+                                    )
+                                  : [],
+                              )
+                            }
+                          />
+                          <Label htmlFor="admin-select-all-sessions">
+                            Select all sessions
+                          </Label>
+                        </div>
+                        <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border p-2">
+                          {availableSignupSessions.map((session) => (
+                            <label
+                              key={session._id}
+                              className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-muted"
+                            >
+                              <span className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={selectedSessionIds.includes(
+                                    session._id,
+                                  )}
+                                  onCheckedChange={(checked) =>
+                                    setSelectedSessionIds((current) =>
+                                      checked
+                                        ? [
+                                            ...new Set([
+                                              ...current,
+                                              session._id,
+                                            ]),
+                                          ]
+                                        : current.filter(
+                                            (sessionId) =>
+                                              sessionId !== session._id,
+                                          ),
+                                    )
+                                  }
+                                />
+                                {formatMDYYYY(session.date)}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {formatTimeRange(
+                                  session.startTime,
+                                  session.endTime,
+                                ) || "Time TBD"}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="space-y-1">
+                        <Label>Status</Label>
+                        <Select
+                          value={newEnrollmentStatus}
+                          onValueChange={(value) => {
+                            setNewEnrollmentStatus(
+                              value as EnrollmentStatus,
+                            );
+                            if (value !== "enrolled") {
+                              setBillingTreatment("");
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="enrolled">Enrolled</SelectItem>
+                            <SelectItem value="waitlisted">
+                              Waitlisted
+                            </SelectItem>
+                            <SelectItem value="dropped">Dropped</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {newEnrollmentStatus === "enrolled" ? (
+                        <div className="space-y-1">
+                          <Label>Tuition treatment</Label>
+                          <Select
+                            value={billingTreatment}
+                            onValueChange={(value) =>
+                              setBillingTreatment(value as BillingTreatment)
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Choose billing treatment" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="prorate">
+                                Prorate for enrollment dates
+                              </SelectItem>
+                              <SelectItem value="full">
+                                Charge the full billing period
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : null}
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label htmlFor="enrollment-start-date">
+                            Start date
+                          </Label>
+                          <Input
+                            id="enrollment-start-date"
+                            type="date"
+                            required
+                            value={enrollmentStartDate}
+                            onChange={(event) =>
+                              setEnrollmentStartDate(event.target.value)
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="enrollment-end-date">End date</Label>
+                          <Input
+                            id="enrollment-end-date"
+                            type="date"
+                            required={newEnrollmentStatus === "dropped"}
+                            min={enrollmentStartDate}
+                            value={enrollmentEndDate}
+                            onChange={(event) =>
+                              setEnrollmentEndDate(event.target.value)
+                            }
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
                   <Button
                     type="submit"
                     variant="outline"
                     className="w-full"
                     disabled={
                       !selectedStudent ||
-                      (newEnrollmentStatus === "enrolled" &&
-                        !billingTreatment)
+                      (classMode === "per_session"
+                        ? selectedSessionIds.length === 0
+                        : newEnrollmentStatus === "enrolled" &&
+                          !billingTreatment)
                     }
                   >
                     Add Student
@@ -522,15 +748,28 @@ function AdminClassDetailPage() {
           <section className="min-w-0 space-y-4">
             <Card className="rounded-lg">
               <CardHeader>
-                <CardTitle>Enrollments</CardTitle>
+                <CardTitle>
+                  {classMode === "per_session"
+                    ? "Session signups"
+                    : "Enrollments"}
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <DataTable
-                  columns={enrollmentColumns}
-                  data={classData.enrollments}
-                  filterColumn="student"
-                  filterPlaceholder="Filter students..."
-                />
+                {classMode === "per_session" ? (
+                  <DataTable
+                    columns={sessionSignupColumns}
+                    data={classData.sessionSignups}
+                    filterColumn="student"
+                    filterPlaceholder="Filter students..."
+                  />
+                ) : (
+                  <DataTable
+                    columns={enrollmentColumns}
+                    data={classData.enrollments}
+                    filterColumn="student"
+                    filterPlaceholder="Filter students..."
+                  />
+                )}
               </CardContent>
             </Card>
             <Card className="rounded-lg">

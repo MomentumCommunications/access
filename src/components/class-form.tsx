@@ -5,6 +5,10 @@ import { api } from "convex/_generated/api";
 import type { Doc, Id } from "convex/_generated/dataModel";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
+import {
+  formatCurrencyFromCents,
+  parseCurrencyToCents,
+} from "../../shared/tuition-pricing";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
@@ -84,8 +88,31 @@ const classFormSchema = z
     weekdays: z.array(weekdaySchema),
     assignedStaff: z.string(),
     seasonId: z.string(),
+    enrollmentMode: z.enum(["standard", "per_session"]),
+    perSessionPrice: z.string(),
   })
   .superRefine((values, ctx) => {
+    const perSessionPrice = parseCurrencyToCents(values.perSessionPrice);
+    if (
+      values.enrollmentMode === "per_session" &&
+      perSessionPrice === null
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["perSessionPrice"],
+        message: "Enter a valid nonnegative per-session price.",
+      });
+    }
+    if (
+      values.enrollmentMode === "standard" &&
+      values.perSessionPrice.trim()
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["perSessionPrice"],
+        message: "Per-session pricing requires per-session signup mode.",
+      });
+    }
     if (
       values.minAge !== "" &&
       values.maxAge !== "" &&
@@ -182,6 +209,8 @@ const emptyValues: ClassFormValues = {
   weekdays: [],
   assignedStaff: "none",
   seasonId: "none",
+  enrollmentMode: "standard",
+  perSessionPrice: "",
 };
 
 function valuesFromClass(
@@ -204,6 +233,11 @@ function valuesFromClass(
     weekdays: classItem.weekdays || [],
     assignedStaff: classItem.assignedStaff?.[0] || "none",
     seasonId: seasonId || "none",
+    enrollmentMode: classItem.enrollmentMode || "standard",
+    perSessionPrice:
+      classItem.perSessionPriceCents === undefined
+        ? ""
+        : formatCurrencyFromCents(classItem.perSessionPriceCents),
   };
 }
 
@@ -230,6 +264,7 @@ export function ClassForm(props: ClassFormProps) {
         : emptyValues,
     mode: "onTouched",
   });
+  const enrollmentMode = form.watch("enrollmentMode");
 
   async function onSubmit(values: ClassFormValues) {
     form.clearErrors("root");
@@ -255,6 +290,11 @@ export function ClassForm(props: ClassFormProps) {
         values.seasonId === "none"
           ? undefined
           : (values.seasonId as Id<"seasons">),
+      enrollmentMode: values.enrollmentMode,
+      perSessionPriceCents:
+        values.enrollmentMode === "per_session"
+          ? parseCurrencyToCents(values.perSessionPrice)!
+          : undefined,
     };
 
     try {
@@ -347,6 +387,71 @@ export function ClassForm(props: ClassFormProps) {
             </Field>
           )}
         />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Controller
+            name="enrollmentMode"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor={field.name}>Signup mode</FieldLabel>
+                <Select
+                  name={field.name}
+                  value={field.value}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    if (value === "standard") {
+                      form.setValue("perSessionPrice", "");
+                    }
+                  }}
+                >
+                  <SelectTrigger
+                    id={field.name}
+                    aria-invalid={fieldState.invalid}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">
+                      Standard - all sessions
+                    </SelectItem>
+                    <SelectItem value="per_session">
+                      Select individual sessions
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldError errors={[fieldState.error]} />
+              </Field>
+            )}
+          />
+          {enrollmentMode === "per_session" ? (
+            <Controller
+              name="perSessionPrice"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor={field.name}>
+                    Price per session
+                  </FieldLabel>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground">
+                      $
+                    </span>
+                    <Input
+                      {...field}
+                      id={field.name}
+                      inputMode="decimal"
+                      aria-invalid={fieldState.invalid}
+                      className="pl-7"
+                      placeholder="55.00"
+                    />
+                  </div>
+                  <FieldError errors={[fieldState.error]} />
+                </Field>
+              )}
+            />
+          ) : null}
+        </div>
         <Controller
           name="seasonId"
           control={form.control}

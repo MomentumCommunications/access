@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import {
@@ -45,6 +45,14 @@ import {
   validateBillingAdjustmentInput,
   type BillingAdjustmentInput,
 } from "../shared/billing-adjustments";
+import {
+  billingRunSourcesOverlap,
+  buildBillingRunBundles,
+  buildBillingRunItemSnapshot,
+  calculateBillingRunItemTotal,
+  resolveBillingRunGeneration,
+  type BillingRunSourceMode,
+} from "../shared/billing-runs";
 import { recordActivityEvent } from "./lib/activityLog";
 
 function accountName(account: {
@@ -95,7 +103,10 @@ const privateParticipantCountValidator = v.union(
   v.literal(3),
 );
 
-const billingAdjustmentScopeTypeValidator = v.literal("household_tuition");
+const billingAdjustmentScopeTypeValidator = v.union(
+  v.literal("household_tuition"),
+  v.literal("billing_run_item"),
+);
 const billingAdjustmentKindValidator = v.union(
   v.literal("discount"),
   v.literal("surcharge"),
@@ -111,6 +122,11 @@ const billingAdjustmentReasonCodeValidator = v.union(
   v.literal("waiver"),
   v.literal("surcharge"),
   v.literal("other"),
+);
+const billingRunSourceModeValidator = v.union(
+  v.literal("tuition"),
+  v.literal("charges"),
+  v.literal("both"),
 );
 
 const disabledSiblingDiscount: SiblingDiscountConfig = {
@@ -161,6 +177,31 @@ function storedBillingAdjustmentInput(adjustment: BillingAdjustmentInput) {
   };
 }
 
+async function assertRunAdjustmentScopeEditable(
+  ctx: BillingCtx,
+  input: Pick<
+    BillingAdjustmentInput,
+    "scopeType" | "scopeId" | "periodStart" | "periodEnd"
+  >,
+) {
+  if (input.scopeType !== "billing_run_item") return;
+  const runItem = await ctx.db.get(
+    input.scopeId as Id<"billingRunItems">,
+  );
+  if (!runItem) {
+    throw new Error("Billing run item not found.");
+  }
+  if (runItem.status !== "draft") {
+    throw new Error("Dispatched billing run items cannot be adjusted.");
+  }
+  if (
+    runItem.periodStart !== input.periodStart ||
+    runItem.periodEnd !== input.periodEnd
+  ) {
+    throw new Error("Billing adjustment period must match its run item.");
+  }
+}
+
 async function getPricingSchemaTiers(
   ctx: BillingCtx,
   pricingSchemaId: Id<"pricingSchemas">,
@@ -185,7 +226,7 @@ function normalizedStoredTiers(
 }
 
 async function getWeeklyClassHoursInputs(
-  ctx: QueryCtx,
+  ctx: BillingCtx,
 ): Promise<TuitionCalculationInput[]> {
   const enrollments = await ctx.db.query("classEnrollments").collect();
   const students = new Map(
@@ -257,7 +298,7 @@ async function replaceAccountHousehold(
   }
 }
 
-async function getHouseholdResolutionData(ctx: QueryCtx) {
+async function getHouseholdResolutionData(ctx: BillingCtx) {
   const [contacts, memberships, households, users] = await Promise.all([
     ctx.db.query("studentContacts").collect(),
     ctx.db.query("householdMembers").collect(),
@@ -388,15 +429,11 @@ export const adminTuitionReview = query({
 
     return await Promise.all(
       totals.map(async (total) => {
-        const student = await ctx.db.get(
-          total.studentId as Id<"students">,
-        );
+        const student = await ctx.db.get(total.studentId as Id<"students">);
         if (!student) return null;
         const contacts = await ctx.db
           .query("studentContacts")
-          .withIndex("byStudent", (q) =>
-            q.eq("student", student._id),
-          )
+          .withIndex("byStudent", (q) => q.eq("student", student._id))
           .collect();
         const primaryContact =
           contacts.find((contact) => contact.isPrimary) || contacts[0];
@@ -409,35 +446,29 @@ export const adminTuitionReview = query({
           weeklyMinutes: total.weeklyMinutes,
           householdName: account
             ? accountName(account)
-            : primaryContact?.name ||
-              primaryContact?.inviteEmail ||
-              "Not set",
+            : primaryContact?.name || primaryContact?.inviteEmail || "Not set",
         };
       }),
     ).then((rows) => rows.filter((row) => row !== null));
   },
 });
 
-export const adminPeriodTuitionReview = query({
-  args: {
-    periodStart: v.string(),
-    periodEnd: v.string(),
-  },
-  handler: async (ctx, { periodStart, periodEnd }) => {
-    await requireAdmin(ctx);
-    validateIsoDate(periodStart, "periodStart");
-    validateIsoDate(periodEnd, "periodEnd");
-    if (periodEnd < periodStart) {
-      throw new Error("periodEnd must be on or after periodStart.");
-    }
+async function getPeriodTuitionReview(
+  ctx: BillingCtx,
+  periodStart: string,
+  periodEnd: string,
+) {
+  validateIsoDate(periodStart, "periodStart");
+  validateIsoDate(periodEnd, "periodEnd");
+  if (periodEnd < periodStart) {
+    throw new Error("periodEnd must be on or after periodStart.");
+  }
 
-    const inputs = await getWeeklyClassHoursInputs(ctx);
+  const inputs = await getWeeklyClassHoursInputs(ctx);
     const exclusions = collectBillingEnrollmentExclusions(inputs);
     const excludedEnrollments = await Promise.all(
       exclusions.map(async (exclusion) => {
-        const student = await ctx.db.get(
-          exclusion.studentId as Id<"students">,
-        );
+        const student = await ctx.db.get(exclusion.studentId as Id<"students">);
         return {
           ...exclusion,
           studentName: student
@@ -525,8 +556,7 @@ export const adminPeriodTuitionReview = query({
         adjustmentsByScope.get(household.householdId) || []
       ).sort(
         (left, right) =>
-          left.createdAt - right.createdAt ||
-          left._id.localeCompare(right._id),
+          left.createdAt - right.createdAt || left._id.localeCompare(right._id),
       );
       const applied = applyBillingAdjustments(
         household.totalTuitionCents,
@@ -546,10 +576,7 @@ export const adminPeriodTuitionReview = query({
         })),
       );
       const appliedById = new Map(
-        applied.adjustments.map((adjustment) => [
-          adjustment.id,
-          adjustment,
-        ]),
+        applied.adjustments.map((adjustment) => [adjustment.id, adjustment]),
       );
       return {
         ...household,
@@ -557,23 +584,33 @@ export const adminPeriodTuitionReview = query({
         billingAdjustments: billingAdjustments.map((adjustment) => ({
           ...adjustment,
           appliedAmountCents: appliedById.get(adjustment._id)?.amountCents,
-          percentageBaseCents:
-            appliedById.get(adjustment._id)?.percentageBaseCents,
+          percentageBaseCents: appliedById.get(adjustment._id)
+            ?.percentageBaseCents,
         })),
         totalTuitionCents: applied.totalCents,
       };
     });
 
-    return {
-      pricingSchema: {
-        _id: activeSchema._id,
-        name: activeSchema.name,
-        version: activeSchema.version,
-      },
-      rows: tuitionRows,
-      households,
-      excludedEnrollments,
-    };
+  return {
+    pricingSchema: {
+      _id: activeSchema._id,
+      name: activeSchema.name,
+      version: activeSchema.version,
+    },
+    rows: tuitionRows,
+    households,
+    excludedEnrollments,
+  };
+}
+
+export const adminPeriodTuitionReview = query({
+  args: {
+    periodStart: v.string(),
+    periodEnd: v.string(),
+  },
+  handler: async (ctx, { periodStart, periodEnd }) => {
+    await requireAdmin(ctx);
+    return await getPeriodTuitionReview(ctx, periodStart, periodEnd);
   },
 });
 
@@ -593,6 +630,7 @@ export const adminCreateBillingAdjustment = mutation({
     const actor = await requireAdmin(ctx);
     const input = storedBillingAdjustmentInput(args);
     validateBillingAdjustmentInput(input);
+    await assertRunAdjustmentScopeEditable(ctx, input);
     const now = Date.now();
     const adjustmentId = await ctx.db.insert("billingAdjustments", {
       ...input,
@@ -602,21 +640,24 @@ export const adminCreateBillingAdjustment = mutation({
       createdAt: now,
       updatedAt: now,
     });
-    await recordActivityEvent(ctx, buildBillingAdjustmentActivityEvent({
-      adjustmentId,
-      actorId: actor._id,
-      action: "created",
-      metadata: {
-        scopeType: input.scopeType,
-        scopeId: input.scopeId,
-        periodStart: input.periodStart,
-        periodEnd: input.periodEnd,
-        kind: input.kind,
-        calculationType: input.calculationType,
-        amount: input.amount,
-        reasonCode: input.reasonCode,
-      },
-    }));
+    await recordActivityEvent(
+      ctx,
+      buildBillingAdjustmentActivityEvent({
+        adjustmentId,
+        actorId: actor._id,
+        action: "created",
+        metadata: {
+          scopeType: input.scopeType,
+          scopeId: input.scopeId,
+          periodStart: input.periodStart,
+          periodEnd: input.periodEnd,
+          kind: input.kind,
+          calculationType: input.calculationType,
+          amount: input.amount,
+          reasonCode: input.reasonCode,
+        },
+      }),
+    );
     return adjustmentId;
   },
 });
@@ -632,14 +673,7 @@ export const adminUpdateBillingAdjustment = mutation({
   },
   handler: async (
     ctx,
-    {
-      billingAdjustmentId,
-      kind,
-      calculationType,
-      amount,
-      reasonCode,
-      note,
-    },
+    { billingAdjustmentId, kind, calculationType, amount, reasonCode, note },
   ) => {
     const actor = await requireAdmin(ctx);
     const adjustment = await ctx.db.get(billingAdjustmentId);
@@ -647,6 +681,7 @@ export const adminUpdateBillingAdjustment = mutation({
       throw new Error("Billing adjustment not found.");
     }
     assertBillingAdjustmentEditable(adjustment.status);
+    await assertRunAdjustmentScopeEditable(ctx, adjustment);
     const input = storedBillingAdjustmentInput({
       scopeType: adjustment.scopeType,
       scopeId: adjustment.scopeId,
@@ -675,25 +710,28 @@ export const adminUpdateBillingAdjustment = mutation({
       updatedBy: actor._id,
       updatedAt: Date.now(),
     });
-    await recordActivityEvent(ctx, buildBillingAdjustmentActivityEvent({
-      adjustmentId: billingAdjustmentId,
-      actorId: actor._id,
-      action: "updated",
-      metadata: {
-        scopeType: adjustment.scopeType,
-        scopeId: adjustment.scopeId,
-        periodStart: adjustment.periodStart,
-        periodEnd: adjustment.periodEnd,
-        previous,
-        next: {
-          kind: input.kind,
-          calculationType: input.calculationType,
-          amount: input.amount,
-          reasonCode: input.reasonCode,
-          note: input.note || null,
+    await recordActivityEvent(
+      ctx,
+      buildBillingAdjustmentActivityEvent({
+        adjustmentId: billingAdjustmentId,
+        actorId: actor._id,
+        action: "updated",
+        metadata: {
+          scopeType: adjustment.scopeType,
+          scopeId: adjustment.scopeId,
+          periodStart: adjustment.periodStart,
+          periodEnd: adjustment.periodEnd,
+          previous,
+          next: {
+            kind: input.kind,
+            calculationType: input.calculationType,
+            amount: input.amount,
+            reasonCode: input.reasonCode,
+            note: input.note || null,
+          },
         },
-      },
-    }));
+      }),
+    );
   },
 });
 
@@ -708,6 +746,7 @@ export const adminVoidBillingAdjustment = mutation({
     if (adjustment.status === "voided") {
       throw new Error("Billing adjustment is already voided.");
     }
+    await assertRunAdjustmentScopeEditable(ctx, adjustment);
     const now = Date.now();
     await ctx.db.patch(billingAdjustmentId, {
       status: "voided",
@@ -716,21 +755,24 @@ export const adminVoidBillingAdjustment = mutation({
       updatedBy: actor._id,
       updatedAt: now,
     });
-    await recordActivityEvent(ctx, buildBillingAdjustmentActivityEvent({
-      adjustmentId: billingAdjustmentId,
-      actorId: actor._id,
-      action: "voided",
-      metadata: {
-        scopeType: adjustment.scopeType,
-        scopeId: adjustment.scopeId,
-        periodStart: adjustment.periodStart,
-        periodEnd: adjustment.periodEnd,
-        kind: adjustment.kind,
-        calculationType: adjustment.calculationType,
-        amount: adjustment.amount,
-        reasonCode: adjustment.reasonCode,
-      },
-    }));
+    await recordActivityEvent(
+      ctx,
+      buildBillingAdjustmentActivityEvent({
+        adjustmentId: billingAdjustmentId,
+        actorId: actor._id,
+        action: "voided",
+        metadata: {
+          scopeType: adjustment.scopeType,
+          scopeId: adjustment.scopeId,
+          periodStart: adjustment.periodStart,
+          periodEnd: adjustment.periodEnd,
+          kind: adjustment.kind,
+          calculationType: adjustment.calculationType,
+          amount: adjustment.amount,
+          reasonCode: adjustment.reasonCode,
+        },
+      }),
+    );
   },
 });
 
@@ -762,9 +804,7 @@ export const adminPeriodPerSessionCharges = query({
             studentId: student._id,
             studentStatus: student.status,
             classId: classItem._id,
-            classMode: resolvedClassEnrollmentMode(
-              classItem.enrollmentMode,
-            ),
+            classMode: resolvedClassEnrollmentMode(classItem.enrollmentMode),
             sessionId: session._id,
             sessionDate: session.date,
             sessionActive: session.active,
@@ -779,36 +819,34 @@ export const adminPeriodPerSessionCharges = query({
       )
     ).filter((row) => row !== null);
 
-    return calculatePerSessionChargeCandidates(
-      rows,
-      periodStart,
-      periodEnd,
-    );
+    return calculatePerSessionChargeCandidates(rows, periodStart, periodEnd);
   },
 });
 
-export const adminPeriodChargesReview = query({
-  args: {
-    periodStart: v.string(),
-    periodEnd: v.string(),
-    startsAtOrAfter: v.number(),
-    startsBefore: v.number(),
+async function getPeriodChargesReview(
+  ctx: BillingCtx,
+  {
+    periodStart,
+    periodEnd,
+    startsAtOrAfter,
+    startsBefore,
+  }: {
+    periodStart: string;
+    periodEnd: string;
+    startsAtOrAfter: number;
+    startsBefore: number;
   },
-  handler: async (
-    ctx,
-    { periodStart, periodEnd, startsAtOrAfter, startsBefore },
-  ) => {
-    await requireAdmin(ctx);
-    validateIsoDate(periodStart, "periodStart");
-    validateIsoDate(periodEnd, "periodEnd");
-    if (periodEnd < periodStart) {
-      throw new Error("periodEnd must be on or after periodStart.");
-    }
-    if (startsBefore <= startsAtOrAfter) {
-      throw new Error("Billing range end must be after its start.");
-    }
+) {
+  validateIsoDate(periodStart, "periodStart");
+  validateIsoDate(periodEnd, "periodEnd");
+  if (periodEnd < periodStart) {
+    throw new Error("periodEnd must be on or after periodStart.");
+  }
+  if (startsBefore <= startsAtOrAfter) {
+    throw new Error("Billing range end must be after its start.");
+  }
 
-    const householdData = await getHouseholdResolutionData(ctx);
+  const householdData = await getHouseholdResolutionData(ctx);
     const [signups, privateParticipations, privateRates] = await Promise.all([
       ctx.db.query("classSessionSignups").collect(),
       ctx.db
@@ -850,9 +888,7 @@ export const adminPeriodChargesReview = query({
             studentId: student._id,
             studentStatus: student.status,
             classId: classItem._id,
-            classMode: resolvedClassEnrollmentMode(
-              classItem.enrollmentMode,
-            ),
+            classMode: resolvedClassEnrollmentMode(classItem.enrollmentMode),
             sessionId: session._id,
             sessionDate: session.date,
             sessionActive: session.active,
@@ -872,10 +908,7 @@ export const adminPeriodChargesReview = query({
       periodEnd,
     );
     const candidateByStudentClass = new Map(
-      candidates.map((row) => [
-        `${row.studentId}:${row.classId}`,
-        row,
-      ]),
+      candidates.map((row) => [`${row.studentId}:${row.classId}`, row]),
     );
     const perSessionCharges = aggregatePerSessionCharges(
       candidates,
@@ -967,12 +1000,382 @@ export const adminPeriodChargesReview = query({
           left.student._id.localeCompare(right.student._id),
       );
 
+  return {
+    periodStart,
+    periodEnd,
+    privateCharges,
+    perSessionCharges,
+  };
+}
+
+export const adminPeriodChargesReview = query({
+  args: {
+    periodStart: v.string(),
+    periodEnd: v.string(),
+    startsAtOrAfter: v.number(),
+    startsBefore: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await getPeriodChargesReview(ctx, args);
+  },
+});
+
+function billingAdjustmentLike(
+  adjustment: Doc<"billingAdjustments">,
+) {
+  return {
+    id: adjustment._id,
+    scopeType: adjustment.scopeType,
+    scopeId: adjustment.scopeId,
+    periodStart: adjustment.periodStart,
+    periodEnd: adjustment.periodEnd,
+    kind: adjustment.kind,
+    calculationType: adjustment.calculationType,
+    amount: adjustment.amount,
+    reasonCode: adjustment.reasonCode,
+    note: adjustment.note,
+    status: adjustment.status,
+    createdAt: adjustment.createdAt,
+  };
+}
+
+async function getBillingRunItemAdjustments(
+  ctx: BillingCtx,
+  item: {
+    _id: Id<"billingRunItems">;
+    periodStart: string;
+    periodEnd: string;
+  },
+) {
+  return await ctx.db
+    .query("billingAdjustments")
+    .withIndex("byScopePeriod", (q) =>
+      q
+        .eq("scopeType", "billing_run_item")
+        .eq("scopeId", item._id)
+        .eq("periodStart", item.periodStart)
+        .eq("periodEnd", item.periodEnd),
+    )
+    .collect();
+}
+
+function sourceModeIncludes(
+  sourceMode: BillingRunSourceMode,
+  source: "tuition" | "charges",
+) {
+  return sourceMode === "both" || sourceMode === source;
+}
+
+export const adminGenerateBillingRun = mutation({
+  args: {
+    periodStart: v.string(),
+    periodEnd: v.string(),
+    startsAtOrAfter: v.number(),
+    startsBefore: v.number(),
+    sourceMode: billingRunSourceModeValidator,
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireAdmin(ctx);
+    validateIsoDate(args.periodStart, "periodStart");
+    validateIsoDate(args.periodEnd, "periodEnd");
+    if (args.periodEnd < args.periodStart) {
+      throw new Error("periodEnd must be on or after periodStart.");
+    }
+    if (args.startsBefore <= args.startsAtOrAfter) {
+      throw new Error("Billing range end must be after its start.");
+    }
+
+    const periodRuns = await ctx.db
+      .query("billingRuns")
+      .withIndex("byPeriodMode", (q) =>
+        q
+          .eq("periodStart", args.periodStart)
+          .eq("periodEnd", args.periodEnd),
+      )
+      .collect();
+    const exactRuns = periodRuns
+      .filter((run) => run.sourceMode === args.sourceMode)
+      .sort(
+        (left, right) =>
+          Number(right.status === "draft") -
+            Number(left.status === "draft") ||
+          right.createdAt - left.createdAt,
+      );
+    const generation = resolveBillingRunGeneration(exactRuns);
+    if (generation.action !== "create") {
+      const items = await ctx.db
+        .query("billingRunItems")
+        .withIndex("byRun", (q) => q.eq("billingRunId", generation.run._id))
+        .collect();
+      return {
+        outcome: generation.action,
+        billingRunId: generation.run._id,
+        itemCount: items.length,
+      };
+    }
+    const overlappingRun = periodRuns.find((run) =>
+      billingRunSourcesOverlap(run.sourceMode, args.sourceMode),
+    );
+    if (overlappingRun) {
+      throw new Error(
+        `This period already has a ${overlappingRun.sourceMode} run that overlaps the requested sources.`,
+      );
+    }
+
+    const [tuitionReview, chargesReview] = await Promise.all([
+      sourceModeIncludes(args.sourceMode, "tuition")
+        ? getPeriodTuitionReview(ctx, args.periodStart, args.periodEnd)
+        : null,
+      sourceModeIncludes(args.sourceMode, "charges")
+        ? getPeriodChargesReview(ctx, args)
+        : null,
+    ]);
+    const tuitionHouseholds =
+      tuitionReview?.households.map((household) => ({
+        householdId: household.householdId,
+        householdName: household.householdName,
+        householdLinkSource: household.householdLinkSource,
+        totalTuitionCents: household.totalTuitionCents,
+        studentCount: household.students.length,
+        hasIncompleteTuition: household.hasIncompleteTuition,
+      })) || [];
+    const privateChargeSources =
+      chargesReview?.privateCharges.map((charge) => ({
+        householdId:
+          charge.household.householdId || `student:${charge.student._id}`,
+        householdName:
+          charge.household.householdName ||
+          `${charge.student.firstName} ${charge.student.lastName} (unlinked)`,
+        householdLinkSource:
+          charge.household.householdLinkSource || "student_fallback",
+        sourceType: "private" as const,
+        sourceId: charge.participation._id,
+        amountCents: charge.pricing.amountCents,
+      })) || [];
+    const perSessionChargeSources =
+      chargesReview?.perSessionCharges.map((charge) => ({
+        householdId:
+          charge.household.householdId || `student:${charge.student._id}`,
+        householdName:
+          charge.household.householdName ||
+          `${charge.student.firstName} ${charge.student.lastName} (unlinked)`,
+        householdLinkSource:
+          charge.household.householdLinkSource || "student_fallback",
+        sourceType: "per_session" as const,
+        sourceId: `${charge.studentId}:${charge.classId}`,
+        amountCents: charge.aggregateAmountCents,
+      })) || [];
+    const bundles = buildBillingRunBundles({
+      sourceMode: args.sourceMode,
+      tuitionHouseholds,
+      charges: [...privateChargeSources, ...perSessionChargeSources],
+    });
+    if (bundles.length === 0) {
+      return {
+        outcome: "empty" as const,
+        itemCount: 0,
+      };
+    }
+
+    const now = Date.now();
+    const billingRunId = await ctx.db.insert("billingRuns", {
+      periodStart: args.periodStart,
+      periodEnd: args.periodEnd,
+      sourceMode: args.sourceMode,
+      status: "draft",
+      createdBy: actor._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+    for (const bundle of bundles) {
+      await ctx.db.insert("billingRunItems", {
+        billingRunId,
+        ...buildBillingRunItemSnapshot(
+          bundle,
+          args.periodStart,
+          args.periodEnd,
+        ),
+        status: "draft",
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    await recordActivityEvent(ctx, {
+      entityType: "billing_run",
+      entityId: billingRunId,
+      actorId: actor._id,
+      eventType: "billing_run_generated",
+      summary: `Generated a ${args.sourceMode} billing run for ${args.periodStart} through ${args.periodEnd}.`,
+      metadata: {
+        periodStart: args.periodStart,
+        periodEnd: args.periodEnd,
+        sourceMode: args.sourceMode,
+        itemCount: bundles.length,
+      },
+    });
     return {
-      periodStart,
-      periodEnd,
-      privateCharges,
-      perSessionCharges,
+      outcome: "created" as const,
+      billingRunId,
+      itemCount: bundles.length,
     };
+  },
+});
+
+export const adminListBillingRuns = query({
+  args: {
+    periodStart: v.string(),
+    periodEnd: v.string(),
+    includeDispatched: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { periodStart, periodEnd, includeDispatched }) => {
+    await requireAdmin(ctx);
+    validateIsoDate(periodStart, "periodStart");
+    validateIsoDate(periodEnd, "periodEnd");
+    if (periodEnd < periodStart) {
+      throw new Error("periodEnd must be on or after periodStart.");
+    }
+    const runs = (
+      await ctx.db
+        .query("billingRuns")
+        .withIndex("byPeriodMode", (q) =>
+          q.eq("periodStart", periodStart).eq("periodEnd", periodEnd),
+        )
+        .collect()
+    ).sort(
+      (left, right) =>
+        right.createdAt - left.createdAt || left._id.localeCompare(right._id),
+    );
+
+    return await Promise.all(
+      runs.map(async (run) => {
+        const items = (
+          await ctx.db
+            .query("billingRunItems")
+            .withIndex("byRun", (q) => q.eq("billingRunId", run._id))
+            .collect()
+        )
+          .filter((item) => includeDispatched || item.status === "draft")
+          .sort(
+            (left, right) =>
+              left.householdName.localeCompare(right.householdName) ||
+              left.householdId.localeCompare(right.householdId),
+          );
+        const resolvedItems = await Promise.all(
+          items.map(async (item) => {
+            const adjustments = (
+              await getBillingRunItemAdjustments(ctx, item)
+            ).sort(
+              (left, right) =>
+                left.createdAt - right.createdAt ||
+                left._id.localeCompare(right._id),
+            );
+            const calculated = calculateBillingRunItemTotal(
+              item.subtotalBeforeRunAdjustmentsCents,
+              adjustments.map(billingAdjustmentLike),
+            );
+            const appliedById = new Map(
+              calculated.adjustments.map((adjustment) => [
+                adjustment.id,
+                adjustment,
+              ]),
+            );
+            return {
+              ...item,
+              adjustments: adjustments.map((adjustment) => ({
+                ...adjustment,
+                appliedAmountCents: appliedById.get(adjustment._id)
+                  ?.amountCents,
+              })),
+              adjustmentTotalCents:
+                item.dispatchedAdjustmentTotalCents ??
+                calculated.adjustmentTotalCents,
+              finalTotalCents:
+                item.dispatchedFinalTotalCents ?? calculated.totalCents,
+            };
+          }),
+        );
+        return {
+          ...run,
+          items: resolvedItems,
+          pendingItemCount: resolvedItems.filter(
+            (item) => item.status === "draft",
+          ).length,
+          totalCents: resolvedItems.reduce(
+            (total, item) => total + item.finalTotalCents,
+            0,
+          ),
+        };
+      }),
+    ).then((rows) => rows.filter((run) => run.items.length > 0));
+  },
+});
+
+export const adminDispatchBillingRunItems = mutation({
+  args: {
+    billingRunId: v.id("billingRuns"),
+    billingRunItemIds: v.array(v.id("billingRunItems")),
+  },
+  handler: async (ctx, { billingRunId, billingRunItemIds }) => {
+    const actor = await requireAdmin(ctx);
+    const run = await ctx.db.get(billingRunId);
+    if (!run) {
+      throw new Error("Billing run not found.");
+    }
+    const uniqueItemIds = [...new Set(billingRunItemIds)];
+    if (uniqueItemIds.length === 0) {
+      throw new Error("Select at least one household to dispatch.");
+    }
+    const now = Date.now();
+    for (const itemId of uniqueItemIds) {
+      const item = await ctx.db.get(itemId);
+      if (!item || item.billingRunId !== billingRunId) {
+        throw new Error("Billing run item does not belong to this run.");
+      }
+      if (item.status !== "draft") {
+        throw new Error("Only draft billing run items can be dispatched.");
+      }
+      const adjustments = await getBillingRunItemAdjustments(ctx, item);
+      const calculated = calculateBillingRunItemTotal(
+        item.subtotalBeforeRunAdjustmentsCents,
+        adjustments.map(billingAdjustmentLike),
+      );
+      await ctx.db.patch(itemId, {
+        status: "dispatched",
+        dispatchedBy: actor._id,
+        dispatchedAt: now,
+        dispatchedAdjustmentTotalCents: calculated.adjustmentTotalCents,
+        dispatchedFinalTotalCents: calculated.totalCents,
+        updatedAt: now,
+      });
+      await recordActivityEvent(ctx, {
+        entityType: "billing_run_item",
+        entityId: itemId,
+        actorId: actor._id,
+        eventType: "billing_run_item_dispatched",
+        summary: `Dispatched billing for ${item.householdName}.`,
+        metadata: {
+          billingRunId,
+          householdId: item.householdId,
+          periodStart: item.periodStart,
+          periodEnd: item.periodEnd,
+          finalTotalCents: calculated.totalCents,
+        },
+      });
+    }
+
+    const remainingDrafts = await ctx.db
+      .query("billingRunItems")
+      .withIndex("byRunStatus", (q) =>
+        q.eq("billingRunId", billingRunId).eq("status", "draft"),
+      )
+      .collect();
+    await ctx.db.patch(billingRunId, {
+      status: remainingDrafts.length === 0 ? "dispatched" : "draft",
+      dispatchedAt: remainingDrafts.length === 0 ? now : undefined,
+      updatedAt: now,
+    });
+    return { dispatchedCount: uniqueItemIds.length };
   },
 });
 
@@ -1264,8 +1667,7 @@ export const adminDuplicatePricingSchema = mutation({
       version: nextPricingSchemaVersion(schemas, source.name),
       status: "draft",
       sourceSchemaId: source._id,
-      siblingDiscount:
-        source.siblingDiscount || disabledSiblingDiscount,
+      siblingDiscount: source.siblingDiscount || disabledSiblingDiscount,
       createdAt: now,
       updatedAt: now,
     });

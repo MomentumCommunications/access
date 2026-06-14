@@ -113,7 +113,7 @@ describe("billing adjustment activity", () => {
     assert.equal(event.entityId, "adjustment-1");
     assert.equal(event.actorId, "user-1");
     assert.equal(event.eventType, "billing_adjustment_created");
-    assert.match(event.summary, /Created a household tuition/);
+    assert.match(event.summary, /Created a billing adjustment/);
     assert.equal("createdAt" in event, false);
   });
 });

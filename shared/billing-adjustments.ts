@@ -1,4 +1,7 @@
-export const billingAdjustmentScopeTypes = ["household_tuition"] as const;
+export const billingAdjustmentScopeTypes = [
+  "household_tuition",
+  "billing_run_item",
+] as const;
 export const billingAdjustmentKinds = ["discount", "surcharge"] as const;
 export const billingAdjustmentCalculationTypes = [
   "fixed_cents",
@@ -124,7 +127,7 @@ export function buildBillingAdjustmentActivityEvent({
         : action === "updated"
           ? "Updated"
           : "Voided"
-    } a household tuition billing adjustment.`,
+    } a billing adjustment.`,
     metadata,
   };
 }

@@ -8,6 +8,7 @@ import {
 } from "./_generated/server";
 import { getCurrentUserOrThrow } from "./users";
 import { highestUserRole, resolveUserRoles } from "./lib/roles";
+import { ensureDefaultHouseholdBilling } from "./lib/householdBilling";
 
 const onboardingStepValidator = v.union(
   v.literal("profile"),
@@ -128,6 +129,11 @@ export const saveProfile = mutation({
       role: highestUserRole(roles),
       roles,
       onboardingStatus: "pending",
+    });
+    await ensureDefaultHouseholdBilling(ctx, {
+      userId: user._id,
+      firstName,
+      lastName,
     });
 
     if (onboarding) {

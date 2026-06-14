@@ -25,6 +25,7 @@ import type * as lib_billing_tuitionCalculation from "../lib/billing/tuitionCalc
 import type * as lib_billing_weeklyClassHours from "../lib/billing/weeklyClassHours.js";
 import type * as lib_classSorting from "../lib/classSorting.js";
 import type * as lib_enrollmentValidation from "../lib/enrollmentValidation.js";
+import type * as lib_householdBilling from "../lib/householdBilling.js";
 import type * as lib_privateScheduling from "../lib/privateScheduling.js";
 import type * as lib_roles from "../lib/roles.js";
 import type * as lib_scheduling from "../lib/scheduling.js";
@@ -59,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   "lib/billing/weeklyClassHours": typeof lib_billing_weeklyClassHours;
   "lib/classSorting": typeof lib_classSorting;
   "lib/enrollmentValidation": typeof lib_enrollmentValidation;
+  "lib/householdBilling": typeof lib_householdBilling;
   "lib/privateScheduling": typeof lib_privateScheduling;
   "lib/roles": typeof lib_roles;
   "lib/scheduling": typeof lib_scheduling;

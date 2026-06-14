@@ -125,6 +125,18 @@ export default defineSchema({
     .index("byHousehold", ["householdId"])
     .index("byUser", ["userId"])
     .index("byHouseholdUser", ["householdId", "userId"]),
+  householdPayers: defineTable({
+    householdId: v.id("households"),
+    userId: v.id("users"),
+    active: v.boolean(),
+    isPrimary: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byHousehold", ["householdId"])
+    .index("byUser", ["userId"])
+    .index("byHouseholdUser", ["householdId", "userId"])
+    .index("byHouseholdActive", ["householdId", "active"]),
   onboarding: defineTable({
     user: v.id("users"),
     currentStep: v.union(
@@ -298,7 +310,10 @@ export default defineSchema({
     .index("byPricingSchema", ["pricingSchemaId"])
     .index("byPricingSchemaOrder", ["pricingSchemaId", "sortOrder"]),
   billingAdjustments: defineTable({
-    scopeType: v.literal("household_tuition"),
+    scopeType: v.union(
+      v.literal("household_tuition"),
+      v.literal("billing_run_item"),
+    ),
     scopeId: v.string(),
     periodStart: v.string(),
     periodEnd: v.string(),
@@ -333,6 +348,57 @@ export default defineSchema({
       "periodEnd",
     ])
     .index("byStatus", ["status"]),
+  billingRuns: defineTable({
+    periodStart: v.string(),
+    periodEnd: v.string(),
+    sourceMode: v.union(
+      v.literal("tuition"),
+      v.literal("charges"),
+      v.literal("both"),
+    ),
+    status: v.union(v.literal("draft"), v.literal("dispatched")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    dispatchedAt: v.optional(v.number()),
+  })
+    .index("byPeriodMode", ["periodStart", "periodEnd", "sourceMode"])
+    .index("byStatus", ["status"]),
+  billingRunItems: defineTable({
+    billingRunId: v.id("billingRuns"),
+    householdId: v.string(),
+    householdName: v.string(),
+    householdLinkSource: v.string(),
+    periodStart: v.string(),
+    periodEnd: v.string(),
+    includeTuition: v.boolean(),
+    includeCharges: v.boolean(),
+    tuitionSubtotalCents: v.number(),
+    chargesSubtotalCents: v.number(),
+    subtotalBeforeRunAdjustmentsCents: v.number(),
+    sourceSummary: v.object({
+      tuitionStudentCount: v.number(),
+      tuitionIncomplete: v.boolean(),
+      privateChargeCount: v.number(),
+      perSessionChargeCount: v.number(),
+      unpricedChargeCount: v.number(),
+    }),
+    sourceReferences: v.object({
+      tuitionHouseholdId: v.optional(v.string()),
+      privateChargeIds: v.array(v.string()),
+      perSessionChargeIds: v.array(v.string()),
+    }),
+    status: v.union(v.literal("draft"), v.literal("dispatched")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    dispatchedBy: v.optional(v.id("users")),
+    dispatchedAt: v.optional(v.number()),
+    dispatchedAdjustmentTotalCents: v.optional(v.number()),
+    dispatchedFinalTotalCents: v.optional(v.number()),
+  })
+    .index("byRun", ["billingRunId"])
+    .index("byRunStatus", ["billingRunId", "status"])
+    .index("byPeriodHousehold", ["periodStart", "periodEnd", "householdId"]),
   privateRates: defineTable({
     name: v.string(),
     participants: v.union(v.literal(1), v.literal(2), v.literal(3)),

@@ -297,6 +297,17 @@ export default defineSchema({
   })
     .index("byPricingSchema", ["pricingSchemaId"])
     .index("byPricingSchemaOrder", ["pricingSchemaId", "sortOrder"]),
+  privateRates: defineTable({
+    name: v.string(),
+    participants: v.union(v.literal(1), v.literal(2), v.literal(3)),
+    hourlyPriceCents: v.number(),
+    active: v.boolean(),
+    activatedAt: v.number(),
+    inactivatedAt: v.optional(v.number()),
+  })
+    .index("byParticipants", ["participants"])
+    .index("byParticipantsActive", ["participants", "active"])
+    .index("byActive", ["active"]),
   attendanceRecords: defineTable({
     session: v.id("sessions"),
     student: v.id("students"),
@@ -377,6 +388,8 @@ export default defineSchema({
       v.literal("cancelled"),
     ),
     billable: v.boolean(),
+    appliedPrivateRateId: v.optional(v.id("privateRates")),
+    appliedPriceCents: v.optional(v.number()),
     notes: v.optional(v.string()),
   })
     .index("byPrivateLesson", ["privateLessonId"])

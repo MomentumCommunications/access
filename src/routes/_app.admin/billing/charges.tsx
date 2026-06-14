@@ -154,9 +154,28 @@ const privateColumns: ColumnDef<PrivateChargeRow>[] = [
   {
     id: "amount",
     header: "Charge",
-    cell: () => (
-      <span className="text-muted-foreground">Pricing not configured</span>
-    ),
+    cell: ({ row }) =>
+      row.original.pricing.amountCents === undefined ? (
+        <div className="max-w-64 text-amber-700 dark:text-amber-400">
+          <span>Not calculated</span>
+          <div className="text-xs">{row.original.pricing.warning}</div>
+        </div>
+      ) : (
+        <div>
+          <span className="font-medium">
+            {formatCurrency(row.original.pricing.amountCents)}
+          </span>
+          <div className="text-xs text-muted-foreground">
+            {row.original.pricing.rateName || "Private rate"}
+            {row.original.pricing.hourlyPriceCents !== undefined
+              ? ` · ${formatCurrency(
+                  row.original.pricing.hourlyPriceCents,
+                )}/hr`
+              : ""}
+            {row.original.pricing.snapshotted ? " · saved" : ""}
+          </div>
+        </div>
+      ),
   },
 ];
 
@@ -275,6 +294,21 @@ function ChargesAdminPage() {
       ) || 0,
     [review?.perSessionCharges],
   );
+  const totalPrivateCents = useMemo(
+    () =>
+      review?.privateCharges.reduce(
+        (total, row) => total + (row.pricing.amountCents || 0),
+        0,
+      ) || 0,
+    [review?.privateCharges],
+  );
+  const missingPrivateRateCount = useMemo(
+    () =>
+      review?.privateCharges.filter(
+        (row) => row.pricing.amountCents === undefined,
+      ).length || 0,
+    [review?.privateCharges],
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 lg:p-8">
@@ -347,12 +381,31 @@ function ChargesAdminPage() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="private" className="space-y-3">
-              <div>
-                <h2 className="text-xl font-semibold">Private charges</h2>
-                <p className="text-sm text-muted-foreground">
-                  Completed private lesson participation marked billable.
-                  Private pricing is not configured yet.
-                </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">Private charges</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Completed, billable participation priced from each
+                    private&apos;s default solo, duet, or trio rate bucket.
+                  </p>
+                  {missingPrivateRateCount > 0 ? (
+                    <p className="text-sm text-amber-700 dark:text-amber-400">
+                      {missingPrivateRateCount}{" "}
+                      {missingPrivateRateCount === 1
+                        ? "charge is"
+                        : "charges are"}{" "}
+                      missing a matching active rate.
+                    </p>
+                  ) : null}
+                </div>
+                <div className="text-sm">
+                  <span className="text-muted-foreground">
+                    Period total:{" "}
+                  </span>
+                  <span className="font-semibold">
+                    {formatCurrency(totalPrivateCents)}
+                  </span>
+                </div>
               </div>
               <DataTable
                 columns={privateColumns}

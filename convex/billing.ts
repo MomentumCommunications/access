@@ -29,6 +29,15 @@ import {
   resolvedClassEnrollmentMode,
 } from "../shared/per-session-signup";
 import { aggregatePerSessionCharges } from "../shared/billing-charges";
+import {
+  calculatePrivateChargeCents,
+  validatePrivateHourlyPriceCents,
+  validatePrivateParticipantCount,
+} from "../shared/private-pricing";
+import {
+  privateRateName,
+  snapshotOpenPrivateChargesForRate,
+} from "./lib/billing/privatePricing";
 
 function accountName(account: {
   displayName?: string;
@@ -71,6 +80,12 @@ const siblingDiscountValidator = v.object({
   percentOffBasisPoints: v.number(),
   appliesTo: v.literal("all_but_highest"),
 });
+
+const privateParticipantCountValidator = v.union(
+  v.literal(1),
+  v.literal(2),
+  v.literal(3),
+);
 
 const disabledSiblingDiscount: SiblingDiscountConfig = {
   enabled: false,
@@ -539,13 +554,32 @@ export const adminPeriodChargesReview = query({
     }
 
     const householdData = await getHouseholdResolutionData(ctx);
-    const [signups, privateParticipations] = await Promise.all([
+    const [signups, privateParticipations, privateRates] = await Promise.all([
       ctx.db.query("classSessionSignups").collect(),
       ctx.db
         .query("privateLessonStudents")
         .withIndex("byBillable", (q) => q.eq("billable", true))
         .collect(),
+      ctx.db.query("privateRates").collect(),
     ]);
+    const activePrivateRateByParticipants = new Map<
+      1 | 2 | 3,
+      (typeof privateRates)[number]
+    >();
+    for (const rate of privateRates
+      .filter((candidate) => candidate.active)
+      .sort(
+        (left, right) =>
+          right.activatedAt - left.activatedAt ||
+          right._id.localeCompare(left._id),
+      )) {
+      if (!activePrivateRateByParticipants.has(rate.participants)) {
+        activePrivateRateByParticipants.set(rate.participants, rate);
+      }
+    }
+    const privateRateById = new Map(
+      privateRates.map((rate) => [rate._id, rate]),
+    );
 
     const perSessionRows = (
       await Promise.all(
@@ -623,6 +657,30 @@ export const adminPeriodChargesReview = query({
             ctx.db.get(participation.studentId),
           ]);
           if (!student) return null;
+          const participants = (privateSeries?.studentIds || []).length;
+          const snapshottedRate = participation.appliedPrivateRateId
+            ? privateRateById.get(participation.appliedPrivateRateId)
+            : undefined;
+          const activeRate = activePrivateRateByParticipants.get(
+            participants as 1 | 2 | 3,
+          );
+          const appliedRate = snapshottedRate || activeRate;
+          const amountCents =
+            participation.appliedPriceCents ??
+            (appliedRate
+              ? calculatePrivateChargeCents(
+                  appliedRate.hourlyPriceCents,
+                  lesson.durationMinutes,
+                )
+              : undefined);
+          const warning =
+            participants < 1 || participants > 3
+              ? "Private default participant count must be between 1 and 3."
+              : !appliedRate
+                ? `No active private rate is configured for ${participants} participant${
+                    participants === 1 ? "" : "s"
+                  }.`
+                : undefined;
           return {
             participation,
             lesson,
@@ -632,6 +690,17 @@ export const adminPeriodChargesReview = query({
               ? await ctx.db.get(privateSeries.instructorId)
               : null,
             household: resolveStudentHousehold(student._id, householdData),
+            pricing: {
+              participants,
+              privateRateId: appliedRate?._id,
+              rateName: appliedRate?.name,
+              hourlyPriceCents: appliedRate?.hourlyPriceCents,
+              amountCents,
+              snapshotted:
+                participation.appliedPrivateRateId !== undefined &&
+                participation.appliedPriceCents !== undefined,
+              warning,
+            },
           };
         }),
       )
@@ -649,6 +718,78 @@ export const adminPeriodChargesReview = query({
       privateCharges,
       perSessionCharges,
     };
+  },
+});
+
+export const adminListPrivateRates = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const rates = await ctx.db.query("privateRates").collect();
+    return rates.sort(
+      (left, right) =>
+        left.participants - right.participants ||
+        Number(right.active) - Number(left.active) ||
+        right.activatedAt - left.activatedAt ||
+        right._id.localeCompare(left._id),
+    );
+  },
+});
+
+export const adminCreatePrivateRate = mutation({
+  args: {
+    name: v.optional(v.string()),
+    participants: privateParticipantCountValidator,
+    hourlyPriceCents: v.number(),
+  },
+  handler: async (ctx, { name, participants, hourlyPriceCents }) => {
+    await requireAdmin(ctx);
+    validatePrivateParticipantCount(participants);
+    validatePrivateHourlyPriceCents(hourlyPriceCents);
+    const normalizedName = name?.trim() || privateRateName(participants);
+    if (normalizedName.length > 80) {
+      throw new Error("Private rate name must be 80 characters or fewer.");
+    }
+
+    const now = Date.now();
+    const activeRates = await ctx.db
+      .query("privateRates")
+      .withIndex("byParticipantsActive", (q) =>
+        q.eq("participants", participants).eq("active", true),
+      )
+      .collect();
+    for (const activeRate of activeRates) {
+      await snapshotOpenPrivateChargesForRate(ctx, activeRate);
+      await ctx.db.patch(activeRate._id, {
+        active: false,
+        inactivatedAt: now,
+      });
+    }
+
+    return await ctx.db.insert("privateRates", {
+      name: normalizedName,
+      participants,
+      hourlyPriceCents,
+      active: true,
+      activatedAt: now,
+    });
+  },
+});
+
+export const adminDeactivatePrivateRate = mutation({
+  args: { privateRateId: v.id("privateRates") },
+  handler: async (ctx, { privateRateId }) => {
+    await requireAdmin(ctx);
+    const rate = await ctx.db.get(privateRateId);
+    if (!rate) {
+      throw new Error("Private rate not found.");
+    }
+    if (!rate.active) return;
+    await snapshotOpenPrivateChargesForRate(ctx, rate);
+    await ctx.db.patch(privateRateId, {
+      active: false,
+      inactivatedAt: Date.now(),
+    });
   },
 });
 

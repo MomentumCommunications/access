@@ -8,6 +8,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import {
   formatPercentFromBasisPoints,
+  parseCurrencyToCents,
   parsePercentToBasisPoints,
   type NormalizedTuitionTier,
   type SiblingDiscountConfig,
@@ -37,6 +38,14 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
 import { cn } from "~/lib/utils";
 
 export const Route = createFileRoute("/_app/admin/billing/pricing")({
@@ -123,7 +132,7 @@ function PricingAdminPage() {
           <div>
             <h1 className="text-3xl font-bold">Pricing</h1>
             <p className="text-muted-foreground">
-              Configure versioned monthly tuition tiers from weekly class hours.
+              Configure recurring tuition and app-calculated charge rates.
             </p>
           </div>
           <Button type="button" onClick={() => setShowCreate(true)}>
@@ -238,6 +247,8 @@ function PricingAdminPage() {
           </div>
         )}
 
+        <PrivatePricingSection />
+
         <div className="grid gap-4 md:grid-cols-2">
           {[
             ["Packages", "Reserved for package-based pricing."],
@@ -252,6 +263,222 @@ function PricingAdminPage() {
           ))}
         </div>
     </main>
+  );
+}
+
+const privateParticipantLabels = {
+  1: "Solo",
+  2: "Duet",
+  3: "Trio",
+} as const;
+
+function formatCurrency(cents: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(cents / 100);
+}
+
+function PrivatePricingSection() {
+  const rates = useConvexQuery(api.billing.adminListPrivateRates, {});
+  const createRate = useConvexMutation(api.billing.adminCreatePrivateRate);
+  const deactivateRate = useConvexMutation(
+    api.billing.adminDeactivatePrivateRate,
+  );
+  const [participants, setParticipants] = useState<1 | 2 | 3>(1);
+  const [name, setName] = useState("");
+  const [hourlyPrice, setHourlyPrice] = useState("");
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [deactivatingId, setDeactivatingId] =
+    useState<Id<"privateRates"> | null>(null);
+
+  async function handleCreate(event: FormEvent) {
+    event.preventDefault();
+    const hourlyPriceCents = parseCurrencyToCents(hourlyPrice);
+    if (hourlyPriceCents === null) {
+      setError("Enter a valid nonnegative hourly rate.");
+      return;
+    }
+    setError("");
+    setIsSaving(true);
+    try {
+      await createRate({
+        participants,
+        hourlyPriceCents,
+        name: name.trim() || undefined,
+      });
+      setName("");
+      setHourlyPrice("");
+      toast.success(
+        `${privateParticipantLabels[participants]} private rate activated.`,
+      );
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "The private rate could not be saved.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDeactivate(privateRateId: Id<"privateRates">) {
+    setDeactivatingId(privateRateId);
+    try {
+      await deactivateRate({ privateRateId });
+      toast.success("Private rate deactivated.");
+    } catch (deactivateError) {
+      toast.error(
+        deactivateError instanceof Error
+          ? deactivateError.message
+          : "The private rate could not be deactivated.",
+      );
+    } finally {
+      setDeactivatingId(null);
+    }
+  }
+
+  return (
+    <Card className="rounded-lg">
+      <CardHeader>
+        <CardTitle>Private Pricing</CardTitle>
+        <CardDescription>
+          Hourly per-student rates based on a private&apos;s default participant
+          count. New rates replace the active version without changing saved
+          historical charges.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <form
+          className="grid gap-3 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-[10rem_minmax(0,1fr)_12rem_auto] lg:items-end"
+          onSubmit={handleCreate}
+        >
+          <div className="space-y-2">
+            <Label htmlFor="private-rate-participants">Rate bucket</Label>
+            <select
+              id="private-rate-participants"
+              value={participants}
+              disabled={isSaving}
+              onChange={(event) =>
+                setParticipants(Number(event.target.value) as 1 | 2 | 3)
+              }
+              className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-9 w-full rounded-md border px-3 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+            >
+              {[1, 2, 3].map((count) => (
+                <option key={count} value={count}>
+                  {privateParticipantLabels[count as 1 | 2 | 3]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="private-rate-name">Name</Label>
+            <Input
+              id="private-rate-name"
+              value={name}
+              maxLength={80}
+              disabled={isSaving}
+              placeholder={`${privateParticipantLabels[participants]} rate`}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="private-rate-price">Per student / hour</Label>
+            <Input
+              id="private-rate-price"
+              value={hourlyPrice}
+              inputMode="decimal"
+              disabled={isSaving}
+              placeholder="$0.00"
+              aria-invalid={!!error}
+              onChange={(event) => {
+                setHourlyPrice(event.target.value);
+                setError("");
+              }}
+            />
+          </div>
+          <Button type="submit" disabled={isSaving || !hourlyPrice.trim()}>
+            {isSaving ? "Saving..." : "Add rate version"}
+          </Button>
+          {error ? (
+            <p className="text-sm text-destructive sm:col-span-2 lg:col-span-4">
+              {error}
+            </p>
+          ) : null}
+        </form>
+
+        {rates === undefined ? (
+          <div className="flex min-h-24 items-center justify-center">
+            <Spinner className="size-5" />
+          </div>
+        ) : rates.length === 0 ? (
+          <div className="rounded-md border border-dashed p-6 text-center">
+            <p className="font-medium">No private rates configured</p>
+            <p className="text-sm text-muted-foreground">
+              Add solo, duet, and trio hourly rates to calculate private
+              charges.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Bucket</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Hourly rate</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Activated</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rates.map((rate) => (
+                  <TableRow key={rate._id}>
+                    <TableCell className="font-medium">
+                      {privateParticipantLabels[rate.participants]}
+                    </TableCell>
+                    <TableCell>{rate.name}</TableCell>
+                    <TableCell>
+                      {formatCurrency(rate.hourlyPriceCents)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={rate.active ? "default" : "outline"}>
+                        {rate.active ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{formatUpdatedAt(rate.activatedAt)}</TableCell>
+                    <TableCell className="text-right">
+                      {rate.active ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={deactivatingId === rate._id}
+                          onClick={() => void handleDeactivate(rate._id)}
+                        >
+                          {deactivatingId === rate._id
+                            ? "Deactivating..."
+                            : "Deactivate"}
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          {rate.inactivatedAt
+                            ? `Ended ${formatUpdatedAt(rate.inactivatedAt)}`
+                            : "Historical"}
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

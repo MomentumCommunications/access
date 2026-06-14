@@ -7,8 +7,13 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { hasUserRole } from "./lib/roles";
+import { buildPrivateChargeSnapshot } from "./lib/billing/privatePricing";
 import { syncGeneratedPrivateLessons } from "./lib/privateScheduling";
 import { getCurrentUserOrThrow } from "./users";
+import {
+  privateParticipantPatch,
+  privateParticipantTransition,
+} from "../shared/private-lesson-status";
 
 const weekdayValidator = v.union(
   v.literal("sunday"),
@@ -526,25 +531,50 @@ export const updatePrivateLesson = mutation({
       throw new Error("A lesson already exists at that time.");
     }
 
+    const participantTransition = privateParticipantTransition(
+      lesson.status,
+      patch.status,
+    );
+    const students =
+      participantTransition === "preserve"
+        ? []
+        : await ctx.db
+            .query("privateLessonStudents")
+            .withIndex("byPrivateLesson", (q) =>
+              q.eq("privateLessonId", privateLessonId),
+            )
+            .collect();
+    const privateSeries =
+      participantTransition === "mark_attended_billable"
+        ? await ctx.db.get(lesson.privateId)
+        : null;
+    const snapshot =
+      participantTransition === "mark_attended_billable" && privateSeries
+        ? await buildPrivateChargeSnapshot(ctx, privateSeries, {
+            ...lesson,
+            durationMinutes: patch.durationMinutes,
+          })
+        : null;
+    const participantPatch = privateParticipantPatch(
+      participantTransition,
+      snapshot
+        ? {
+            appliedPrivateRateId: snapshot.appliedPrivateRateId,
+            appliedPriceCents: snapshot.appliedPriceCents,
+          }
+        : null,
+    );
+
     await ctx.db.patch(privateLessonId, {
       ...patch,
       generatedFromSchedule: false,
       notes: cleanOptionalText(patch.notes),
     });
 
-    if (patch.status === "cancelled") {
-      const students = await ctx.db
-        .query("privateLessonStudents")
-        .withIndex("byPrivateLesson", (q) =>
-          q.eq("privateLessonId", privateLessonId),
-        )
-        .collect();
+    if (participantPatch) {
       await Promise.all(
         students.map((student) =>
-          ctx.db.patch(student._id, {
-            status: "cancelled",
-            billable: false,
-          }),
+          ctx.db.patch(student._id, participantPatch),
         ),
       );
     }
@@ -629,8 +659,26 @@ export const updatePrivateLessonStudent = mutation({
       throw new Error("Cancelled participation cannot be billable.");
     }
     validateNotes(patch.notes);
+    const shouldSnapshot =
+      patch.billable &&
+      (!row.billable ||
+        row.appliedPrivateRateId === undefined ||
+        row.appliedPriceCents === undefined);
+    const privateSeries = shouldSnapshot
+      ? await ctx.db.get(lesson.privateId)
+      : null;
+    const snapshot =
+      shouldSnapshot && privateSeries
+        ? await buildPrivateChargeSnapshot(ctx, privateSeries, lesson)
+        : null;
     await ctx.db.patch(privateLessonStudentId, {
       ...patch,
+      appliedPrivateRateId: patch.billable
+        ? snapshot?.appliedPrivateRateId || row.appliedPrivateRateId
+        : undefined,
+      appliedPriceCents: patch.billable
+        ? snapshot?.appliedPriceCents ?? row.appliedPriceCents
+        : undefined,
       notes: cleanOptionalText(patch.notes),
     });
   },

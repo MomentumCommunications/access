@@ -297,6 +297,42 @@ export default defineSchema({
   })
     .index("byPricingSchema", ["pricingSchemaId"])
     .index("byPricingSchemaOrder", ["pricingSchemaId", "sortOrder"]),
+  billingAdjustments: defineTable({
+    scopeType: v.literal("household_tuition"),
+    scopeId: v.string(),
+    periodStart: v.string(),
+    periodEnd: v.string(),
+    kind: v.union(v.literal("discount"), v.literal("surcharge")),
+    calculationType: v.union(
+      v.literal("fixed_cents"),
+      v.literal("percent"),
+    ),
+    amount: v.number(),
+    reasonCode: v.union(
+      v.literal("scholarship"),
+      v.literal("goodwill"),
+      v.literal("manual_correction"),
+      v.literal("waiver"),
+      v.literal("surcharge"),
+      v.literal("other"),
+    ),
+    note: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("voided")),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    voidedBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    voidedAt: v.optional(v.number()),
+  })
+    .index("byPeriodScope", ["periodStart", "periodEnd", "scopeType"])
+    .index("byScopePeriod", [
+      "scopeType",
+      "scopeId",
+      "periodStart",
+      "periodEnd",
+    ])
+    .index("byStatus", ["status"]),
   privateRates: defineTable({
     name: v.string(),
     participants: v.union(v.literal(1), v.literal(2), v.literal(3)),

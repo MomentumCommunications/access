@@ -38,6 +38,14 @@ import {
   privateRateName,
   snapshotOpenPrivateChargesForRate,
 } from "./lib/billing/privatePricing";
+import {
+  applyBillingAdjustments,
+  assertBillingAdjustmentEditable,
+  buildBillingAdjustmentActivityEvent,
+  validateBillingAdjustmentInput,
+  type BillingAdjustmentInput,
+} from "../shared/billing-adjustments";
+import { recordActivityEvent } from "./lib/activityLog";
 
 function accountName(account: {
   displayName?: string;
@@ -87,6 +95,24 @@ const privateParticipantCountValidator = v.union(
   v.literal(3),
 );
 
+const billingAdjustmentScopeTypeValidator = v.literal("household_tuition");
+const billingAdjustmentKindValidator = v.union(
+  v.literal("discount"),
+  v.literal("surcharge"),
+);
+const billingAdjustmentCalculationTypeValidator = v.union(
+  v.literal("fixed_cents"),
+  v.literal("percent"),
+);
+const billingAdjustmentReasonCodeValidator = v.union(
+  v.literal("scholarship"),
+  v.literal("goodwill"),
+  v.literal("manual_correction"),
+  v.literal("waiver"),
+  v.literal("surcharge"),
+  v.literal("other"),
+);
+
 const disabledSiblingDiscount: SiblingDiscountConfig = {
   enabled: false,
   percentOffBasisPoints: 0,
@@ -98,6 +124,7 @@ async function requireAdmin(ctx: BillingCtx) {
   if (!hasUserRole(user, "admin")) {
     throw new Error("Unauthorized");
   }
+  return user;
 }
 
 function validatePricingSchemaName(name: string) {
@@ -120,6 +147,18 @@ function validateHouseholdName(name: string) {
     throw new Error("Household name must be 100 characters or fewer.");
   }
   return trimmed;
+}
+
+function cleanAdjustmentNote(note?: string) {
+  return note?.trim() || undefined;
+}
+
+function storedBillingAdjustmentInput(adjustment: BillingAdjustmentInput) {
+  return {
+    ...adjustment,
+    scopeId: adjustment.scopeId.trim(),
+    note: cleanAdjustmentNote(adjustment.note),
+  };
 }
 
 async function getPricingSchemaTiers(
@@ -462,6 +501,68 @@ export const adminPeriodTuitionReview = query({
       }),
     );
     const tuitionRows = rows.filter((row) => row !== null);
+    const householdTuitions = aggregateHouseholdTuitions(
+      tuitionRows,
+      activeSchema.siblingDiscount || disabledSiblingDiscount,
+    );
+    const storedAdjustments = await ctx.db
+      .query("billingAdjustments")
+      .withIndex("byPeriodScope", (q) =>
+        q
+          .eq("periodStart", periodStart)
+          .eq("periodEnd", periodEnd)
+          .eq("scopeType", "household_tuition"),
+      )
+      .collect();
+    const adjustmentsByScope = new Map<string, typeof storedAdjustments>();
+    for (const adjustment of storedAdjustments) {
+      const rowsForScope = adjustmentsByScope.get(adjustment.scopeId) || [];
+      rowsForScope.push(adjustment);
+      adjustmentsByScope.set(adjustment.scopeId, rowsForScope);
+    }
+    const households = householdTuitions.map((household) => {
+      const billingAdjustments = (
+        adjustmentsByScope.get(household.householdId) || []
+      ).sort(
+        (left, right) =>
+          left.createdAt - right.createdAt ||
+          left._id.localeCompare(right._id),
+      );
+      const applied = applyBillingAdjustments(
+        household.totalTuitionCents,
+        billingAdjustments.map((adjustment) => ({
+          id: adjustment._id,
+          scopeType: adjustment.scopeType,
+          scopeId: adjustment.scopeId,
+          periodStart: adjustment.periodStart,
+          periodEnd: adjustment.periodEnd,
+          kind: adjustment.kind,
+          calculationType: adjustment.calculationType,
+          amount: adjustment.amount,
+          reasonCode: adjustment.reasonCode,
+          note: adjustment.note,
+          status: adjustment.status,
+          createdAt: adjustment.createdAt,
+        })),
+      );
+      const appliedById = new Map(
+        applied.adjustments.map((adjustment) => [
+          adjustment.id,
+          adjustment,
+        ]),
+      );
+      return {
+        ...household,
+        totalBeforeManualAdjustmentsCents: household.totalTuitionCents,
+        billingAdjustments: billingAdjustments.map((adjustment) => ({
+          ...adjustment,
+          appliedAmountCents: appliedById.get(adjustment._id)?.amountCents,
+          percentageBaseCents:
+            appliedById.get(adjustment._id)?.percentageBaseCents,
+        })),
+        totalTuitionCents: applied.totalCents,
+      };
+    });
 
     return {
       pricingSchema: {
@@ -470,12 +571,166 @@ export const adminPeriodTuitionReview = query({
         version: activeSchema.version,
       },
       rows: tuitionRows,
-      households: aggregateHouseholdTuitions(
-        tuitionRows,
-        activeSchema.siblingDiscount || disabledSiblingDiscount,
-      ),
+      households,
       excludedEnrollments,
     };
+  },
+});
+
+export const adminCreateBillingAdjustment = mutation({
+  args: {
+    scopeType: billingAdjustmentScopeTypeValidator,
+    scopeId: v.string(),
+    periodStart: v.string(),
+    periodEnd: v.string(),
+    kind: billingAdjustmentKindValidator,
+    calculationType: billingAdjustmentCalculationTypeValidator,
+    amount: v.number(),
+    reasonCode: billingAdjustmentReasonCodeValidator,
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireAdmin(ctx);
+    const input = storedBillingAdjustmentInput(args);
+    validateBillingAdjustmentInput(input);
+    const now = Date.now();
+    const adjustmentId = await ctx.db.insert("billingAdjustments", {
+      ...input,
+      status: "active",
+      createdBy: actor._id,
+      updatedBy: actor._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await recordActivityEvent(ctx, buildBillingAdjustmentActivityEvent({
+      adjustmentId,
+      actorId: actor._id,
+      action: "created",
+      metadata: {
+        scopeType: input.scopeType,
+        scopeId: input.scopeId,
+        periodStart: input.periodStart,
+        periodEnd: input.periodEnd,
+        kind: input.kind,
+        calculationType: input.calculationType,
+        amount: input.amount,
+        reasonCode: input.reasonCode,
+      },
+    }));
+    return adjustmentId;
+  },
+});
+
+export const adminUpdateBillingAdjustment = mutation({
+  args: {
+    billingAdjustmentId: v.id("billingAdjustments"),
+    kind: billingAdjustmentKindValidator,
+    calculationType: billingAdjustmentCalculationTypeValidator,
+    amount: v.number(),
+    reasonCode: billingAdjustmentReasonCodeValidator,
+    note: v.optional(v.string()),
+  },
+  handler: async (
+    ctx,
+    {
+      billingAdjustmentId,
+      kind,
+      calculationType,
+      amount,
+      reasonCode,
+      note,
+    },
+  ) => {
+    const actor = await requireAdmin(ctx);
+    const adjustment = await ctx.db.get(billingAdjustmentId);
+    if (!adjustment) {
+      throw new Error("Billing adjustment not found.");
+    }
+    assertBillingAdjustmentEditable(adjustment.status);
+    const input = storedBillingAdjustmentInput({
+      scopeType: adjustment.scopeType,
+      scopeId: adjustment.scopeId,
+      periodStart: adjustment.periodStart,
+      periodEnd: adjustment.periodEnd,
+      kind,
+      calculationType,
+      amount,
+      reasonCode,
+      note,
+    });
+    validateBillingAdjustmentInput(input);
+    const previous = {
+      kind: adjustment.kind,
+      calculationType: adjustment.calculationType,
+      amount: adjustment.amount,
+      reasonCode: adjustment.reasonCode,
+      note: adjustment.note || null,
+    };
+    await ctx.db.patch(billingAdjustmentId, {
+      kind: input.kind,
+      calculationType: input.calculationType,
+      amount: input.amount,
+      reasonCode: input.reasonCode,
+      note: input.note,
+      updatedBy: actor._id,
+      updatedAt: Date.now(),
+    });
+    await recordActivityEvent(ctx, buildBillingAdjustmentActivityEvent({
+      adjustmentId: billingAdjustmentId,
+      actorId: actor._id,
+      action: "updated",
+      metadata: {
+        scopeType: adjustment.scopeType,
+        scopeId: adjustment.scopeId,
+        periodStart: adjustment.periodStart,
+        periodEnd: adjustment.periodEnd,
+        previous,
+        next: {
+          kind: input.kind,
+          calculationType: input.calculationType,
+          amount: input.amount,
+          reasonCode: input.reasonCode,
+          note: input.note || null,
+        },
+      },
+    }));
+  },
+});
+
+export const adminVoidBillingAdjustment = mutation({
+  args: { billingAdjustmentId: v.id("billingAdjustments") },
+  handler: async (ctx, { billingAdjustmentId }) => {
+    const actor = await requireAdmin(ctx);
+    const adjustment = await ctx.db.get(billingAdjustmentId);
+    if (!adjustment) {
+      throw new Error("Billing adjustment not found.");
+    }
+    if (adjustment.status === "voided") {
+      throw new Error("Billing adjustment is already voided.");
+    }
+    const now = Date.now();
+    await ctx.db.patch(billingAdjustmentId, {
+      status: "voided",
+      voidedBy: actor._id,
+      voidedAt: now,
+      updatedBy: actor._id,
+      updatedAt: now,
+    });
+    await recordActivityEvent(ctx, buildBillingAdjustmentActivityEvent({
+      adjustmentId: billingAdjustmentId,
+      actorId: actor._id,
+      action: "voided",
+      metadata: {
+        scopeType: adjustment.scopeType,
+        scopeId: adjustment.scopeId,
+        periodStart: adjustment.periodStart,
+        periodEnd: adjustment.periodEnd,
+        kind: adjustment.kind,
+        calculationType: adjustment.calculationType,
+        amount: adjustment.amount,
+        reasonCode: adjustment.reasonCode,
+      },
+    }));
   },
 });
 

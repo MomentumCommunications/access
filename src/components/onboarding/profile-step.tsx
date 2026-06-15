@@ -1,4 +1,4 @@
-import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
+import { useConvexAction, useConvexQuery } from "@convex-dev/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
@@ -31,7 +31,7 @@ type ProfileValues = z.infer<typeof profileSchema>;
 export function ProfileStep() {
   const navigate = useNavigate();
   const state = useConvexQuery(api.onboarding.getState, {});
-  const saveProfile = useConvexMutation(api.onboarding.saveProfile);
+  const saveProfile = useConvexAction(api.stripe.saveOnboardingProfile);
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
     values: {

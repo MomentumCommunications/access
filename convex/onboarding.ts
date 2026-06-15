@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import {
+  internalMutation,
   mutation,
   type MutationCtx,
   query,
@@ -111,7 +112,7 @@ export const saveProfile = mutation({
     phone: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user, onboarding } = await getOnboarding(ctx);
+    const { user } = await getOnboarding(ctx);
     const firstName = args.firstName.trim();
     const lastName = args.lastName.trim();
     const roles = resolveUserRoles(user);
@@ -135,12 +136,26 @@ export const saveProfile = mutation({
       firstName,
       lastName,
     });
+    return user._id;
+  },
+});
 
+export const completeProfileStep = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User not found.");
+    }
+    const onboarding = await ctx.db
+      .query("onboarding")
+      .withIndex("byUser", (q) => q.eq("user", userId))
+      .unique();
     if (onboarding) {
       await ctx.db.patch(onboarding._id, { currentStep: "students" });
     } else {
       await ctx.db.insert("onboarding", {
-        user: user._id,
+        user: userId,
         currentStep: "students",
         matchedImportedRecord: user.onboardingSource === "imported",
         createdStudentIds: [],

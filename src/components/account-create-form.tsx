@@ -1,8 +1,9 @@
-import { useConvexMutation } from "@convex-dev/react-query";
+import { useConvexAction } from "@convex-dev/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Controller, useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "~/components/ui/button";
 import {
@@ -37,7 +38,7 @@ type AccountValues = z.infer<typeof accountSchema>;
 
 export function AccountCreateForm() {
   const navigate = useNavigate();
-  const createAccount = useConvexMutation(api.classes.adminCreateAccount);
+  const createAccount = useConvexAction(api.stripe.adminCreateAccount);
   const form = useForm<AccountValues>({
     resolver: zodResolver(accountSchema),
     defaultValues: {
@@ -53,16 +54,21 @@ export function AccountCreateForm() {
   async function onSubmit(values: AccountValues) {
     form.clearErrors("root");
     try {
-      const account = await createAccount({
+      const result = await createAccount({
         firstName: values.firstName.trim(),
         lastName: values.lastName.trim(),
         email: values.email.trim().toLowerCase(),
         phone: values.phone.trim() || undefined,
         roles: values.roles,
       });
+      if (result.warning) {
+        toast.warning(result.warning);
+      } else {
+        toast.success("Account, household, and Stripe customer created.");
+      }
       await navigate({
         to: "/admin/accounts/$userId",
-        params: { userId: account },
+        params: { userId: result.userId },
       });
     } catch (error) {
       form.setError("root", {

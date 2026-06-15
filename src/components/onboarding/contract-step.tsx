@@ -116,7 +116,7 @@ export function ContractStep() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
+    <div className="mx-auto w-full max-w-2xl lg:max-w-6xl">
       <div className="mb-5">
         <h1 className="text-3xl font-bold">Client agreement</h1>
         <p className="mt-1 text-muted-foreground">
@@ -153,14 +153,15 @@ export function ContractStep() {
           </CardContent>
         </Card>
       ) : (
-        <div className="min-h-[32rem] overflow-hidden rounded-md border bg-white">
+        <div className="min-h-[32rem] overflow-hidden rounded-md border bg-white lg:aspect-[16/10] lg:min-h-0">
           <DocusealForm
-            className="block w-full"
+            className="block min-h-[32rem] w-full lg:h-full lg:min-h-0"
             src={contractUrl}
             email={getEmail(state.user.email)}
             name={getAccountName(state.user)}
             externalId={state.user._id}
             expand
+            minimize={false}
             withTitle
             allowToResubmit={false}
             completedMessage={{

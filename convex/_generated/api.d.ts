@@ -29,10 +29,13 @@ import type * as lib_householdBilling from "../lib/householdBilling.js";
 import type * as lib_privateScheduling from "../lib/privateScheduling.js";
 import type * as lib_roles from "../lib/roles.js";
 import type * as lib_scheduling from "../lib/scheduling.js";
+import type * as lib_stripe from "../lib/stripe.js";
 import type * as onboarding from "../onboarding.js";
 import type * as privates from "../privates.js";
 import type * as random from "../random.js";
 import type * as resendConfig from "../resendConfig.js";
+import type * as stripe from "../stripe.js";
+import type * as stripeData from "../stripeData.js";
 import type * as tasks from "../tasks.js";
 import type * as users from "../users.js";
 
@@ -64,10 +67,13 @@ declare const fullApi: ApiFromModules<{
   "lib/privateScheduling": typeof lib_privateScheduling;
   "lib/roles": typeof lib_roles;
   "lib/scheduling": typeof lib_scheduling;
+  "lib/stripe": typeof lib_stripe;
   onboarding: typeof onboarding;
   privates: typeof privates;
   random: typeof random;
   resendConfig: typeof resendConfig;
+  stripe: typeof stripe;
+  stripeData: typeof stripeData;
   tasks: typeof tasks;
   users: typeof users;
 }>;

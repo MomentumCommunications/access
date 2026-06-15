@@ -1,6 +1,12 @@
 import { v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
-import { mutation, MutationCtx, query, QueryCtx } from "./_generated/server";
+import {
+  internalMutation,
+  mutation,
+  MutationCtx,
+  query,
+  QueryCtx,
+} from "./_generated/server";
 import {
   compareClassesBySchedule,
   compareRowsByClassSchedule,
@@ -41,6 +47,7 @@ import {
   getSessionSelectionChange,
 } from "../shared/activity-log";
 import { recordActivityEvent } from "./lib/activityLog";
+import { ensureDefaultHouseholdBilling } from "./lib/householdBilling";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
 
 const roleValidator = v.union(
@@ -1478,7 +1485,7 @@ export const adminGetAccount = query({
   },
 });
 
-export const adminCreateAccount = mutation({
+export const adminCreateAccountRecord = internalMutation({
   args: {
     firstName: v.string(),
     lastName: v.string(),
@@ -1513,7 +1520,7 @@ export const adminCreateAccount = mutation({
       throw new Error("An account with this email already exists.");
     }
 
-    return await ctx.db.insert("users", {
+    const userId = await ctx.db.insert("users", {
       firstName,
       lastName,
       email,
@@ -1522,6 +1529,12 @@ export const adminCreateAccount = mutation({
       role: highestUserRole(roles),
       onboardingSource: "imported",
     });
+    await ensureDefaultHouseholdBilling(ctx, {
+      userId,
+      firstName,
+      lastName,
+    });
+    return userId;
   },
 });
 

@@ -40,6 +40,7 @@ export default defineSchema({
     contractVersionSigned: v.optional(v.string()),
     contractSignedAt: v.optional(v.number()),
     docusealSubmissionId: v.optional(v.string()),
+    stripeCustomerId: v.optional(v.string()),
     // Legacy Clerk ID. Convex Auth stores its user ID in the subject JWT field.
     externalId: v.optional(v.string()),
   })

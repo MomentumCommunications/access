@@ -98,8 +98,8 @@ export function planSessionSignupSync(
         status:
           preserveEnrolledSelections &&
           nextStatus === "pending" &&
-          signup.status === "enrolled"
-            ? "enrolled"
+          (signup.status === "enrolled" || signup.status === "waitlisted")
+            ? signup.status
             : nextStatus,
       });
       selected.delete(signup.sessionId);

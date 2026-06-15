@@ -46,6 +46,9 @@ import {
   buildPerSessionSignupEvent,
   getSessionSelectionChange,
 } from "../shared/activity-log";
+import { calculateEnrollmentEstimate } from "../shared/class-enrollment-estimate";
+import { matchTuitionTier } from "../shared/tuition-pricing";
+import { classWeeklyMinutes } from "./lib/billing/weeklyClassHours";
 import { recordActivityEvent } from "./lib/activityLog";
 import { ensureDefaultHouseholdBilling } from "./lib/householdBilling";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
@@ -131,6 +134,11 @@ const studentGenderValidator = v.union(
   v.literal("Female"),
   v.literal("Male"),
 );
+
+const classSessionSelectionValidator = v.object({
+  classId: v.id("classes"),
+  sessionIds: v.array(v.id("sessions")),
+});
 
 type DbCtx = QueryCtx | MutationCtx;
 
@@ -841,6 +849,189 @@ export const listPublishedClasses = query({
   },
 });
 
+export const estimateMyClassSelections = query({
+  args: {
+    student: v.id("students"),
+    recurringClassIds: v.array(v.id("classes")),
+    sessionSelections: v.array(classSessionSelectionValidator),
+  },
+  handler: async (
+    ctx,
+    { student, recurringClassIds, sessionSelections },
+  ) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const studentDoc = await ctx.db.get(student);
+    if (
+      !studentDoc ||
+      studentDoc.status !== "active" ||
+      !(await canManageStudent(ctx, user, student))
+    ) {
+      throw new Error("Student is unavailable for enrollment.");
+    }
+
+    const today = todayValue("America/New_York");
+    const studentAge = calculateAgeOnDate(studentDoc.dateOfBirth, today);
+    const currentEnrollments = await ctx.db
+      .query("classEnrollments")
+      .withIndex("byStudent", (q) => q.eq("student", student))
+      .collect();
+    const currentRows = await Promise.all(
+      currentEnrollments
+        .filter((enrollment) => enrollment.status === "enrolled")
+        .map(async (enrollment) => ({
+          enrollment,
+          classItem: await ctx.db.get(enrollment.classId),
+        })),
+    );
+    const currentWeeklyMinutes = currentRows.reduce((total, row) => {
+      const { classItem, enrollment } = row;
+      if (
+        !classItem ||
+        classItem.status === "archived" ||
+        resolvedClassEnrollmentMode(classItem.enrollmentMode) !== "standard" ||
+        (enrollment.endDate && enrollment.endDate < today) ||
+        (classItem.endDate && classItem.endDate < today)
+      ) {
+        return total;
+      }
+      return total + classWeeklyMinutes(classItem);
+    }, 0);
+
+    const uniqueRecurringIds = [...new Set(recurringClassIds)];
+    const recurringClasses = await Promise.all(
+      uniqueRecurringIds.map((classId) => ctx.db.get(classId)),
+    );
+    let selectedRecurringWeeklyMinutes = 0;
+    const recurringSelections = [];
+    for (const classItem of recurringClasses) {
+      if (
+        !classItem ||
+        classItem.status !== "published" ||
+        resolvedClassEnrollmentMode(classItem.enrollmentMode) !== "standard"
+      ) {
+        throw new Error("One or more selected classes are unavailable.");
+      }
+      if (!classMatchesAge(classItem, studentAge)) {
+        throw new Error(`${classItem.title} does not match the student's age.`);
+      }
+      const existing = currentEnrollments.find(
+        (enrollment) => enrollment.classId === classItem._id,
+      );
+      if (
+        existing?.status === "enrolled" ||
+        existing?.status === "pending" ||
+        existing?.status === "waitlisted"
+      ) {
+        continue;
+      }
+      const weeklyMinutes = classWeeklyMinutes(classItem);
+      selectedRecurringWeeklyMinutes += weeklyMinutes;
+      recurringSelections.push({
+        classId: classItem._id,
+        title: classItem.title,
+        weeklyMinutes,
+      });
+    }
+
+    const selectedSessionChargesCents: number[] = [];
+    const perSessionSelections = [];
+    for (const selection of sessionSelections) {
+      const classItem = await ctx.db.get(selection.classId);
+      if (
+        !classItem ||
+        classItem.status !== "published" ||
+        resolvedClassEnrollmentMode(classItem.enrollmentMode) !== "per_session"
+      ) {
+        throw new Error("One or more selected session classes are unavailable.");
+      }
+      validateClassEnrollmentConfig(
+        "per_session",
+        classItem.perSessionPriceCents,
+      );
+      if (!classMatchesAge(classItem, studentAge)) {
+        throw new Error(`${classItem.title} does not match the student's age.`);
+      }
+      const uniqueSessionIds = [...new Set(selection.sessionIds)];
+      const existingSignups = await ctx.db
+        .query("classSessionSignups")
+        .withIndex("byClassStudent", (q) =>
+          q.eq("classId", classItem._id).eq("student", student),
+        )
+        .collect();
+      const activeExistingIds = new Set(
+        existingSignups
+          .filter((signup) => isActiveSessionSignup(signup.status))
+          .map((signup) => signup.session),
+      );
+      const newSessionIds = uniqueSessionIds.filter(
+        (sessionId) => !activeExistingIds.has(sessionId),
+      );
+      const sessions = await Promise.all(
+        newSessionIds.map((sessionId) => ctx.db.get(sessionId)),
+      );
+      for (const session of sessions) {
+        if (
+          !session ||
+          session.classId !== classItem._id ||
+          !session.active ||
+          session.status === "cancelled" ||
+          session.date < todayValue(classItem.timezone)
+        ) {
+          throw new Error("One or more selected sessions are unavailable.");
+        }
+        selectedSessionChargesCents.push(classItem.perSessionPriceCents!);
+      }
+      if (newSessionIds.length > 0) {
+        perSessionSelections.push({
+          classId: classItem._id,
+          title: classItem.title,
+          sessionCount: newSessionIds.length,
+          amountCents:
+            newSessionIds.length * classItem.perSessionPriceCents!,
+        });
+      }
+    }
+
+    const activeSchema = await ctx.db
+      .query("pricingSchemas")
+      .withIndex("byStatus", (q) => q.eq("status", "active"))
+      .first();
+    const tiers = activeSchema
+      ? await ctx.db
+          .query("tuitionPricingTiers")
+          .withIndex("byPricingSchemaOrder", (q) =>
+            q.eq("pricingSchemaId", activeSchema._id),
+          )
+          .collect()
+      : [];
+    const estimate = calculateEnrollmentEstimate({
+      currentWeeklyMinutes,
+      selectedRecurringWeeklyMinutes,
+      selectedSessionChargesCents,
+      tiers,
+    });
+    const currentTier = matchTuitionTier(tiers, currentWeeklyMinutes);
+    const proposedTier = matchTuitionTier(
+      tiers,
+      currentWeeklyMinutes + selectedRecurringWeeklyMinutes,
+    );
+
+    return {
+      ...estimate,
+      pricingSchema: activeSchema
+        ? {
+            name: activeSchema.name,
+            version: activeSchema.version,
+          }
+        : null,
+      currentTierLabel: currentTier?.label,
+      proposedTierLabel: proposedTier?.label,
+      recurringSelections,
+      perSessionSelections,
+    };
+  },
+});
+
 export const listCurrentAndFutureSeasons = query({
   args: {},
   handler: async (ctx) => {
@@ -1411,6 +1602,195 @@ export const signUpStudentForSessions = mutation({
       status: "pending",
       preserveEnrolledSelections: true,
     });
+  },
+});
+
+export const saveMyClassSelections = mutation({
+  args: {
+    student: v.id("students"),
+    recurringClassIds: v.array(v.id("classes")),
+    sessionSelections: v.array(classSessionSelectionValidator),
+  },
+  handler: async (
+    ctx,
+    { student, recurringClassIds, sessionSelections },
+  ) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const studentDoc = await ctx.db.get(student);
+    if (
+      !studentDoc ||
+      studentDoc.status !== "active" ||
+      !(await canManageStudent(ctx, user, student))
+    ) {
+      throw new Error("Student is unavailable for enrollment.");
+    }
+
+    const uniqueRecurringIds = [...new Set(recurringClassIds)];
+    const sessionIdsByClass = new Map<Id<"classes">, Set<Id<"sessions">>>();
+    for (const selection of sessionSelections) {
+      const ids = sessionIdsByClass.get(selection.classId) || new Set();
+      for (const sessionId of selection.sessionIds) {
+        ids.add(sessionId);
+      }
+      sessionIdsByClass.set(selection.classId, ids);
+    }
+    if (uniqueRecurringIds.length === 0 && sessionIdsByClass.size === 0) {
+      throw new Error("Select at least one class or session.");
+    }
+
+    const studentAge = calculateAgeOnDate(
+      studentDoc.dateOfBirth,
+      todayValue("America/New_York"),
+    );
+    const recurringPlans = [];
+    for (const classId of uniqueRecurringIds) {
+      const classItem = await ctx.db.get(classId);
+      if (
+        !classItem ||
+        classItem.status !== "published" ||
+        resolvedClassEnrollmentMode(classItem.enrollmentMode) !== "standard"
+      ) {
+        throw new Error("One or more selected classes are unavailable.");
+      }
+      if (!classMatchesAge(classItem, studentAge)) {
+        throw new Error(`${classItem.title} does not match the student's age.`);
+      }
+      const existing = await ctx.db
+        .query("classEnrollments")
+        .withIndex("byClassStudent", (q) =>
+          q.eq("classId", classId).eq("student", student),
+        )
+        .unique();
+      if (
+        existing?.status === "enrolled" ||
+        existing?.status === "pending" ||
+        existing?.status === "waitlisted"
+      ) {
+        continue;
+      }
+      if (classItem.capacity !== undefined) {
+        const occupied = (
+          await ctx.db
+            .query("classEnrollments")
+            .withIndex("byClass", (q) => q.eq("classId", classId))
+            .collect()
+        ).filter(
+          (enrollment) =>
+            enrollment.status === "pending" ||
+            enrollment.status === "enrolled",
+        ).length;
+        if (occupied >= classItem.capacity) {
+          throw new Error(`${classItem.title} is currently full.`);
+        }
+      }
+      recurringPlans.push({ classItem, existing });
+    }
+
+    const sessionPlans = [];
+    for (const [classId, requestedIds] of sessionIdsByClass) {
+      const classItem = await ctx.db.get(classId);
+      if (
+        !classItem ||
+        classItem.status !== "published" ||
+        resolvedClassEnrollmentMode(classItem.enrollmentMode) !== "per_session"
+      ) {
+        throw new Error("One or more selected session classes are unavailable.");
+      }
+      if (!classMatchesAge(classItem, studentAge)) {
+        throw new Error(`${classItem.title} does not match the student's age.`);
+      }
+      const existing = await ctx.db
+        .query("classSessionSignups")
+        .withIndex("byClassStudent", (q) =>
+          q.eq("classId", classId).eq("student", student),
+        )
+        .collect();
+      const classToday = todayValue(classItem.timezone);
+      const activeExistingIds = (
+        await Promise.all(
+          existing
+            .filter((signup) => isActiveSessionSignup(signup.status))
+            .map(async (signup) => ({
+              signup,
+              session: await ctx.db.get(signup.session),
+            })),
+        )
+      )
+        .filter(
+          ({ session }) =>
+            session &&
+            session.active &&
+            session.status !== "cancelled" &&
+            session.date >= classToday,
+        )
+        .map(({ signup }) => signup.session);
+      const combinedIds = [...new Set([...activeExistingIds, ...requestedIds])];
+      await validateSelectedSessions(ctx, classItem, combinedIds);
+
+      if (classItem.capacity !== undefined) {
+        const activeExistingSet = new Set(activeExistingIds);
+        for (const sessionId of requestedIds) {
+          if (activeExistingSet.has(sessionId)) continue;
+          const occupied = (
+            await ctx.db
+              .query("classSessionSignups")
+              .withIndex("bySession", (q) => q.eq("session", sessionId))
+              .collect()
+          ).filter((signup) => occupiesSessionCapacity(signup.status)).length;
+          if (occupied >= classItem.capacity) {
+            const session = await ctx.db.get(sessionId);
+            throw new Error(
+              `${session?.date || "A selected session"} is at capacity.`,
+            );
+          }
+        }
+      }
+      sessionPlans.push({
+        classItem,
+        combinedIds,
+        requestedCount: [...requestedIds].filter(
+          (sessionId) => !activeExistingIds.includes(sessionId),
+        ).length,
+      });
+    }
+
+    const now = Date.now();
+    for (const { classItem, existing } of recurringPlans) {
+      const enrollment = {
+        requestedBy: user._id,
+        status: "pending" as const,
+        startDate: todayValue(classItem.timezone),
+        endDate: undefined,
+      };
+      if (existing) {
+        await ctx.db.patch(existing._id, enrollment);
+      } else {
+        await ctx.db.insert("classEnrollments", {
+          classId: classItem._id,
+          student,
+          ...enrollment,
+        });
+      }
+    }
+    for (const { classItem, combinedIds } of sessionPlans) {
+      await syncStudentSessionSignups(ctx, {
+        classItem,
+        student,
+        requestedBy: user._id,
+        sessionIds: combinedIds,
+        status: "pending",
+        preserveEnrolledSelections: true,
+      });
+    }
+
+    return {
+      recurringRequestCount: recurringPlans.length,
+      sessionRequestCount: sessionPlans.reduce(
+        (total, plan) => total + plan.requestedCount,
+        0,
+      ),
+      savedAt: now,
+    };
   },
 });
 

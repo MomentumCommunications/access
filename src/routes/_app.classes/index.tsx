@@ -1,6 +1,10 @@
-import { useConvexQuery } from "@convex-dev/react-query";
+import {
+  useConvexMutation,
+  useConvexQuery,
+} from "@convex-dev/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
+import type { Id } from "convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
 import {
   BookOpen,
@@ -18,7 +22,15 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
+import {
+  enrollmentEstimateBillingNote,
+  enrollmentSaveButtonState,
+  enrollmentSaveErrorMessage,
+  enrollmentSaveSuccessMessage,
+  normalizeEnrollmentSelectionRequest,
+} from "../../../shared/class-enrollment-estimate";
 import {
   buildEnrollmentReview,
   emptyEnrollmentSelectionDraft,
@@ -83,6 +95,9 @@ export const Route = createFileRoute("/_app/classes/")({
 
 type Catalog = FunctionReturnType<typeof api.classes.listPublishedClasses>;
 type CatalogClass = Catalog[number];
+type SelectionEstimate = FunctionReturnType<
+  typeof api.classes.estimateMyClassSelections
+>;
 
 function ClassesPage() {
   const navigate = useNavigate();
@@ -118,6 +133,32 @@ function ClassesPage() {
   const [draft, setDraft] = useState<EnrollmentSelectionDraft>(
     emptyEnrollmentSelectionDraft,
   );
+  const [saving, setSaving] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState<{
+    tone: "success" | "error";
+    message: string;
+  } | null>(null);
+  const saveSelections = useConvexMutation(api.classes.saveMyClassSelections);
+  const normalizedRequest = useMemo(
+    () => normalizeEnrollmentSelectionRequest(draft),
+    [draft],
+  );
+  const estimate = useConvexQuery(
+    api.classes.estimateMyClassSelections,
+    selectedStudentId
+      ? {
+          student: selectedStudentId,
+          recurringClassIds:
+            normalizedRequest.recurringClassIds as Id<"classes">[],
+          sessionSelections: normalizedRequest.sessionSelections.map(
+            (selection) => ({
+              classId: selection.classId as Id<"classes">,
+              sessionIds: selection.sessionIds as Id<"sessions">[],
+            }),
+          ),
+        }
+      : "skip",
+  );
 
   useEffect(() => {
     if (
@@ -148,6 +189,7 @@ function ClassesPage() {
 
   useEffect(() => {
     setDraft(emptyEnrollmentSelectionDraft());
+    setSaveFeedback(null);
   }, [selectedSeasonId, selectedStudentId]);
 
   const review = useMemo(
@@ -159,6 +201,35 @@ function ClassesPage() {
     : null;
   const loading =
     classes === undefined || seasons === undefined || students === undefined;
+
+  async function handleSaveSelections() {
+    if (!selectedStudentId || review.changeCount === 0 || saving) return;
+    setSaving(true);
+    setSaveFeedback(null);
+    try {
+      const result = await saveSelections({
+        student: selectedStudentId,
+        recurringClassIds:
+          normalizedRequest.recurringClassIds as Id<"classes">[],
+        sessionSelections: normalizedRequest.sessionSelections.map(
+          (selection) => ({
+            classId: selection.classId as Id<"classes">,
+            sessionIds: selection.sessionIds as Id<"sessions">[],
+          }),
+        ),
+      });
+      const message = enrollmentSaveSuccessMessage(result);
+      setDraft(emptyEnrollmentSelectionDraft());
+      setSaveFeedback({ tone: "success", message });
+      toast.success(message);
+    } catch (error) {
+      const message = enrollmentSaveErrorMessage(error);
+      setSaveFeedback({ tone: "error", message });
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <main className="mx-auto w-full max-w-7xl p-4 pb-24 lg:p-8">
@@ -313,6 +384,10 @@ function ClassesPage() {
             <ReviewCard
               review={review}
               studentName={selectedStudentName || "Student"}
+              estimate={estimate}
+              saving={saving}
+              feedback={saveFeedback}
+              onSave={handleSaveSelections}
             />
           </aside>
         </div>
@@ -336,7 +411,13 @@ function ClassesPage() {
                 </DrawerDescription>
               </DrawerHeader>
               <div className="overflow-y-auto px-4 pb-6">
-                <ReviewContent review={review} />
+                <ReviewContent
+                  review={review}
+                  estimate={estimate}
+                  saving={saving}
+                  feedback={saveFeedback}
+                  onSave={handleSaveSelections}
+                />
               </div>
             </DrawerContent>
           </Drawer>
@@ -650,9 +731,17 @@ function PerSessionChoices({
 function ReviewCard({
   review,
   studentName,
+  estimate,
+  saving,
+  feedback,
+  onSave,
 }: {
   review: EnrollmentReview;
   studentName: string;
+  estimate: SelectionEstimate | undefined;
+  saving: boolean;
+  feedback: { tone: "success" | "error"; message: string } | null;
+  onSave: () => void;
 }) {
   return (
     <Card className="gap-4 rounded-lg py-5">
@@ -663,15 +752,37 @@ function ReviewCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="px-5">
-        <ReviewContent review={review} />
+        <ReviewContent
+          review={review}
+          estimate={estimate}
+          saving={saving}
+          feedback={feedback}
+          onSave={onSave}
+        />
       </CardContent>
     </Card>
   );
 }
 
-function ReviewContent({ review }: { review: EnrollmentReview }) {
+function ReviewContent({
+  review,
+  estimate,
+  saving,
+  feedback,
+  onSave,
+}: {
+  review: EnrollmentReview;
+  estimate: SelectionEstimate | undefined;
+  saving: boolean;
+  feedback: { tone: "success" | "error"; message: string } | null;
+  onSave: () => void;
+}) {
   const hasCurrent =
     review.currentActive.length > 0 || review.currentPending.length > 0;
+  const saveButton = enrollmentSaveButtonState({
+    changeCount: review.changeCount,
+    saving,
+  });
   return (
     <div className="space-y-5">
       <ReviewSection
@@ -702,18 +813,113 @@ function ReviewContent({ review }: { review: EnrollmentReview }) {
           ))}
         </section>
       ) : null}
-      <div className="rounded-md bg-muted p-3">
-        <p className="text-sm font-medium">Estimated pricing</p>
+      <EstimateSummary estimate={estimate} />
+      <Button
+        className="w-full"
+        disabled={saveButton.disabled}
+        onClick={onSave}
+      >
+        {saveButton.label}
+      </Button>
+      {feedback ? (
+        <p
+          className={`text-center text-sm ${
+            feedback.tone === "error"
+              ? "text-destructive"
+              : "text-muted-foreground"
+          }`}
+          role={feedback.tone === "error" ? "alert" : "status"}
+        >
+          {feedback.message}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function EstimateSummary({
+  estimate,
+}: {
+  estimate: SelectionEstimate | undefined;
+}) {
+  return (
+    <section className="space-y-3 rounded-md bg-muted p-3">
+      <div>
+        <h3 className="text-sm font-semibold">Estimated billing plan</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Pricing and any enrollment changes will be confirmed before saving.
+          Recurring tuition is monthly. Selected session charges are one-time.
         </p>
       </div>
-      <Button className="w-full" disabled={review.changeCount === 0}>
-        Save selections
-      </Button>
-      <p className="text-center text-xs text-muted-foreground">
-        Submission will be connected in the next step.
+      {estimate === undefined ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Spinner className="size-4" />
+          Calculating estimate...
+        </div>
+      ) : estimate.available ? (
+        <div className="space-y-2 text-sm">
+          <EstimateRow
+            label="Current monthly tuition"
+            value={formatCurrency(estimate.currentMonthlyTuitionCents || 0)}
+          />
+          <EstimateRow
+            label="Proposed monthly tuition"
+            value={formatCurrency(estimate.proposedMonthlyTuitionCents || 0)}
+          />
+          <EstimateRow
+            label="New session charges"
+            value={formatCurrency(estimate.selectedSessionChargesCents)}
+          />
+          <div className="border-t pt-2">
+            <EstimateRow
+              label="Current estimated total"
+              value={formatCurrency(
+                estimate.currentEstimatedTotalCents || 0,
+              )}
+            />
+            <EstimateRow
+              label="Estimated new total"
+              value={formatCurrency(
+                estimate.proposedEstimatedTotalCents || 0,
+              )}
+              emphasized
+            />
+            <EstimateRow
+              label="Estimated difference"
+              value={formatSignedCurrency(
+                estimate.estimatedDifferenceCents || 0,
+              )}
+            />
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          {estimate.warning || "Pricing estimate is temporarily unavailable."}
+        </p>
+      )}
+      <p className="text-xs text-muted-foreground">
+        {enrollmentEstimateBillingNote}
       </p>
+    </section>
+  );
+}
+
+function EstimateRow({
+  label,
+  value,
+  emphasized = false,
+}: {
+  label: string;
+  value: string;
+  emphasized?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-start justify-between gap-3 ${
+        emphasized ? "font-semibold" : ""
+      }`}
+    >
+      <span>{label}</span>
+      <span className="text-right tabular-nums">{value}</span>
     </div>
   );
 }
@@ -860,6 +1066,11 @@ function formatCurrency(cents: number) {
     style: "currency",
     currency: "USD",
   }).format(cents / 100);
+}
+
+function formatSignedCurrency(cents: number) {
+  if (cents === 0) return formatCurrency(0);
+  return `${cents > 0 ? "+" : "-"}${formatCurrency(Math.abs(cents))}`;
 }
 
 function formatAgeRange(minAge?: number, maxAge?: number) {

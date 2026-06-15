@@ -253,4 +253,33 @@ describe("per-session participation and charges", () => {
       [{ action: "preserve", signupId: "confirmed" }],
     );
   });
+
+  it("does not turn an existing waitlist entry back into pending", () => {
+    assert.deepEqual(
+      planSessionSignupSync(
+        [
+          {
+            signupId: "waitlisted",
+            sessionId: "session-1",
+            status: "waitlisted",
+          },
+        ],
+        ["session-1", "session-2"],
+        "pending",
+        true,
+      ),
+      [
+        {
+          action: "update",
+          signupId: "waitlisted",
+          status: "waitlisted",
+        },
+        {
+          action: "create",
+          sessionId: "session-2",
+          status: "pending",
+        },
+      ],
+    );
+  });
 });

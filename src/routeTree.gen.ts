@@ -23,6 +23,7 @@ import { Route as RegisterContractRouteImport } from './routes/register.contract
 import { Route as RegisterCompleteRouteImport } from './routes/register.complete'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppSearchRouteImport } from './routes/_app.search'
+import { Route as AppPaymentsRouteImport } from './routes/_app.payments'
 import { Route as AppHomeRouteImport } from './routes/_app.home'
 import { Route as AppHelpRouteImport } from './routes/_app.help'
 import { Route as AppDirectoryRouteImport } from './routes/_app.directory'
@@ -137,6 +138,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
 const AppSearchRoute = AppSearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPaymentsRoute = AppPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
   getParentRoute: () => AppRoute,
 } as any)
 const AppHomeRoute = AppHomeRouteImport.update({
@@ -393,6 +399,7 @@ export interface FileRoutesByFullPath {
   '/directory': typeof AppDirectoryRoute
   '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
+  '/payments': typeof AppPaymentsRoute
   '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
   '/register/complete': typeof RegisterCompleteRoute
@@ -453,6 +460,7 @@ export interface FileRoutesByTo {
   '/directory': typeof AppDirectoryRoute
   '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
+  '/payments': typeof AppPaymentsRoute
   '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
   '/register/complete': typeof RegisterCompleteRoute
@@ -516,6 +524,7 @@ export interface FileRoutesById {
   '/_app/directory': typeof AppDirectoryRoute
   '/_app/help': typeof AppHelpRoute
   '/_app/home': typeof AppHomeRoute
+  '/_app/payments': typeof AppPaymentsRoute
   '/_app/search': typeof AppSearchRoute
   '/_app/settings': typeof AppSettingsRoute
   '/register/complete': typeof RegisterCompleteRoute
@@ -579,6 +588,7 @@ export interface FileRouteTypes {
     | '/directory'
     | '/help'
     | '/home'
+    | '/payments'
     | '/search'
     | '/settings'
     | '/register/complete'
@@ -639,6 +649,7 @@ export interface FileRouteTypes {
     | '/directory'
     | '/help'
     | '/home'
+    | '/payments'
     | '/search'
     | '/settings'
     | '/register/complete'
@@ -701,6 +712,7 @@ export interface FileRouteTypes {
     | '/_app/directory'
     | '/_app/help'
     | '/_app/home'
+    | '/_app/payments'
     | '/_app/search'
     | '/_app/settings'
     | '/register/complete'
@@ -858,6 +870,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof AppSearchRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/payments': {
+      id: '/_app/payments'
+      path: '/payments'
+      fullPath: '/payments'
+      preLoaderRoute: typeof AppPaymentsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/home': {
@@ -1192,6 +1211,7 @@ interface AppRouteChildren {
   AppDirectoryRoute: typeof AppDirectoryRoute
   AppHelpRoute: typeof AppHelpRoute
   AppHomeRoute: typeof AppHomeRoute
+  AppPaymentsRoute: typeof AppPaymentsRoute
   AppSearchRoute: typeof AppSearchRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppBulletinIdEditRoute: typeof AppBulletinIdEditRoute
@@ -1243,6 +1263,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDirectoryRoute: AppDirectoryRoute,
   AppHelpRoute: AppHelpRoute,
   AppHomeRoute: AppHomeRoute,
+  AppPaymentsRoute: AppPaymentsRoute,
   AppSearchRoute: AppSearchRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppBulletinIdEditRoute: AppBulletinIdEditRoute,

@@ -31,6 +31,8 @@ import type * as lib_roles from "../lib/roles.js";
 import type * as lib_scheduling from "../lib/scheduling.js";
 import type * as lib_stripe from "../lib/stripe.js";
 import type * as onboarding from "../onboarding.js";
+import type * as payments from "../payments.js";
+import type * as paymentsData from "../paymentsData.js";
 import type * as privates from "../privates.js";
 import type * as random from "../random.js";
 import type * as resendConfig from "../resendConfig.js";
@@ -69,6 +71,8 @@ declare const fullApi: ApiFromModules<{
   "lib/scheduling": typeof lib_scheduling;
   "lib/stripe": typeof lib_stripe;
   onboarding: typeof onboarding;
+  payments: typeof payments;
+  paymentsData: typeof paymentsData;
   privates: typeof privates;
   random: typeof random;
   resendConfig: typeof resendConfig;

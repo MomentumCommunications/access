@@ -14,6 +14,7 @@ import {
   Home,
   LayoutDashboard,
   LogIn,
+  CreditCard,
   Users,
 } from "lucide-react";
 import {
@@ -285,6 +286,18 @@ const AppSidebarComponent = memo(() => {
             <SidebarGroupLabel>Etc</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip="Payments"
+                    onClick={closeMobileSidebar}
+                  >
+                    <Link to="/payments">
+                      <CreditCard />
+                      <span>Payments</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild

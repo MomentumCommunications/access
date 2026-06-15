@@ -1,14 +1,43 @@
 import { useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
-import { BookOpen, MapPin, Users } from "lucide-react";
-import { useEffect } from "react";
+import type { FunctionReturnType } from "convex/server";
+import {
+  BookOpen,
+  CalendarDays,
+  Check,
+  ChevronDown,
+  Clock3,
+  MapPin,
+  Users,
+} from "lucide-react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { z } from "zod";
+import {
+  buildEnrollmentReview,
+  emptyEnrollmentSelectionDraft,
+  enrollmentReviewTriggerLabel,
+  recurringClassSelectionStatus,
+  sessionSelectionStatus,
+  toggleRecurringClassSelection,
+  toggleSessionSelection,
+  type EnrollmentReview,
+  type EnrollmentSelectionDraft,
+  type EnrollmentSelectionStatus,
+} from "../../../shared/class-enrollment-selection";
+import { resolvedClassEnrollmentMode } from "../../../shared/per-session-signup";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -17,6 +46,21 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "~/components/ui/collapsible";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "~/components/ui/drawer";
+import { Label } from "~/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -26,6 +70,7 @@ import {
 } from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
+import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
 
 export const Route = createFileRoute("/_app/classes/")({
   validateSearch: z.object({
@@ -35,6 +80,9 @@ export const Route = createFileRoute("/_app/classes/")({
   }),
   component: ClassesPage,
 });
+
+type Catalog = FunctionReturnType<typeof api.classes.listPublishedClasses>;
+type CatalogClass = Catalog[number];
 
 function ClassesPage() {
   const navigate = useNavigate();
@@ -67,6 +115,9 @@ function ClassesPage() {
           filterByAge: filterByAge && Boolean(selectedStudentId),
         },
   );
+  const [draft, setDraft] = useState<EnrollmentSelectionDraft>(
+    emptyEnrollmentSelectionDraft,
+  );
 
   useEffect(() => {
     if (
@@ -79,8 +130,7 @@ function ClassesPage() {
         to: "/classes",
         search: (previous) => ({
           ...previous,
-          season:
-            selectedSeason === "all" ? "all" : selectedSeasonId,
+          season: selectedSeason === "all" ? "all" : selectedSeasonId,
           student: selectedStudentId,
         }),
         replace: true,
@@ -96,31 +146,39 @@ function ClassesPage() {
     students,
   ]);
 
+  useEffect(() => {
+    setDraft(emptyEnrollmentSelectionDraft());
+  }, [selectedSeasonId, selectedStudentId]);
+
+  const review = useMemo(
+    () => buildEnrollmentReview(toReviewClasses(classes || []), draft),
+    [classes, draft],
+  );
   const selectedStudentName = selectedStudentRow
     ? getStudentName(selectedStudentRow.student)
     : null;
+  const loading =
+    classes === undefined || seasons === undefined || students === undefined;
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 lg:p-8">
-      <div>
+    <main className="mx-auto w-full max-w-7xl p-4 pb-24 lg:p-8">
+      <div className="mb-5">
         <h1 className="text-3xl font-bold">Classes</h1>
         <p className="text-muted-foreground">
-          Browse current classes and request a spot.
+          Choose classes and dates, then review them together.
         </p>
       </div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-1 flex-col gap-3 sm:flex-row">
           <div className="flex-1 space-y-1.5">
-            <label className="text-sm font-medium">Student</label>
+            <Label>Student</Label>
             <Select
               value={selectedStudentId}
               onValueChange={(value) =>
                 navigate({
                   to: "/classes",
-                  search: (previous) => ({
-                    ...previous,
-                    student: value,
-                  }),
+                  search: (previous) => ({ ...previous, student: value }),
                 })
               }
               disabled={!students?.length}
@@ -158,16 +216,13 @@ function ClassesPage() {
             </Select>
           </div>
           <div className="flex-1 space-y-1.5">
-            <label className="text-sm font-medium">Season</label>
+            <Label>Season</Label>
             <Select
               value={selectedSeason === "all" ? "all" : selectedSeasonId}
               onValueChange={(value) =>
                 navigate({
                   to: "/classes",
-                  search: (previous) => ({
-                    ...previous,
-                    season: value,
-                  }),
+                  search: (previous) => ({ ...previous, season: value }),
                 })
               }
               disabled={seasons === undefined}
@@ -193,9 +248,7 @@ function ClassesPage() {
           </div>
         </div>
         <div className="flex h-9 items-center justify-between gap-3 rounded-md border px-3 sm:justify-start">
-          <label htmlFor="age-filter" className="text-sm font-medium">
-            Match student age
-          </label>
+          <Label htmlFor="age-filter">Match student age</Label>
           <Switch
             id="age-filter"
             checked={filterByAge}
@@ -212,69 +265,609 @@ function ClassesPage() {
           />
         </div>
       </div>
-      {classes === undefined ||
-      seasons === undefined ||
-      students === undefined ? (
+
+      {loading ? (
         <div className="flex min-h-40 items-center justify-center">
           <Spinner className="size-5" />
         </div>
+      ) : !students.length ? (
+        <Card className="rounded-lg">
+          <CardHeader>
+            <CardTitle>Add a student first</CardTitle>
+            <CardDescription>
+              A student profile is required before classes can be selected.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link to="/students/create">Add student</Link>
+            </Button>
+          </CardContent>
+        </Card>
       ) : classes.length === 0 ? (
-        <Card>
+        <Card className="rounded-lg">
           <CardHeader>
             <CardTitle>No classes posted</CardTitle>
             <CardDescription>
               {filterByAge && selectedStudentId
                 ? "No published classes match this student's age and the current filters."
                 : selectedSeasonId
-                ? "No published classes are available for this season."
-                : "Published classes will appear here when they are ready for signup."}
+                  ? "No published classes are available for this season."
+                  : "Published classes will appear here when they are ready for signup."}
             </CardDescription>
           </CardHeader>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {classes.map((classItem) => (
-            <Card key={classItem._id} className="rounded-lg">
-              <CardHeader>
-                <CardTitle>{classItem.title}</CardTitle>
-                <CardDescription>{classItem.scheduleSummary}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {classItem.description ? (
-                  <p className="text-sm text-muted-foreground">
-                    {classItem.description}
-                  </p>
-                ) : null}
-                <div className="grid gap-2 text-sm text-muted-foreground">
-                  {classItem.location ? (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="size-4" />
-                      {classItem.location}
-                    </div>
-                  ) : null}
-                  {classItem.capacity ? (
-                    <div className="flex items-center gap-2">
-                      <Users className="size-4" />
-                      {classItem.capacity} spots
-                    </div>
-                  ) : null}
-                </div>
-                <Button asChild>
-                  <Link
-                    to="/classes/$classId"
-                    params={{ classId: classItem._id }}
-                  >
-                    <BookOpen />
-                    View Class
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <section className="space-y-3">
+            {classes.map((row) => (
+              <EnrollmentClassCard
+                key={row.classItem._id}
+                row={row}
+                draft={draft}
+                setDraft={setDraft}
+              />
+            ))}
+          </section>
+          <aside className="hidden lg:sticky lg:top-16 lg:block">
+            <ReviewCard
+              review={review}
+              studentName={selectedStudentName || "Student"}
+            />
+          </aside>
         </div>
       )}
+
+      {!loading && students.length > 0 ? (
+        <div className="fixed inset-x-4 bottom-4 z-40 lg:hidden">
+          <Drawer>
+            <DrawerTrigger asChild>
+              <Button className="h-11 w-full shadow-lg">
+                <BookOpen />
+                {enrollmentReviewTriggerLabel(review.changeCount)}
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent className="max-h-[85svh]">
+              <DrawerHeader className="text-left">
+                <DrawerTitle>Review classes</DrawerTitle>
+                <DrawerDescription>
+                  Current classes and new choices for{" "}
+                  {selectedStudentName || "this student"}.
+                </DrawerDescription>
+              </DrawerHeader>
+              <div className="overflow-y-auto px-4 pb-6">
+                <ReviewContent review={review} />
+              </div>
+            </DrawerContent>
+          </Drawer>
+        </div>
+      ) : null}
     </main>
   );
+}
+
+function EnrollmentClassCard({
+  row,
+  draft,
+  setDraft,
+}: {
+  row: CatalogClass;
+  draft: EnrollmentSelectionDraft;
+  setDraft: Dispatch<SetStateAction<EnrollmentSelectionDraft>>;
+}) {
+  const classItem = row.classItem;
+  const mode = resolvedClassEnrollmentMode(classItem.enrollmentMode);
+  const selected = draft.recurringClassIds.includes(classItem._id);
+  const full =
+    classItem.capacity !== undefined &&
+    row.activeEnrollmentCount >= classItem.capacity;
+  const eligible = row.ageEligible;
+  const recurringStatus = recurringClassSelectionStatus({
+    enrollmentStatus: row.enrollment?.status,
+    selected,
+    full,
+    ageEligible: eligible,
+    canManage: row.canManage,
+  });
+  const selectedSessionCount =
+    (draft.sessionIdsByClass[classItem._id] || []).length +
+    row.sessions.filter(
+      ({ signup }) =>
+        signup?.status === "enrolled" ||
+        signup?.status === "pending" ||
+        signup?.status === "waitlisted",
+    ).length;
+  const [open, setOpen] = useState(
+    mode === "per_session" && selectedSessionCount > 0,
+  );
+
+  return (
+    <Card className="gap-4 rounded-lg py-5">
+      <CardHeader className="gap-3 px-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <CardTitle className="text-lg">{classItem.title}</CardTitle>
+              {mode === "per_session" ? (
+                <Badge variant="secondary">Per-session</Badge>
+              ) : null}
+              <StatusBadge
+                status={
+                  mode === "standard"
+                    ? recurringStatus
+                    : perSessionCardStatus(row, draft)
+                }
+              />
+            </div>
+            <CardDescription>
+              {classItem.scheduleSummary || "Schedule to be announced"}
+            </CardDescription>
+          </div>
+          <Button asChild size="sm" variant="ghost" className="self-start">
+            <Link
+              to="/classes/$classId"
+              params={{ classId: classItem._id }}
+            >
+              Details
+            </Link>
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 px-5">
+        {classItem.description ? (
+          <p className="line-clamp-2 text-sm text-muted-foreground">
+            {classItem.description}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+          {classItem.location ? (
+            <span className="flex items-center gap-1.5">
+              <MapPin className="size-4" />
+              {classItem.location}
+            </span>
+          ) : null}
+          <span className="flex items-center gap-1.5">
+            <Users className="size-4" />
+            {classItem.capacity === undefined
+              ? "No set capacity"
+              : mode === "per_session"
+                ? `${classItem.capacity} per session`
+                : `${row.activeEnrollmentCount}/${classItem.capacity} requested`}
+          </span>
+          {classItem.minAge !== undefined ||
+          classItem.maxAge !== undefined ? (
+            <span>{formatAgeRange(classItem.minAge, classItem.maxAge)}</span>
+          ) : null}
+        </div>
+
+        {mode === "standard" ? (
+          <RecurringSelectionAction
+            status={recurringStatus}
+            onToggle={() =>
+              setDraft((current) =>
+                toggleRecurringClassSelection(current, classItem._id),
+              )
+            }
+          />
+        ) : (
+          <Collapsible open={open} onOpenChange={setOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" className="w-full justify-between">
+                <span>
+                  {selectedSessionCount > 0
+                    ? `${selectedSessionCount} ${
+                        selectedSessionCount === 1 ? "session" : "sessions"
+                      } selected`
+                    : "Choose session dates"}
+                </span>
+                <ChevronDown
+                  className={`transition-transform ${open ? "rotate-180" : ""}`}
+                />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3">
+              <PerSessionChoices
+                row={row}
+                draft={draft}
+                setDraft={setDraft}
+              />
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecurringSelectionAction({
+  status,
+  onToggle,
+}: {
+  status: EnrollmentSelectionStatus;
+  onToggle: () => void;
+}) {
+  if (status === "available" || status === "selected") {
+    return (
+      <Button
+        variant={status === "selected" ? "secondary" : "default"}
+        onClick={onToggle}
+      >
+        {status === "selected" ? (
+          <>
+            <Check />
+            Selected
+          </>
+        ) : (
+          "Select class"
+        )}
+      </Button>
+    );
+  }
+
+  return (
+    <p className="text-sm text-muted-foreground">
+      {statusExplanation(status)}
+    </p>
+  );
+}
+
+function PerSessionChoices({
+  row,
+  draft,
+  setDraft,
+}: {
+  row: CatalogClass;
+  draft: EnrollmentSelectionDraft;
+  setDraft: Dispatch<SetStateAction<EnrollmentSelectionDraft>>;
+}) {
+  const classItem = row.classItem;
+  const draftIds = new Set(draft.sessionIdsByClass[classItem._id] || []);
+  const selectableSessions = row.sessions.filter(
+    ({ session, signup, activeSignupCount }) => {
+      const full =
+        classItem.capacity !== undefined &&
+        activeSignupCount >= classItem.capacity;
+      return (
+        !signup &&
+        row.canManage &&
+        row.ageEligible &&
+        (!full || draftIds.has(session._id))
+      );
+    },
+  );
+  const allSelectableSelected =
+    selectableSessions.length > 0 &&
+    selectableSessions.every(({ session }) => draftIds.has(session._id));
+
+  function setAll(checked: boolean) {
+    setDraft((current) => {
+      const nextIds = checked
+        ? selectableSessions.map(({ session }) => session._id)
+        : [];
+      const sessionIdsByClass = { ...current.sessionIdsByClass };
+      if (nextIds.length === 0) {
+        delete sessionIdsByClass[classItem._id];
+      } else {
+        sessionIdsByClass[classItem._id] = nextIds.sort();
+      }
+      return { ...current, sessionIdsByClass };
+    });
+  }
+
+  if (!row.canManage || !row.ageEligible) {
+    return (
+      <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+        {statusExplanation(!row.canManage ? "managed" : "ineligible")}
+      </p>
+    );
+  }
+
+  if (row.sessions.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No upcoming sessions are available.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3 pb-1">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={`select-all-${classItem._id}`}
+            checked={allSelectableSelected}
+            disabled={selectableSessions.length === 0}
+            onCheckedChange={(checked) => setAll(checked === true)}
+          />
+          <Label htmlFor={`select-all-${classItem._id}`}>
+            Select all available
+          </Label>
+        </div>
+        {classItem.perSessionPriceCents !== undefined ? (
+          <span className="text-sm font-medium">
+            {formatCurrency(classItem.perSessionPriceCents)} each
+          </span>
+        ) : null}
+      </div>
+      {row.sessions.map(({ session, signup, activeSignupCount }) => {
+        const selected = draftIds.has(session._id);
+        const full =
+          classItem.capacity !== undefined &&
+          activeSignupCount >= classItem.capacity;
+        const status = sessionSelectionStatus({
+          signupStatus: signup?.status,
+          selected,
+          full,
+          ageEligible: row.ageEligible,
+          canManage: row.canManage,
+        });
+        const locked =
+          status !== "available" && status !== "selected";
+        return (
+          <label
+            key={session._id}
+            className="flex min-h-14 items-center justify-between gap-3 rounded-md border p-3"
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <Checkbox
+                checked={
+                  selected ||
+                  status === "active" ||
+                  status === "pending" ||
+                  status === "waitlisted"
+                }
+                disabled={locked}
+                onCheckedChange={() =>
+                  setDraft((current) =>
+                    toggleSessionSelection(
+                      current,
+                      classItem._id,
+                      session._id,
+                    ),
+                  )
+                }
+              />
+              <span>
+                <span className="block text-sm font-medium">
+                  {formatMDYYYY(session.date)}
+                </span>
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock3 className="size-3" />
+                  {formatTimeRange(session.startTime, session.endTime) ||
+                    "Time TBD"}
+                </span>
+              </span>
+            </span>
+            {status !== "available" ? <StatusBadge status={status} /> : null}
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+function ReviewCard({
+  review,
+  studentName,
+}: {
+  review: EnrollmentReview;
+  studentName: string;
+}) {
+  return (
+    <Card className="gap-4 rounded-lg py-5">
+      <CardHeader className="px-5">
+        <CardTitle>Review classes</CardTitle>
+        <CardDescription>
+          Current classes and new choices for {studentName}.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="px-5">
+        <ReviewContent review={review} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReviewContent({ review }: { review: EnrollmentReview }) {
+  const hasCurrent =
+    review.currentActive.length > 0 || review.currentPending.length > 0;
+  return (
+    <div className="space-y-5">
+      <ReviewSection
+        title="Active"
+        rows={review.currentActive}
+        emptyText={hasCurrent ? undefined : "No current enrollments"}
+      />
+      <ReviewSection title="Pending" rows={review.currentPending} />
+      <ReviewSection title="New recurring classes" rows={review.selectedRecurring} />
+      {review.selectedPerSession.length > 0 ? (
+        <section className="space-y-2">
+          <h3 className="text-sm font-semibold">New session dates</h3>
+          {review.selectedPerSession.map((row) => (
+            <div key={row.classId} className="rounded-md border p-3">
+              <p className="text-sm font-medium">{row.title}</p>
+              <div className="mt-2 space-y-1">
+                {row.sessions.map((session) => (
+                  <p
+                    key={session.sessionId}
+                    className="flex items-start gap-2 text-xs text-muted-foreground"
+                  >
+                    <CalendarDays className="mt-0.5 size-3 shrink-0" />
+                    {session.label}
+                  </p>
+                ))}
+              </div>
+            </div>
+          ))}
+        </section>
+      ) : null}
+      <div className="rounded-md bg-muted p-3">
+        <p className="text-sm font-medium">Estimated pricing</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Pricing and any enrollment changes will be confirmed before saving.
+        </p>
+      </div>
+      <Button className="w-full" disabled={review.changeCount === 0}>
+        Save selections
+      </Button>
+      <p className="text-center text-xs text-muted-foreground">
+        Submission will be connected in the next step.
+      </p>
+    </div>
+  );
+}
+
+function ReviewSection({
+  title,
+  rows,
+  emptyText,
+}: {
+  title: string;
+  rows: Array<{ classId: string; title: string; detail?: string }>;
+  emptyText?: string;
+}) {
+  if (rows.length === 0 && !emptyText) return null;
+  return (
+    <section className="space-y-2">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      {rows.length > 0 ? (
+        <div className="space-y-2">
+          {rows.map((row) => (
+            <div
+              key={`${title}-${row.classId}`}
+              className="flex items-start justify-between gap-3 text-sm"
+            >
+              <span>{row.title}</span>
+              {row.detail ? (
+                <span className="text-right text-xs text-muted-foreground">
+                  {row.detail}
+                </span>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">{emptyText}</p>
+      )}
+    </section>
+  );
+}
+
+function StatusBadge({ status }: { status: EnrollmentSelectionStatus }) {
+  if (status === "available") return null;
+  const labels: Record<Exclude<EnrollmentSelectionStatus, "available">, string> =
+    {
+      active: "Active",
+      pending: "Pending",
+      waitlisted: "Waitlisted",
+      selected: "Selected",
+      full: "Full",
+      ineligible: "Age mismatch",
+      managed: "Managed by staff",
+    };
+  return (
+    <Badge
+      variant={
+        status === "active" || status === "selected"
+          ? "default"
+          : status === "full" || status === "ineligible"
+            ? "destructive"
+            : "secondary"
+      }
+    >
+      {labels[status]}
+    </Badge>
+  );
+}
+
+function perSessionCardStatus(
+  row: CatalogClass,
+  draft: EnrollmentSelectionDraft,
+): EnrollmentSelectionStatus {
+  if (
+    row.sessions.some(({ signup }) => signup?.status === "enrolled")
+  ) {
+    return "active";
+  }
+  if (
+    row.sessions.some(({ signup }) => signup?.status === "pending")
+  ) {
+    return "pending";
+  }
+  if (
+    row.sessions.some(({ signup }) => signup?.status === "waitlisted")
+  ) {
+    return "waitlisted";
+  }
+  if (!row.canManage) return "managed";
+  if (!row.ageEligible) return "ineligible";
+  if ((draft.sessionIdsByClass[row.classItem._id] || []).length > 0) {
+    return "selected";
+  }
+  if (
+    row.sessions.length > 0 &&
+    row.sessions.every(
+      ({ activeSignupCount }) =>
+        row.classItem.capacity !== undefined &&
+        activeSignupCount >= row.classItem.capacity,
+    )
+  ) {
+    return "full";
+  }
+  return "available";
+}
+
+function statusExplanation(status: EnrollmentSelectionStatus) {
+  const messages: Record<EnrollmentSelectionStatus, string> = {
+    active: "This student is actively enrolled.",
+    pending: "An enrollment request is already pending.",
+    waitlisted: "This student is currently waitlisted.",
+    selected: "Selected for review.",
+    full: "This class is currently full.",
+    ineligible: "This class does not match the student's age.",
+    managed: "This student's class choices are managed by staff.",
+    available: "Available to select.",
+  };
+  return messages[status];
+}
+
+function toReviewClasses(classes: Catalog) {
+  return classes.map((row) => ({
+    classId: row.classItem._id,
+    title: row.classItem.title,
+    mode: resolvedClassEnrollmentMode(row.classItem.enrollmentMode),
+    enrollmentStatus: row.enrollment?.status,
+    sessions: row.sessions.map(({ session, signup }) => ({
+      sessionId: session._id,
+      label: sessionLabel(session),
+      signupStatus: signup?.status,
+    })),
+  }));
+}
+
+function sessionLabel(session: {
+  date: string;
+  startTime?: string;
+  endTime?: string;
+}) {
+  const time = formatTimeRange(session.startTime, session.endTime);
+  return time ? `${formatMDYYYY(session.date)} · ${time}` : formatMDYYYY(session.date);
+}
+
+function formatCurrency(cents: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(cents / 100);
+}
+
+function formatAgeRange(minAge?: number, maxAge?: number) {
+  if (minAge !== undefined && maxAge !== undefined) {
+    return `Ages ${minAge}-${maxAge}`;
+  }
+  if (minAge !== undefined) return `Ages ${minAge}+`;
+  return `Up to age ${maxAge}`;
 }
 
 function getStudentName(student: {

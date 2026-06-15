@@ -713,6 +713,7 @@ export const listPublishedClasses = query({
     filterByAge: v.boolean(),
   },
   handler: async (ctx, { seasonId, studentId, filterByAge }) => {
+    const user = await getCurrentUser(ctx);
     let classes = await ctx.db
       .query("classes")
       .withIndex("byStatus", (q) => q.eq("status", "published"))
@@ -732,30 +733,111 @@ export const listPublishedClasses = query({
       );
     }
 
-    if (filterByAge && studentId) {
-      const user = await getCurrentUser(ctx);
+    let selectedStudent: Doc<"students"> | null = null;
+    let selectedContact: Doc<"studentContacts"> | null = null;
+    if (studentId) {
       if (!user) {
         return [];
       }
-      const contact = (
+      selectedContact =
         await ctx.db
           .query("studentContacts")
           .withIndex("byUser", (q) => q.eq("user", user._id))
           .collect()
-      ).find((candidate) => candidate.student === studentId);
-      if (!contact) {
+          .then(
+            (contacts) =>
+              contacts.find((candidate) => candidate.student === studentId) ||
+              null,
+          );
+      if (!selectedContact) {
         throw new Error("Student is not connected to this account.");
       }
 
-      const student = await ctx.db.get(studentId);
+      selectedStudent = await ctx.db.get(studentId);
       const age = calculateAgeOnDate(
-        student?.dateOfBirth,
+        selectedStudent?.dateOfBirth,
         todayValue("America/New_York"),
       );
-      classes = classes.filter((classItem) => classMatchesAge(classItem, age));
+      if (filterByAge) {
+        classes = classes.filter((classItem) =>
+          classMatchesAge(classItem, age),
+        );
+      }
     }
 
-    return classes.sort(compareClassesBySchedule);
+    const selectedStudentAge = calculateAgeOnDate(
+      selectedStudent?.dateOfBirth,
+      todayValue("America/New_York"),
+    );
+    const rows = await Promise.all(
+      classes.sort(compareClassesBySchedule).map(async (classItem) => {
+        const [enrollments, sessions, sessionSignups] = await Promise.all([
+          ctx.db
+            .query("classEnrollments")
+            .withIndex("byClass", (q) => q.eq("classId", classItem._id))
+            .collect(),
+          ctx.db
+            .query("sessions")
+            .withIndex("byClass", (q) => q.eq("classId", classItem._id))
+            .collect(),
+          ctx.db
+            .query("classSessionSignups")
+            .withIndex("byClass", (q) => q.eq("classId", classItem._id))
+            .collect(),
+        ]);
+        const today = todayValue(classItem.timezone);
+        const studentEnrollment = studentId
+          ? enrollments.find((enrollment) => enrollment.student === studentId)
+          : undefined;
+        const studentSignups = new Map(
+          sessionSignups
+            .filter(
+              (signup) =>
+                signup.student === studentId &&
+                isActiveSessionSignup(signup.status),
+            )
+            .map((signup) => [signup.session, signup]),
+        );
+        const activeEnrollmentCount = enrollments.filter(
+          (enrollment) =>
+            enrollment.status === "pending" ||
+            enrollment.status === "enrolled",
+        ).length;
+
+        return {
+          classItem,
+          enrollment: studentEnrollment || null,
+          activeEnrollmentCount,
+          ageEligible: classMatchesAge(classItem, selectedStudentAge),
+          canManage: selectedContact?.canManage ?? false,
+          sessions: sessions
+            .filter(
+              (session) =>
+                session.active &&
+                session.status !== "cancelled" &&
+                session.date >= today,
+            )
+            .sort(
+              (left, right) =>
+                left.date.localeCompare(right.date) ||
+                (left.startTime || "").localeCompare(
+                  right.startTime || "",
+                ),
+            )
+            .map((session) => ({
+              session,
+              signup: studentSignups.get(session._id) || null,
+              activeSignupCount: sessionSignups.filter(
+                (signup) =>
+                  signup.session === session._id &&
+                  occupiesSessionCapacity(signup.status),
+              ).length,
+            })),
+        };
+      }),
+    );
+
+    return rows;
   },
 });
 
@@ -791,6 +873,7 @@ export const listMyStudentsForClassSelection = query({
           }
           return {
             student,
+            contact,
             photoUrl: student.photo
               ? await ctx.storage.getUrl(student.photo)
               : null,

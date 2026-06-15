@@ -219,20 +219,29 @@ describe("billing run duplicate generation", () => {
 describe("billing run dispatch selection", () => {
   const items = [
     { id: "checked", status: "draft" as const },
+    { id: "failed", status: "dispatch_failed" as const },
     { id: "unchecked", status: "draft" as const },
     { id: "sent", status: "dispatched" as const },
   ];
 
-  it("dispatches only checked draft items", () => {
+  it("dispatches checked draft and retryable failed items", () => {
     assert.deepEqual(
-      selectBillingRunItemsForDispatch(items, ["checked", "sent"]),
-      [{ id: "checked", status: "draft" }],
+      selectBillingRunItemsForDispatch(items, [
+        "checked",
+        "failed",
+        "sent",
+      ]),
+      [
+        { id: "checked", status: "draft" },
+        { id: "failed", status: "dispatch_failed" },
+      ],
     );
   });
 
   it("filters dispatched items from the pending workflow", () => {
     assert.deepEqual(pendingBillingRunItems(items), [
       { id: "checked", status: "draft" },
+      { id: "failed", status: "dispatch_failed" },
       { id: "unchecked", status: "draft" },
     ]);
   });

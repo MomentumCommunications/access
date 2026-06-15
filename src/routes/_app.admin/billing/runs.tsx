@@ -1,4 +1,5 @@
 import {
+  useConvexAction,
   useConvexMutation,
   useConvexQuery,
 } from "@convex-dev/react-query";
@@ -7,6 +8,7 @@ import { api } from "convex/_generated/api";
 import type { FunctionReturnType } from "convex/server";
 import {
   Ban,
+  CircleAlert,
   CheckCircle2,
   Pencil,
   Plus,
@@ -190,8 +192,8 @@ function BillingRunsAdminPage() {
       : "skip",
   );
   const generateRun = useConvexMutation(api.billing.adminGenerateBillingRun);
-  const dispatchItems = useConvexMutation(
-    api.billing.adminDispatchBillingRunItems,
+  const dispatchItems = useConvexAction(
+    api.billingDispatch.adminDispatchBillingRunItems,
   );
   const createAdjustment = useConvexMutation(
     api.billing.adminCreateBillingAdjustment,
@@ -208,7 +210,7 @@ function BillingRunsAdminPage() {
       new Set(
         (runs || []).flatMap((run) =>
           run.items
-            .filter((item) => item.status === "draft")
+            .filter((item) => item.status !== "dispatched")
             .map((item) => item._id),
         ),
       ),
@@ -272,21 +274,31 @@ function BillingRunsAdminPage() {
     if (!dispatchRun) return;
     const itemIds = dispatchRun.items
       .filter(
-        (item) => item.status === "draft" && selectedIds.has(item._id),
+        (item) =>
+          item.status !== "dispatched" && selectedIds.has(item._id),
       )
       .map((item) => item._id);
     if (itemIds.length === 0) return;
     setIsDispatching(true);
     try {
-      await dispatchItems({
+      const result = await dispatchItems({
         billingRunId: dispatchRun._id,
         billingRunItemIds: itemIds,
       });
-      toast.success(
-        `Dispatched ${itemIds.length} household ${
-          itemIds.length === 1 ? "bundle" : "bundles"
-        }.`,
-      );
+      if (result.dispatchedCount > 0) {
+        toast.success(
+          `Created ${result.dispatchedCount} Stripe draft ${
+            result.dispatchedCount === 1 ? "invoice" : "invoices"
+          }.`,
+        );
+      }
+      if (result.failedCount > 0) {
+        toast.error(
+          `${result.failedCount} household ${
+            result.failedCount === 1 ? "invoice" : "invoices"
+          } could not be created. Review the failed items and retry.`,
+        );
+      }
       setDispatchRun(null);
     } catch (error) {
       toast.error(
@@ -481,10 +493,11 @@ function BillingRunsAdminPage() {
         runs.map((run) => {
           const selectedCount = run.items.filter(
             (item) =>
-              item.status === "draft" && selectedIds.has(item._id),
+              item.status !== "dispatched" &&
+              selectedIds.has(item._id),
           ).length;
           const draftItems = run.items.filter(
-            (item) => item.status === "draft",
+            (item) => item.status !== "dispatched",
           );
           const allSelected =
             draftItems.length > 0 && selectedCount === draftItems.length;
@@ -557,10 +570,10 @@ function BillingRunsAdminPage() {
                     <Checkbox
                       aria-label={`Include ${item.householdName}`}
                       checked={
-                        item.status === "draft" &&
+                        item.status !== "dispatched" &&
                         selectedIds.has(item._id)
                       }
-                      disabled={item.status !== "draft"}
+                      disabled={item.status === "dispatched"}
                       onCheckedChange={(checked) => {
                         setSelectedIds((current) => {
                           const next = new Set(current);
@@ -585,6 +598,12 @@ function BillingRunsAdminPage() {
                             Dispatched
                           </Badge>
                         ) : null}
+                        {item.status === "dispatch_failed" ? (
+                          <Badge variant="destructive">
+                            <CircleAlert />
+                            Dispatch failed
+                          </Badge>
+                        ) : null}
                       </div>
                       <p className="mt-2 text-xs text-muted-foreground">
                         {item.sourceSummary.tuitionStudentCount} tuition
@@ -598,13 +617,30 @@ function BillingRunsAdminPage() {
                           Incomplete source pricing is present.
                         </p>
                       ) : null}
+                      {item.dispatchFailureReason ? (
+                        <p className="mt-2 text-xs text-destructive">
+                          {item.dispatchFailureReason}
+                        </p>
+                      ) : null}
+                      {item.stripeInvoiceId ? (
+                        <p className="mt-2 font-mono text-xs text-muted-foreground">
+                          {item.stripeInvoiceId}
+                        </p>
+                      ) : null}
+                      {item.collectionMethod ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {item.collectionMethod === "charge_automatically"
+                            ? "Automatic collection"
+                            : "Invoice by email"}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="text-sm font-medium">
                           Final adjustments
                         </span>
-                        {item.status === "draft" ? (
+                        {item.status !== "dispatched" ? (
                           <Button
                             size="sm"
                             variant="outline"
@@ -650,7 +686,7 @@ function BillingRunsAdminPage() {
                                     )
                                   : "Voided"}
                               </span>
-                              {item.status === "draft" &&
+                              {item.status !== "dispatched" &&
                               adjustment.status === "active" ? (
                                 <>
                                   <Button
@@ -862,8 +898,9 @@ function BillingRunsAdminPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Dispatch selected households?</AlertDialogTitle>
             <AlertDialogDescription>
-              This freezes the selected bundle totals for future invoice export.
-              Dispatched items cannot be adjusted or regenerated in this MVP.
+              This creates one Stripe draft invoice for each selected household.
+              Successful items become dispatched; failures remain available to
+              review and retry.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -875,7 +912,7 @@ function BillingRunsAdminPage() {
               onClick={handleDispatch}
             >
               {isDispatching ? <Spinner /> : <Send />}
-              Dispatch
+              Create draft invoices
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

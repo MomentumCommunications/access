@@ -207,16 +207,21 @@ export function resolveBillingRunGeneration<
 }
 
 export function selectBillingRunItemsForDispatch<
-  TItem extends { id: string; status: "draft" | "dispatched" },
+  TItem extends {
+    id: string;
+    status: "draft" | "dispatch_failed" | "dispatched";
+  },
 >(items: TItem[], selectedIds: string[]) {
   const selected = new Set(selectedIds);
   return items.filter(
-    (item) => item.status === "draft" && selected.has(item.id),
+    (item) => item.status !== "dispatched" && selected.has(item.id),
   );
 }
 
 export function pendingBillingRunItems<
-  TItem extends { status: "draft" | "dispatched" },
+  TItem extends {
+    status: "draft" | "dispatch_failed" | "dispatched";
+  },
 >(items: TItem[]) {
-  return items.filter((item) => item.status === "draft");
+  return items.filter((item) => item.status !== "dispatched");
 }

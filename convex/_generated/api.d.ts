@@ -12,6 +12,8 @@ import type * as ResendOTPEmailVerification from "../ResendOTPEmailVerification.
 import type * as ResendOTPPasswordReset from "../ResendOTPPasswordReset.js";
 import type * as auth from "../auth.js";
 import type * as billing from "../billing.js";
+import type * as billingDispatch from "../billingDispatch.js";
+import type * as billingDispatchData from "../billingDispatchData.js";
 import type * as bulletins from "../bulletins.js";
 import type * as classes from "../classes.js";
 import type * as etcFunctions from "../etcFunctions.js";
@@ -52,6 +54,8 @@ declare const fullApi: ApiFromModules<{
   ResendOTPPasswordReset: typeof ResendOTPPasswordReset;
   auth: typeof auth;
   billing: typeof billing;
+  billingDispatch: typeof billingDispatch;
+  billingDispatchData: typeof billingDispatchData;
   bulletins: typeof bulletins;
   classes: typeof classes;
   etcFunctions: typeof etcFunctions;

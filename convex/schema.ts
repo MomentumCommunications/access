@@ -131,6 +131,7 @@ export default defineSchema({
     userId: v.id("users"),
     active: v.boolean(),
     isPrimary: v.boolean(),
+    autopayEnabled: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -389,13 +390,28 @@ export default defineSchema({
       privateChargeIds: v.array(v.string()),
       perSessionChargeIds: v.array(v.string()),
     }),
-    status: v.union(v.literal("draft"), v.literal("dispatched")),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("dispatch_failed"),
+      v.literal("dispatched"),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
     dispatchedBy: v.optional(v.id("users")),
     dispatchedAt: v.optional(v.number()),
     dispatchedAdjustmentTotalCents: v.optional(v.number()),
     dispatchedFinalTotalCents: v.optional(v.number()),
+    stripeCustomerId: v.optional(v.string()),
+    stripeInvoiceId: v.optional(v.string()),
+    collectionMethod: v.optional(
+      v.union(
+        v.literal("charge_automatically"),
+        v.literal("send_invoice"),
+      ),
+    ),
+    autopayEnabledSnapshot: v.optional(v.boolean()),
+    dispatchFailureReason: v.optional(v.string()),
+    dispatchFailureAt: v.optional(v.number()),
   })
     .index("byRun", ["billingRunId"])
     .index("byRunStatus", ["billingRunId", "status"])

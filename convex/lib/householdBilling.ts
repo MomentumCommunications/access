@@ -161,6 +161,7 @@ export async function ensureDefaultHouseholdBilling(
       userId,
       active: true,
       isPrimary: true,
+      autopayEnabled: false,
       createdAt: now,
       updatedAt: now,
     });

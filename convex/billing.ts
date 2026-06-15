@@ -191,7 +191,7 @@ async function assertRunAdjustmentScopeEditable(
   if (!runItem) {
     throw new Error("Billing run item not found.");
   }
-  if (runItem.status !== "draft") {
+  if (runItem.status === "dispatched") {
     throw new Error("Dispatched billing run items cannot be adjusted.");
   }
   if (
@@ -1255,7 +1255,9 @@ export const adminListBillingRuns = query({
             .withIndex("byRun", (q) => q.eq("billingRunId", run._id))
             .collect()
         )
-          .filter((item) => includeDispatched || item.status === "draft")
+          .filter(
+            (item) => includeDispatched || item.status !== "dispatched",
+          )
           .sort(
             (left, right) =>
               left.householdName.localeCompare(right.householdName) ||
@@ -1299,7 +1301,7 @@ export const adminListBillingRuns = query({
           ...run,
           items: resolvedItems,
           pendingItemCount: resolvedItems.filter(
-            (item) => item.status === "draft",
+            (item) => item.status !== "dispatched",
           ).length,
           totalCents: resolvedItems.reduce(
             (total, item) => total + item.finalTotalCents,
@@ -1308,74 +1310,6 @@ export const adminListBillingRuns = query({
         };
       }),
     ).then((rows) => rows.filter((run) => run.items.length > 0));
-  },
-});
-
-export const adminDispatchBillingRunItems = mutation({
-  args: {
-    billingRunId: v.id("billingRuns"),
-    billingRunItemIds: v.array(v.id("billingRunItems")),
-  },
-  handler: async (ctx, { billingRunId, billingRunItemIds }) => {
-    const actor = await requireAdmin(ctx);
-    const run = await ctx.db.get(billingRunId);
-    if (!run) {
-      throw new Error("Billing run not found.");
-    }
-    const uniqueItemIds = [...new Set(billingRunItemIds)];
-    if (uniqueItemIds.length === 0) {
-      throw new Error("Select at least one household to dispatch.");
-    }
-    const now = Date.now();
-    for (const itemId of uniqueItemIds) {
-      const item = await ctx.db.get(itemId);
-      if (!item || item.billingRunId !== billingRunId) {
-        throw new Error("Billing run item does not belong to this run.");
-      }
-      if (item.status !== "draft") {
-        throw new Error("Only draft billing run items can be dispatched.");
-      }
-      const adjustments = await getBillingRunItemAdjustments(ctx, item);
-      const calculated = calculateBillingRunItemTotal(
-        item.subtotalBeforeRunAdjustmentsCents,
-        adjustments.map(billingAdjustmentLike),
-      );
-      await ctx.db.patch(itemId, {
-        status: "dispatched",
-        dispatchedBy: actor._id,
-        dispatchedAt: now,
-        dispatchedAdjustmentTotalCents: calculated.adjustmentTotalCents,
-        dispatchedFinalTotalCents: calculated.totalCents,
-        updatedAt: now,
-      });
-      await recordActivityEvent(ctx, {
-        entityType: "billing_run_item",
-        entityId: itemId,
-        actorId: actor._id,
-        eventType: "billing_run_item_dispatched",
-        summary: `Dispatched billing for ${item.householdName}.`,
-        metadata: {
-          billingRunId,
-          householdId: item.householdId,
-          periodStart: item.periodStart,
-          periodEnd: item.periodEnd,
-          finalTotalCents: calculated.totalCents,
-        },
-      });
-    }
-
-    const remainingDrafts = await ctx.db
-      .query("billingRunItems")
-      .withIndex("byRunStatus", (q) =>
-        q.eq("billingRunId", billingRunId).eq("status", "draft"),
-      )
-      .collect();
-    await ctx.db.patch(billingRunId, {
-      status: remainingDrafts.length === 0 ? "dispatched" : "draft",
-      dispatchedAt: remainingDrafts.length === 0 ? now : undefined,
-      updatedAt: now,
-    });
-    return { dispatchedCount: uniqueItemIds.length };
   },
 });
 
@@ -1490,7 +1424,39 @@ export const adminGetAccountHousehold = query({
       return null;
     }
     const household = await ctx.db.get(membership.householdId);
-    return household ? { membership, household } : null;
+    if (!household) return null;
+    const payer = await ctx.db
+      .query("householdPayers")
+      .withIndex("byHouseholdUser", (q) =>
+        q
+          .eq("householdId", household._id)
+          .eq("userId", userId),
+      )
+      .first();
+    return { membership, household, payer };
+  },
+});
+
+export const adminSetHouseholdPayerAutopay = mutation({
+  args: {
+    householdPayerId: v.id("householdPayers"),
+    enabled: v.boolean(),
+  },
+  handler: async (ctx, { householdPayerId, enabled }) => {
+    await requireAdmin(ctx);
+    const payer = await ctx.db.get(householdPayerId);
+    if (!payer) {
+      throw new Error("Household payer not found.");
+    }
+    if (!payer.active || !payer.isPrimary) {
+      throw new Error(
+        "Autopay can only be configured for the active primary payer.",
+      );
+    }
+    await ctx.db.patch(householdPayerId, {
+      autopayEnabled: enabled,
+      updatedAt: Date.now(),
+    });
   },
 });
 

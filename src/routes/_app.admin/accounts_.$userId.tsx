@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
+import { Switch } from "~/components/ui/switch";
 import { formatAge } from "~/lib/date-utils";
 import { getAccountName } from "~/lib/account-name";
 import { RoleDropdown } from "~/components/role-controls";
@@ -58,6 +59,9 @@ function AdminAccountDetailPage() {
   );
   const removeHousehold = useConvexMutation(
     api.billing.adminRemoveAccountFromHousehold,
+  );
+  const setPayerAutopay = useConvexMutation(
+    api.billing.adminSetHouseholdPayerAutopay,
   );
   const [selectedHouseholdId, setSelectedHouseholdId] = useState("");
   const [newHouseholdName, setNewHouseholdName] = useState("");
@@ -200,17 +204,52 @@ function AdminAccountDetailPage() {
                           account or a standalone student group.
                         </p>
                       ) : (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="-ml-2 mt-2 text-destructive"
-                          disabled={savingHousehold}
-                          onClick={() => void handleRemoveHousehold()}
-                        >
-                          <Unlink />
-                          Remove link
-                        </Button>
+                        <>
+                          {householdData.payer?.active &&
+                          householdData.payer.isPrimary ? (
+                            <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
+                              <div>
+                                <Label htmlFor="account-autopay">
+                                  Automatic payment
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Auto-charge draft invoices only when Stripe
+                                  has a default payment method.
+                                </p>
+                              </div>
+                              <Switch
+                                id="account-autopay"
+                                checked={
+                                  householdData.payer.autopayEnabled === true
+                                }
+                                onCheckedChange={(enabled) => {
+                                  void setPayerAutopay({
+                                    householdPayerId:
+                                      householdData.payer!._id,
+                                    enabled,
+                                  }).catch((error) =>
+                                    toast.error(
+                                      error instanceof Error
+                                        ? error.message
+                                        : "Unable to update autopay.",
+                                    ),
+                                  );
+                                }}
+                              />
+                            </div>
+                          ) : null}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="-ml-2 mt-2 text-destructive"
+                            disabled={savingHousehold}
+                            onClick={() => void handleRemoveHousehold()}
+                          >
+                            <Unlink />
+                            Remove link
+                          </Button>
+                        </>
                       )}
                     </div>
 

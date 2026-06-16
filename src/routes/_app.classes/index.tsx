@@ -36,6 +36,7 @@ import {
   emptyEnrollmentSelectionDraft,
   enrollmentReviewTriggerLabel,
   recurringClassSelectionStatus,
+  resolvedClassEnrollmentOpen,
   sessionSelectionStatus,
   toggleRecurringClassSelection,
   toggleSessionSelection,
@@ -442,11 +443,15 @@ function EnrollmentClassCard({
   const full =
     classItem.capacity !== undefined &&
     row.activeEnrollmentCount >= classItem.capacity;
+  const enrollmentOpen = resolvedClassEnrollmentOpen(
+    classItem.enrollmentOpen,
+  );
   const eligible = row.ageEligible;
   const recurringStatus = recurringClassSelectionStatus({
     enrollmentStatus: row.enrollment?.status,
     selected,
     full,
+    enrollmentOpen,
     ageEligible: eligible,
     canManage: row.canManage,
   });
@@ -611,6 +616,7 @@ function PerSessionChoices({
       return (
         !signup &&
         row.canManage &&
+        resolvedClassEnrollmentOpen(classItem.enrollmentOpen) &&
         row.ageEligible &&
         (!full || draftIds.has(session._id))
       );
@@ -639,6 +645,14 @@ function PerSessionChoices({
     return (
       <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
         {statusExplanation(!row.canManage ? "managed" : "ineligible")}
+      </p>
+    );
+  }
+
+  if (!resolvedClassEnrollmentOpen(classItem.enrollmentOpen)) {
+    return (
+      <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+        {statusExplanation("closed")}
       </p>
     );
   }
@@ -680,6 +694,9 @@ function PerSessionChoices({
           signupStatus: signup?.status,
           selected,
           full,
+          enrollmentOpen: resolvedClassEnrollmentOpen(
+            classItem.enrollmentOpen,
+          ),
           ageEligible: row.ageEligible,
           canManage: row.canManage,
         });
@@ -969,6 +986,7 @@ function StatusBadge({ status }: { status: EnrollmentSelectionStatus }) {
       waitlisted: "Waitlisted",
       selected: "Selected",
       full: "Full",
+      closed: "Closed",
       ineligible: "Age mismatch",
       managed: "Managed by staff",
     };
@@ -1008,6 +1026,9 @@ function perSessionCardStatus(
   }
   if (!row.canManage) return "managed";
   if (!row.ageEligible) return "ineligible";
+  if (!resolvedClassEnrollmentOpen(row.classItem.enrollmentOpen)) {
+    return "closed";
+  }
   if ((draft.sessionIdsByClass[row.classItem._id] || []).length > 0) {
     return "selected";
   }
@@ -1031,8 +1052,10 @@ function statusExplanation(status: EnrollmentSelectionStatus) {
     waitlisted: "This student is currently waitlisted.",
     selected: "Selected for review.",
     full: "This class is currently full.",
+    closed: "Enrollment is closed.",
     ineligible: "This class does not match the student's age.",
-    managed: "This student's class choices are managed by staff.",
+    managed:
+      "This student's class choices are managed by staff. Please contact us to make changes.",
     available: "Available to select.",
   };
   return messages[status];

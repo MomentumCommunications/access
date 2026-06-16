@@ -21,13 +21,14 @@ import {
   FormMessage,
 } from "./ui/form";
 import { Button } from "./ui/button";
+import { Checkbox } from "./ui/checkbox";
 import { Input } from "./ui/input";
 import { useState, useRef } from "react";
 import { Progress } from "./ui/progress";
 import { FileIcon, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation } from "convex/react";
-import { Id } from "convex/_generated/dataModel";
+import { Doc, Id } from "convex/_generated/dataModel";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,17 +45,11 @@ const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
   info: z.string(),
   color: z.string(),
+  managedEnrollment: z.boolean(),
   password: z.string().min(1).optional(),
 });
 
-type Group = {
-  _id: Id<"groups">;
-  name: string;
-  info: string;
-  color: string;
-  password?: string;
-  document: string;
-};
+type Group = Doc<"groups">;
 
 export function EditGroup({ group }: { group: Group }) {
   const editGroupMutation = useConvexMutation(api.etcFunctions.editGroup);
@@ -71,13 +66,14 @@ export function EditGroup({ group }: { group: Group }) {
       info: group.info || "",
       password: group.password || "",
       color: group.color || "#000000",
+      managedEnrollment: group.managedEnrollment === true,
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setIsUploading(true);
-      let documentStorageId = group.document; // Keep existing document if no new file
+      let documentStorageId: Id<"_storage"> | undefined = group.document;
 
       // Handle document upload if a new file was selected
       if (selectedDocument) {
@@ -111,7 +107,7 @@ export function EditGroup({ group }: { group: Group }) {
         xhr.setRequestHeader("Content-Type", selectedDocument.type);
         xhr.send(selectedDocument);
 
-        documentStorageId = await uploadPromise;
+        documentStorageId = (await uploadPromise) as Id<"_storage">;
 
         // Clear the file selection
         setSelectedDocument(null);
@@ -124,9 +120,10 @@ export function EditGroup({ group }: { group: Group }) {
         group: group._id,
         name: values.name,
         info: values.info,
-        document: documentStorageId as Id<"_storage"> | undefined,
+        document: documentStorageId,
         password: values.password as string | undefined,
         color: values.color,
+        managedEnrollment: values.managedEnrollment,
       });
 
       toast.success("Group updated successfully!");
@@ -189,6 +186,29 @@ export function EditGroup({ group }: { group: Group }) {
                     <Input {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="managedEnrollment"
+              render={({ field }) => (
+                <FormItem className="flex items-start gap-3 rounded-md border p-3">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked === true)
+                      }
+                    />
+                  </FormControl>
+                  <div className="space-y-1">
+                    <FormLabel>Managed enrollment</FormLabel>
+                    <FormDescription>
+                      Students in this group cannot change class enrollment
+                      through self-service.
+                    </FormDescription>
+                  </div>
                 </FormItem>
               )}
             />

@@ -4,6 +4,7 @@ export type EnrollmentSelectionStatus =
   | "waitlisted"
   | "selected"
   | "full"
+  | "closed"
   | "ineligible"
   | "managed"
   | "available";
@@ -62,16 +63,22 @@ export function enrollmentReviewTriggerLabel(changeCount: number) {
       }`;
 }
 
+export function resolvedClassEnrollmentOpen(enrollmentOpen?: boolean) {
+  return enrollmentOpen !== false;
+}
+
 export function recurringClassSelectionStatus({
   enrollmentStatus,
   selected,
   full,
+  enrollmentOpen,
   ageEligible,
   canManage,
 }: {
   enrollmentStatus?: ExistingEnrollmentStatus;
   selected: boolean;
   full: boolean;
+  enrollmentOpen: boolean;
   ageEligible: boolean;
   canManage: boolean;
 }): EnrollmentSelectionStatus {
@@ -80,6 +87,7 @@ export function recurringClassSelectionStatus({
   if (enrollmentStatus === "waitlisted") return "waitlisted";
   if (!canManage) return "managed";
   if (!ageEligible) return "ineligible";
+  if (!enrollmentOpen) return "closed";
   if (selected) return "selected";
   if (full) return "full";
   return "available";
@@ -89,12 +97,14 @@ export function sessionSelectionStatus({
   signupStatus,
   selected,
   full,
+  enrollmentOpen,
   ageEligible,
   canManage,
 }: {
   signupStatus?: ExistingSessionSignupStatus;
   selected: boolean;
   full: boolean;
+  enrollmentOpen: boolean;
   ageEligible: boolean;
   canManage: boolean;
 }): EnrollmentSelectionStatus {
@@ -103,6 +113,7 @@ export function sessionSelectionStatus({
   if (signupStatus === "waitlisted") return "waitlisted";
   if (!canManage) return "managed";
   if (!ageEligible) return "ineligible";
+  if (!enrollmentOpen) return "closed";
   if (selected) return "selected";
   if (full) return "full";
   return "available";

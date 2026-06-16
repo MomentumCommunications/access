@@ -88,6 +88,7 @@ const classFormSchema = z
     weekdays: z.array(weekdaySchema),
     assignedStaff: z.string(),
     seasonId: z.string(),
+    visibleToGroupIds: z.array(z.string()),
     enrollmentMode: z.enum(["standard", "per_session"]),
     perSessionPrice: z.string(),
   })
@@ -209,6 +210,7 @@ const emptyValues: ClassFormValues = {
   weekdays: [],
   assignedStaff: "none",
   seasonId: "none",
+  visibleToGroupIds: [],
   enrollmentMode: "standard",
   perSessionPrice: "",
 };
@@ -233,6 +235,7 @@ function valuesFromClass(
     weekdays: classItem.weekdays || [],
     assignedStaff: classItem.assignedStaff?.[0] || "none",
     seasonId: seasonId || "none",
+    visibleToGroupIds: classItem.visibleToGroupIds || [],
     enrollmentMode: classItem.enrollmentMode || "standard",
     perSessionPrice:
       classItem.perSessionPriceCents === undefined
@@ -254,6 +257,7 @@ export function ClassForm(props: ClassFormProps) {
   const navigate = useNavigate();
   const accounts = useConvexQuery(api.classes.adminListAccounts, {});
   const seasons = useConvexQuery(api.classes.adminListSeasons, {});
+  const groups = useConvexQuery(api.classes.adminListStudentGroups, {});
   const createClass = useConvexMutation(api.classes.adminCreateClass);
   const updateClass = useConvexMutation(api.classes.adminUpdateClass);
   const form = useForm<ClassFormValues>({
@@ -290,6 +294,9 @@ export function ClassForm(props: ClassFormProps) {
         values.seasonId === "none"
           ? undefined
           : (values.seasonId as Id<"seasons">),
+      visibleToGroupIds: values.visibleToGroupIds.length
+        ? (values.visibleToGroupIds as Id<"groups">[])
+        : undefined,
       enrollmentMode: values.enrollmentMode,
       perSessionPriceCents:
         values.enrollmentMode === "per_session"
@@ -488,6 +495,72 @@ export function ClassForm(props: ClassFormProps) {
               </Select>
               <FieldError errors={[fieldState.error]} />
             </Field>
+          )}
+        />
+        <Controller
+          name="visibleToGroupIds"
+          control={form.control}
+          render={({ field, fieldState }) => (
+            <FieldSet>
+              <FieldLegend variant="label">Class visibility</FieldLegend>
+              <p className="text-sm text-muted-foreground">
+                Leave every group unchecked to show this class to everyone.
+                Select groups to show it only to students in those groups.
+              </p>
+              <FieldGroup
+                data-slot="checkbox-group"
+                className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+              >
+                {groups === undefined ? (
+                  <p className="text-sm text-muted-foreground">
+                    Loading groups...
+                  </p>
+                ) : groups.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No groups are configured.
+                  </p>
+                ) : (
+                  groups.map((group) => {
+                    const id = `class-visible-group-${group._id}`;
+                    return (
+                      <Field
+                        key={group._id}
+                        orientation="horizontal"
+                        data-invalid={fieldState.invalid}
+                        className="rounded-md border px-3 py-2"
+                      >
+                        <Checkbox
+                          id={id}
+                          name={field.name}
+                          checked={field.value.includes(group._id)}
+                          aria-invalid={fieldState.invalid}
+                          onCheckedChange={(checked) =>
+                            field.onChange(
+                              checked
+                                ? [...field.value, group._id]
+                                : field.value.filter(
+                                    (groupId) => groupId !== group._id,
+                                  ),
+                            )
+                          }
+                        />
+                        <div className="space-y-1">
+                          <FieldLabel htmlFor={id} className="font-normal">
+                            {group.name}
+                          </FieldLabel>
+                          {group.managedEnrollment ? (
+                            <p className="text-xs text-muted-foreground">
+                              Managed enrollment
+                            </p>
+                          ) : null}
+                        </div>
+                      </Field>
+                    );
+                  })
+                )}
+              </FieldGroup>
+              <FieldError errors={[fieldState.error]} />
+            </FieldSet>
           )}
         />
         <Controller

@@ -43,6 +43,7 @@ import { Route as AppDmDmIdRouteImport } from './routes/_app.dm/$dmId'
 import { Route as AppClassesClassIdRouteImport } from './routes/_app.classes/$classId'
 import { Route as AppChannelChannelIdRouteImport } from './routes/_app.channel/$channelId'
 import { Route as AppAdminSchedulingRouteImport } from './routes/_app.admin/scheduling'
+import { Route as AppAdminGroupsRouteImport } from './routes/_app.admin/groups'
 import { Route as AppAdminAccountsRouteImport } from './routes/_app.admin/accounts'
 import { Route as AppBulletinIdEditRouteImport } from './routes/_app.$bulletinId_.edit'
 import { Route as AppAdminStudentsIndexRouteImport } from './routes/_app.admin/students/index'
@@ -240,6 +241,11 @@ const AppAdminSchedulingRoute = AppAdminSchedulingRouteImport.update({
   path: '/admin/scheduling',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminGroupsRoute = AppAdminGroupsRouteImport.update({
+  id: '/admin/groups',
+  path: '/admin/groups',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminAccountsRoute = AppAdminAccountsRouteImport.update({
   id: '/admin/accounts',
   path: '/admin/accounts',
@@ -410,6 +416,7 @@ export interface FileRoutesByFullPath {
   '/register/': typeof RegisterIndexRoute
   '/$bulletinId/edit': typeof AppBulletinIdEditRoute
   '/admin/accounts': typeof AppAdminAccountsRoute
+  '/admin/groups': typeof AppAdminGroupsRoute
   '/admin/scheduling': typeof AppAdminSchedulingRoute
   '/channel/$channelId': typeof AppChannelChannelIdRoute
   '/classes/$classId': typeof AppClassesClassIdRoute
@@ -471,6 +478,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterIndexRoute
   '/$bulletinId/edit': typeof AppBulletinIdEditRoute
   '/admin/accounts': typeof AppAdminAccountsRoute
+  '/admin/groups': typeof AppAdminGroupsRoute
   '/admin/scheduling': typeof AppAdminSchedulingRoute
   '/channel/$channelId': typeof AppChannelChannelIdRoute
   '/classes/$classId': typeof AppClassesClassIdRoute
@@ -535,6 +543,7 @@ export interface FileRoutesById {
   '/register/': typeof RegisterIndexRoute
   '/_app/$bulletinId_/edit': typeof AppBulletinIdEditRoute
   '/_app/admin/accounts': typeof AppAdminAccountsRoute
+  '/_app/admin/groups': typeof AppAdminGroupsRoute
   '/_app/admin/scheduling': typeof AppAdminSchedulingRoute
   '/_app/channel/$channelId': typeof AppChannelChannelIdRoute
   '/_app/classes/$classId': typeof AppClassesClassIdRoute
@@ -599,6 +608,7 @@ export interface FileRouteTypes {
     | '/register/'
     | '/$bulletinId/edit'
     | '/admin/accounts'
+    | '/admin/groups'
     | '/admin/scheduling'
     | '/channel/$channelId'
     | '/classes/$classId'
@@ -660,6 +670,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/$bulletinId/edit'
     | '/admin/accounts'
+    | '/admin/groups'
     | '/admin/scheduling'
     | '/channel/$channelId'
     | '/classes/$classId'
@@ -723,6 +734,7 @@ export interface FileRouteTypes {
     | '/register/'
     | '/_app/$bulletinId_/edit'
     | '/_app/admin/accounts'
+    | '/_app/admin/groups'
     | '/_app/admin/scheduling'
     | '/_app/channel/$channelId'
     | '/_app/classes/$classId'
@@ -1012,6 +1024,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminSchedulingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/groups': {
+      id: '/_app/admin/groups'
+      path: '/admin/groups'
+      fullPath: '/admin/groups'
+      preLoaderRoute: typeof AppAdminGroupsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/accounts': {
       id: '/_app/admin/accounts'
       path: '/admin/accounts'
@@ -1216,6 +1235,7 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppBulletinIdEditRoute: typeof AppBulletinIdEditRoute
   AppAdminAccountsRoute: typeof AppAdminAccountsRoute
+  AppAdminGroupsRoute: typeof AppAdminGroupsRoute
   AppAdminSchedulingRoute: typeof AppAdminSchedulingRoute
   AppChannelChannelIdRoute: typeof AppChannelChannelIdRoute
   AppClassesClassIdRoute: typeof AppClassesClassIdRoute
@@ -1268,6 +1288,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppBulletinIdEditRoute: AppBulletinIdEditRoute,
   AppAdminAccountsRoute: AppAdminAccountsRoute,
+  AppAdminGroupsRoute: AppAdminGroupsRoute,
   AppAdminSchedulingRoute: AppAdminSchedulingRoute,
   AppChannelChannelIdRoute: AppChannelChannelIdRoute,
   AppClassesClassIdRoute: AppClassesClassIdRoute,

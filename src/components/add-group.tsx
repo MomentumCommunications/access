@@ -1,5 +1,6 @@
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "convex/_generated/api";
+import type { Id } from "convex/_generated/dataModel";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import {
   FormMessage,
 } from "./ui/form";
 import { Button } from "./ui/button";
+import { Checkbox } from "./ui/checkbox";
 import { Input } from "./ui/input";
 import { useState, useRef } from "react";
 import { Progress } from "./ui/progress";
@@ -33,6 +35,7 @@ const formSchema = z.object({
   password: z.string().min(1, "Password is required"),
   info: z.string(),
   color: z.string(),
+  managedEnrollment: z.boolean(),
 });
 
 export function AddGroup() {
@@ -52,13 +55,14 @@ export function AddGroup() {
       password: "",
       info: "",
       color: "#000000",
+      managedEnrollment: false,
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setIsUploading(true);
-      let documentStorageId: string | undefined = undefined;
+      let documentStorageId: Id<"_storage"> | undefined = undefined;
 
       // Handle document upload if a file was selected
       if (selectedDocument) {
@@ -92,7 +96,7 @@ export function AddGroup() {
         xhr.setRequestHeader("Content-Type", selectedDocument.type);
         xhr.send(selectedDocument);
 
-        documentStorageId = await uploadPromise;
+        documentStorageId = (await uploadPromise) as Id<"_storage">;
 
         // Clear the file selection
         setSelectedDocument(null);
@@ -108,6 +112,7 @@ export function AddGroup() {
         info: values.info,
         document: documentStorageId,
         color: values.color,
+        managedEnrollment: values.managedEnrollment,
       });
 
       toast.success("Group created successfully!");
@@ -196,6 +201,29 @@ export function AddGroup() {
                     <Input type="color" {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="managedEnrollment"
+              render={({ field }) => (
+                <FormItem className="flex items-start gap-3 rounded-md border p-3">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked === true)
+                      }
+                    />
+                  </FormControl>
+                  <div className="space-y-1">
+                    <FormLabel>Managed enrollment</FormLabel>
+                    <FormDescription>
+                      Students in this group cannot change class enrollment
+                      through self-service.
+                    </FormDescription>
+                  </div>
                 </FormItem>
               )}
             />

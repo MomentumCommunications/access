@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
 import { useEffect, useMemo, useState } from "react";
+import { resolvedClassEnrollmentOpen } from "../../../shared/class-enrollment-selection";
 import { resolvedClassEnrollmentMode } from "../../../shared/per-session-signup";
 import { Button } from "~/components/ui/button";
 import {
@@ -130,6 +131,7 @@ function ClassDetailPage() {
   }
 
   const classItem = classData.classItem;
+  const enrollmentOpen = resolvedClassEnrollmentOpen(classItem.enrollmentOpen);
 
   return (
     <main className="mx-auto grid w-full max-w-5xl gap-4 p-4 lg:grid-cols-[1fr_22rem] lg:p-8">
@@ -164,14 +166,16 @@ function ClassDetailPage() {
               <div>
                 <dt className="font-medium text-foreground">Signup</dt>
                 <dd>
-                  {classMode === "per_session"
-                    ? `${new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                      }).format(
-                        (classItem.perSessionPriceCents || 0) / 100,
-                      )} per selected session`
-                    : "All sessions"}
+                  {!enrollmentOpen
+                    ? "Closed to self-service enrollment"
+                    : classMode === "per_session"
+                      ? `${new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        }).format(
+                          (classItem.perSessionPriceCents || 0) / 100,
+                        )} per selected session`
+                      : "All sessions"}
                 </dd>
               </div>
             </dl>
@@ -187,6 +191,7 @@ function ClassDetailPage() {
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="select-all-sessions"
+                  disabled={!enrollmentOpen}
                   checked={
                     classData.sessions.length > 0 &&
                     selectedSessions.length === classData.sessions.length
@@ -219,7 +224,7 @@ function ClassDetailPage() {
                       {classMode === "per_session" && selectedStudent ? (
                         <Checkbox
                           checked={selected}
-                          disabled={locked}
+                          disabled={locked || !enrollmentOpen}
                           onCheckedChange={(checked) =>
                             setSelectedSessions((current) =>
                               checked
@@ -261,9 +266,11 @@ function ClassDetailPage() {
                 : "Request a spot"}
             </CardTitle>
             <CardDescription>
-              {classMode === "per_session"
-                ? "Select a student and one or more dates. Each selected session uses the listed per-session price."
-                : "Select a student profile, then submit the signup request."}
+              {!enrollmentOpen
+                ? "Enrollment is closed for this class."
+                : classMode === "per_session"
+                  ? "Select a student and one or more dates. Each selected session uses the listed per-session price."
+                  : "Select a student profile, then submit the signup request."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -299,12 +306,18 @@ function ClassDetailPage() {
                       ))}
                   </SelectContent>
                 </Select>
-                <Button className="w-full" onClick={handleSignup}>
-                  {classMode === "per_session"
-                    ? `Request ${selectedSessions.length} session${
-                        selectedSessions.length === 1 ? "" : "s"
-                      }`
-                    : "Submit Signup"}
+                <Button
+                  className="w-full"
+                  disabled={!enrollmentOpen}
+                  onClick={handleSignup}
+                >
+                  {!enrollmentOpen
+                    ? "Enrollment closed"
+                    : classMode === "per_session"
+                      ? `Request ${selectedSessions.length} session${
+                          selectedSessions.length === 1 ? "" : "s"
+                        }`
+                      : "Submit Signup"}
                 </Button>
               </>
             )}

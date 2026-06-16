@@ -109,6 +109,18 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      tooltip="Groups"
+                      onClick={closeMobileSidebar}
+                    >
+                      <Link to="/admin/groups">
+                        <Users />
+                        <span>Groups</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
                       tooltip="Classes"
                       onClick={closeMobileSidebar}
                     >

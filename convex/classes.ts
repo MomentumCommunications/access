@@ -46,6 +46,11 @@ import {
   buildPerSessionSignupEvent,
   getSessionSelectionChange,
 } from "../shared/activity-log";
+import {
+  classVisibleToStudentGroup,
+  studentSelfServiceEnrollmentAllowed,
+} from "../shared/class-enrollment-policy";
+import { resolvedClassEnrollmentOpen } from "../shared/class-enrollment-selection";
 import { calculateEnrollmentEstimate } from "../shared/class-enrollment-estimate";
 import { matchTuitionTier } from "../shared/tuition-pricing";
 import { classWeeklyMinutes } from "./lib/billing/weeklyClassHours";
@@ -180,6 +185,10 @@ async function getStudentPerSessionClasses(
   ctx: DbCtx,
   student: Id<"students">,
 ) {
+  const studentDoc = await ctx.db.get(student);
+  const studentGroup = studentDoc?.groupId
+    ? await ctx.db.get(studentDoc.groupId)
+    : null;
   const signups = (
     await ctx.db
       .query("classSessionSignups")
@@ -255,6 +264,7 @@ async function getStudentPerSessionClasses(
         classItem,
         selectedSessions,
         availableSessions,
+        canSelfManage: studentSelfServiceEnrollmentAllowed(studentGroup),
       };
     }),
   );
@@ -264,6 +274,39 @@ async function getStudentPerSessionClasses(
     .sort((left, right) =>
       compareClassesBySchedule(left.classItem, right.classItem),
     );
+}
+
+async function getStudentEnrollmentGroup(
+  ctx: DbCtx,
+  studentDoc: Pick<Doc<"students">, "groupId">,
+) {
+  return studentDoc.groupId ? await ctx.db.get(studentDoc.groupId) : null;
+}
+
+async function assertStudentSelfServiceEnrollmentAllowed(
+  ctx: DbCtx,
+  studentDoc: Pick<Doc<"students">, "groupId">,
+) {
+  const group = await getStudentEnrollmentGroup(ctx, studentDoc);
+  if (!studentSelfServiceEnrollmentAllowed(group)) {
+    throw new Error(
+      "This student's enrollment is managed by staff. Please contact us to make changes.",
+    );
+  }
+}
+
+function assertClassVisibleToStudent(
+  classItem: Pick<Doc<"classes">, "title" | "visibleToGroupIds">,
+  studentDoc: Pick<Doc<"students">, "groupId">,
+) {
+  if (
+    !classVisibleToStudentGroup({
+      studentGroupId: studentDoc.groupId,
+      visibleToGroupIds: classItem.visibleToGroupIds,
+    })
+  ) {
+    throw new Error(`${classItem.title} is not available for this student.`);
+  }
 }
 
 async function requireAdmin(ctx: QueryCtx) {
@@ -311,6 +354,27 @@ function validateClassAgeRange(minAge?: number, maxAge?: number) {
   if (minAge !== undefined && maxAge !== undefined && maxAge < minAge) {
     throw new Error("Maximum age must be greater than or equal to minimum age.");
   }
+}
+
+async function validateClassVisibilityGroups(
+  ctx: DbCtx,
+  groupIds?: Id<"groups">[],
+) {
+  if (!groupIds || groupIds.length === 0) {
+    return;
+  }
+  const uniqueIds = new Set(groupIds);
+  if (uniqueIds.size !== groupIds.length) {
+    throw new Error("Class visibility groups must be unique.");
+  }
+  const groups = await Promise.all(groupIds.map((groupId) => ctx.db.get(groupId)));
+  if (groups.some((group) => !group)) {
+    throw new Error("One or more class visibility groups no longer exist.");
+  }
+}
+
+function normalizeClassVisibilityGroups(groupIds?: Id<"groups">[]) {
+  return groupIds && groupIds.length > 0 ? groupIds : undefined;
 }
 
 async function setClassSeason(
@@ -777,6 +841,25 @@ export const listPublishedClasses = query({
       selectedStudent?.dateOfBirth,
       todayValue("America/New_York"),
     );
+    const selectedStudentGroup = selectedStudent
+      ? await getStudentEnrollmentGroup(ctx, selectedStudent)
+      : null;
+    const selfServiceAllowed =
+      studentSelfServiceEnrollmentAllowed(selectedStudentGroup);
+    if (selectedStudent) {
+      classes = classes.filter((classItem) =>
+        classVisibleToStudentGroup({
+          studentGroupId: selectedStudent?.groupId,
+          visibleToGroupIds: classItem.visibleToGroupIds,
+        }),
+      );
+    } else {
+      classes = classes.filter(
+        (classItem) =>
+          !classItem.visibleToGroupIds ||
+          classItem.visibleToGroupIds.length === 0,
+      );
+    }
     const rows = await Promise.all(
       classes.sort(compareClassesBySchedule).map(async (classItem) => {
         const [enrollments, sessions, sessionSignups] = await Promise.all([
@@ -817,7 +900,9 @@ export const listPublishedClasses = query({
           enrollment: studentEnrollment || null,
           activeEnrollmentCount,
           ageEligible: classMatchesAge(classItem, selectedStudentAge),
-          canManage: selectedContact?.canManage ?? false,
+          canManage:
+            (selectedContact?.canManage ?? false) && selfServiceAllowed,
+          selfServiceManaged: !selfServiceAllowed,
           sessions: sessions
             .filter(
               (session) =>
@@ -868,6 +953,7 @@ export const estimateMyClassSelections = query({
     ) {
       throw new Error("Student is unavailable for enrollment.");
     }
+    await assertStudentSelfServiceEnrollmentAllowed(ctx, studentDoc);
 
     const today = todayValue("America/New_York");
     const studentAge = calculateAgeOnDate(studentDoc.dateOfBirth, today);
@@ -911,6 +997,12 @@ export const estimateMyClassSelections = query({
       ) {
         throw new Error("One or more selected classes are unavailable.");
       }
+      if (!resolvedClassEnrollmentOpen(classItem.enrollmentOpen)) {
+        throw new Error(
+          `${classItem.title} is closed to self-service enrollment.`,
+        );
+      }
+      assertClassVisibleToStudent(classItem, studentDoc);
       if (!classMatchesAge(classItem, studentAge)) {
         throw new Error(`${classItem.title} does not match the student's age.`);
       }
@@ -944,6 +1036,12 @@ export const estimateMyClassSelections = query({
       ) {
         throw new Error("One or more selected session classes are unavailable.");
       }
+      if (!resolvedClassEnrollmentOpen(classItem.enrollmentOpen)) {
+        throw new Error(
+          `${classItem.title} is closed to self-service enrollment.`,
+        );
+      }
+      assertClassVisibleToStudent(classItem, studentDoc);
       validateClassEnrollmentConfig(
         "per_session",
         classItem.perSessionPriceCents,
@@ -1100,6 +1198,25 @@ export const getClassForSignup = query({
           .withIndex("byUser", (q) => q.eq("user", user._id))
           .collect()
       : [];
+    if (
+      classItem.visibleToGroupIds &&
+      classItem.visibleToGroupIds.length > 0
+    ) {
+      const connectedStudents = await Promise.all(
+        contacts.map((contact) => ctx.db.get(contact.student)),
+      );
+      const hasVisibleStudent = connectedStudents.some(
+        (student) =>
+          student &&
+          classVisibleToStudentGroup({
+            studentGroupId: student.groupId,
+            visibleToGroupIds: classItem.visibleToGroupIds,
+          }),
+      );
+      if (!hasVisibleStudent) {
+        return null;
+      }
+    }
     const connectedStudentIds = new Set(
       contacts.map((contact) => contact.student),
     );
@@ -1324,13 +1441,24 @@ export const signUpStudentForClass = mutation({
   },
   handler: async (ctx, { classId, student }) => {
     const user = await getCurrentUserOrThrow(ctx);
-    const classItem = await ctx.db.get(classId);
+    const [classItem, studentDoc] = await Promise.all([
+      ctx.db.get(classId),
+      ctx.db.get(student),
+    ]);
     if (!classItem || classItem.status !== "published") {
       throw new Error("Class is not available for signup");
+    }
+    if (!studentDoc || studentDoc.status !== "active") {
+      throw new Error("Student is unavailable for enrollment.");
     }
     if (resolvedClassEnrollmentMode(classItem.enrollmentMode) !== "standard") {
       throw new Error("Choose individual sessions for this class.");
     }
+    if (!resolvedClassEnrollmentOpen(classItem.enrollmentOpen)) {
+      throw new Error("Enrollment is closed for this class.");
+    }
+    await assertStudentSelfServiceEnrollmentAllowed(ctx, studentDoc);
+    assertClassVisibleToStudent(classItem, studentDoc);
 
     const contact = await ctx.db
       .query("studentContacts")
@@ -1579,6 +1707,14 @@ export const signUpStudentForSessions = mutation({
     if (!classItem || classItem.status !== "published" || !studentDoc) {
       throw new Error("Class or student is unavailable.");
     }
+    if (studentDoc.status !== "active") {
+      throw new Error("Student is unavailable for enrollment.");
+    }
+    if (!resolvedClassEnrollmentOpen(classItem.enrollmentOpen)) {
+      throw new Error("Enrollment is closed for this class.");
+    }
+    await assertStudentSelfServiceEnrollmentAllowed(ctx, studentDoc);
+    assertClassVisibleToStudent(classItem, studentDoc);
     if (!(await canManageStudent(ctx, user, student))) {
       throw new Error("Unauthorized");
     }
@@ -1624,6 +1760,7 @@ export const saveMyClassSelections = mutation({
     ) {
       throw new Error("Student is unavailable for enrollment.");
     }
+    await assertStudentSelfServiceEnrollmentAllowed(ctx, studentDoc);
 
     const uniqueRecurringIds = [...new Set(recurringClassIds)];
     const sessionIdsByClass = new Map<Id<"classes">, Set<Id<"sessions">>>();
@@ -1652,6 +1789,12 @@ export const saveMyClassSelections = mutation({
       ) {
         throw new Error("One or more selected classes are unavailable.");
       }
+      if (!resolvedClassEnrollmentOpen(classItem.enrollmentOpen)) {
+        throw new Error(
+          `${classItem.title} is closed to self-service enrollment.`,
+        );
+      }
+      assertClassVisibleToStudent(classItem, studentDoc);
       if (!classMatchesAge(classItem, studentAge)) {
         throw new Error(`${classItem.title} does not match the student's age.`);
       }
@@ -1696,6 +1839,12 @@ export const saveMyClassSelections = mutation({
       ) {
         throw new Error("One or more selected session classes are unavailable.");
       }
+      if (!resolvedClassEnrollmentOpen(classItem.enrollmentOpen)) {
+        throw new Error(
+          `${classItem.title} is closed to self-service enrollment.`,
+        );
+      }
+      assertClassVisibleToStudent(classItem, studentDoc);
       if (!classMatchesAge(classItem, studentAge)) {
         throw new Error(`${classItem.title} does not match the student's age.`);
       }
@@ -2524,6 +2673,7 @@ export const adminCreateClass = mutation({
     seasonId: v.optional(v.id("seasons")),
     enrollmentMode: classEnrollmentModeValidator,
     perSessionPriceCents: v.optional(v.number()),
+    visibleToGroupIds: v.optional(v.array(v.id("groups"))),
   },
   handler: async (ctx, { seasonId, ...args }) => {
     await requireAdmin(ctx);
@@ -2532,8 +2682,13 @@ export const adminCreateClass = mutation({
       args.enrollmentMode,
       args.perSessionPriceCents,
     );
+    await validateClassVisibilityGroups(ctx, args.visibleToGroupIds);
     const classId = await ctx.db.insert("classes", {
       ...args,
+      visibleToGroupIds: normalizeClassVisibilityGroups(
+        args.visibleToGroupIds,
+      ),
+      enrollmentOpen: true,
       timezone: args.timezone || "America/New_York",
       scheduleVersion: 1,
     });
@@ -2567,6 +2722,7 @@ export const adminUpdateClass = mutation({
     seasonId: v.optional(v.id("seasons")),
     enrollmentMode: classEnrollmentModeValidator,
     perSessionPriceCents: v.optional(v.number()),
+    visibleToGroupIds: v.optional(v.array(v.id("groups"))),
   },
   handler: async (ctx, { classId, seasonId, ...patch }) => {
     await requireAdmin(ctx);
@@ -2575,6 +2731,7 @@ export const adminUpdateClass = mutation({
       patch.enrollmentMode,
       patch.perSessionPriceCents,
     );
+    await validateClassVisibilityGroups(ctx, patch.visibleToGroupIds);
     const existing = await ctx.db.get(classId);
     if (!existing) {
       throw new Error("Class not found.");
@@ -2602,6 +2759,9 @@ export const adminUpdateClass = mutation({
     const scheduleVersion = (existing?.scheduleVersion || 0) + 1;
     await ctx.db.patch(classId, {
       ...patch,
+      visibleToGroupIds: normalizeClassVisibilityGroups(
+        patch.visibleToGroupIds,
+      ),
       timezone: patch.timezone || "America/New_York",
       scheduleVersion,
     });
@@ -2610,6 +2770,21 @@ export const adminUpdateClass = mutation({
     if (classItem) {
       await syncGeneratedSessionsForClass(ctx, classItem);
     }
+  },
+});
+
+export const adminSetClassEnrollmentOpen = mutation({
+  args: {
+    classId: v.id("classes"),
+    enrollmentOpen: v.boolean(),
+  },
+  handler: async (ctx, { classId, enrollmentOpen }) => {
+    await requireAdmin(ctx);
+    const classItem = await ctx.db.get(classId);
+    if (!classItem) {
+      throw new Error("Class not found.");
+    }
+    await ctx.db.patch(classId, { enrollmentOpen });
   },
 });
 

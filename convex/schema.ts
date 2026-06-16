@@ -54,6 +54,7 @@ export default defineSchema({
     info: v.optional(v.string()),
     color: v.optional(v.string()),
     document: v.optional(v.id("_storage")),
+    managedEnrollment: v.optional(v.boolean()),
   }).index("byPassword", ["password"]),
   groupMembers: defineTable({
     group: v.id("groups"),
@@ -195,6 +196,8 @@ export default defineSchema({
       v.union(v.literal("standard"), v.literal("per_session")),
     ),
     perSessionPriceCents: v.optional(v.number()),
+    enrollmentOpen: v.optional(v.boolean()),
+    visibleToGroupIds: v.optional(v.array(v.id("groups"))),
   }).index("byStatus", ["status"]),
   sessions: defineTable({
     classId: v.id("classes"),

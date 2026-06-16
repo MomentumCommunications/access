@@ -113,6 +113,9 @@ export function PerSessionClassCard({
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <CardTitle>{row.classItem.title}</CardTitle>
                 <Badge variant="secondary">Per-session</Badge>
+                {!row.canSelfManage ? (
+                  <Badge variant="outline">Managed by staff</Badge>
+                ) : null}
               </div>
               <CardDescription>
                 {row.selectedSessions.length}{" "}
@@ -123,9 +126,12 @@ export function PerSessionClassCard({
                       currency: "USD",
                     }).format(row.classItem.perSessionPriceCents / 100)} each`
                   : ""}
+                {!row.canSelfManage
+                  ? " · Please contact us to make changes"
+                  : ""}
               </CardDescription>
             </div>
-            {row.availableSessions.length > 0 ? (
+            {row.availableSessions.length > 0 && row.canSelfManage ? (
               <Button
                 size="sm"
                 variant="outline"

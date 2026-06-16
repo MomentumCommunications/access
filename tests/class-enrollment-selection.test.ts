@@ -5,6 +5,7 @@ import {
   emptyEnrollmentSelectionDraft,
   enrollmentReviewTriggerLabel,
   recurringClassSelectionStatus,
+  resolvedClassEnrollmentOpen,
   sessionSelectionStatus,
   toggleRecurringClassSelection,
   toggleSessionSelection,
@@ -121,12 +122,19 @@ describe("class enrollment selection", () => {
     assert.equal(review.changeCount, 2);
   });
 
-  it("returns clear active, pending, full, ineligible, and managed states", () => {
+  it("defaults legacy classes to open enrollment", () => {
+    assert.equal(resolvedClassEnrollmentOpen(undefined), true);
+    assert.equal(resolvedClassEnrollmentOpen(true), true);
+    assert.equal(resolvedClassEnrollmentOpen(false), false);
+  });
+
+  it("returns clear active, pending, full, closed, ineligible, and managed states", () => {
     assert.equal(
       recurringClassSelectionStatus({
         enrollmentStatus: "enrolled",
         selected: false,
         full: true,
+        enrollmentOpen: false,
         ageEligible: false,
         canManage: false,
       }),
@@ -137,6 +145,7 @@ describe("class enrollment selection", () => {
         enrollmentStatus: "pending",
         selected: false,
         full: false,
+        enrollmentOpen: true,
         ageEligible: true,
         canManage: true,
       }),
@@ -146,6 +155,7 @@ describe("class enrollment selection", () => {
       recurringClassSelectionStatus({
         selected: false,
         full: true,
+        enrollmentOpen: true,
         ageEligible: true,
         canManage: true,
       }),
@@ -155,6 +165,27 @@ describe("class enrollment selection", () => {
       recurringClassSelectionStatus({
         selected: false,
         full: false,
+        enrollmentOpen: false,
+        ageEligible: true,
+        canManage: true,
+      }),
+      "closed",
+    );
+    assert.equal(
+      recurringClassSelectionStatus({
+        selected: false,
+        full: true,
+        enrollmentOpen: false,
+        ageEligible: true,
+        canManage: true,
+      }),
+      "closed",
+    );
+    assert.equal(
+      recurringClassSelectionStatus({
+        selected: false,
+        full: false,
+        enrollmentOpen: true,
         ageEligible: false,
         canManage: true,
       }),
@@ -164,6 +195,7 @@ describe("class enrollment selection", () => {
       recurringClassSelectionStatus({
         selected: false,
         full: false,
+        enrollmentOpen: true,
         ageEligible: true,
         canManage: false,
       }),
@@ -173,6 +205,7 @@ describe("class enrollment selection", () => {
       sessionSelectionStatus({
         selected: true,
         full: false,
+        enrollmentOpen: true,
         ageEligible: true,
         canManage: true,
       }),

@@ -5,6 +5,8 @@ import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { resolvedClassEnrollmentOpen } from "../../../../shared/class-enrollment-selection";
 import { resolvedClassEnrollmentMode } from "../../../../shared/per-session-signup";
 import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
@@ -41,6 +43,7 @@ import {
 import { Spinner } from "~/components/ui/spinner";
 import { Separator } from "~/components/ui/separator";
 import { ScrollArea } from "~/components/ui/scroll-area";
+import { Switch } from "~/components/ui/switch";
 import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
 import { hasUserRole } from "~/lib/roles";
 
@@ -80,6 +83,9 @@ function AdminClassDetailPage() {
   const setStudentSessionSignups = useConvexMutation(
     api.classes.adminSetStudentSessionSignups,
   );
+  const setClassEnrollmentOpen = useConvexMutation(
+    api.classes.adminSetClassEnrollmentOpen,
+  );
   const [sessionDate, setSessionDate] = useState("");
   const [sessionStart, setSessionStart] = useState("");
   const [sessionEnd, setSessionEnd] = useState("");
@@ -99,8 +105,12 @@ function AdminClassDetailPage() {
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [sessionSignupStatus, setSessionSignupStatus] =
     useState<"pending" | "enrolled" | "waitlisted">("enrolled");
+  const [enrollmentOpenSaving, setEnrollmentOpenSaving] = useState(false);
   const classMode = resolvedClassEnrollmentMode(
     classData?.classItem.enrollmentMode,
+  );
+  const enrollmentOpen = resolvedClassEnrollmentOpen(
+    classData?.classItem.enrollmentOpen,
   );
   const availableSignupSessions = useMemo(
     () =>
@@ -334,6 +344,29 @@ function AdminClassDetailPage() {
     setBillingTreatment("");
   }
 
+  async function handleEnrollmentOpenChange(nextOpen: boolean) {
+    setEnrollmentOpenSaving(true);
+    try {
+      await setClassEnrollmentOpen({
+        classId: classId as Id<"classes">,
+        enrollmentOpen: nextOpen,
+      });
+      toast.success(
+        nextOpen
+          ? "Self-service enrollment opened."
+          : "Self-service enrollment closed.",
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Enrollment availability could not be updated.",
+      );
+    } finally {
+      setEnrollmentOpenSaving(false);
+    }
+  }
+
   return (
     <RoleGate allow="admin">
       {classData === undefined ? (
@@ -412,6 +445,26 @@ function AdminClassDetailPage() {
                             100,
                         )}`
                       : "Standard · all sessions"}
+                  </div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="font-medium">
+                        Self-service enrollment
+                      </div>
+                      <div className="text-muted-foreground">
+                        {enrollmentOpen
+                          ? "Open to customer enrollment requests"
+                          : "Closed to customer enrollment requests"}
+                      </div>
+                    </div>
+                    <Switch
+                      checked={enrollmentOpen}
+                      disabled={enrollmentOpenSaving}
+                      onCheckedChange={handleEnrollmentOpenChange}
+                      aria-label="Self-service enrollment"
+                    />
                   </div>
                 </div>
                 <Button asChild className="w-full">

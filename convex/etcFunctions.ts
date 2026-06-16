@@ -35,10 +35,11 @@ export const addGroup = mutation({
     info: v.optional(v.string()),
     document: v.optional(v.id("_storage")),
     color: v.optional(v.string()),
+    managedEnrollment: v.optional(v.boolean()),
   },
   handler: async (
     ctx,
-    { name, description, password, info, document, color },
+    { name, description, password, info, document, color, managedEnrollment },
   ) => {
     await ctx.db.insert("groups", {
       name,
@@ -47,6 +48,7 @@ export const addGroup = mutation({
       info,
       document,
       color,
+      managedEnrollment: managedEnrollment === true,
     });
   },
 });
@@ -59,9 +61,20 @@ export const editGroup = mutation({
     info: v.optional(v.string()),
     document: v.optional(v.id("_storage")),
     color: v.optional(v.string()),
+    managedEnrollment: v.optional(v.boolean()),
   },
-  handler: async (ctx, { group, name, password, info, document, color }) => {
-    await ctx.db.patch(group, { name, info, password, document, color });
+  handler: async (
+    ctx,
+    { group, name, password, info, document, color, managedEnrollment },
+  ) => {
+    await ctx.db.patch(group, {
+      name,
+      info,
+      password,
+      document,
+      color,
+      managedEnrollment: managedEnrollment === true,
+    });
   },
 });
 

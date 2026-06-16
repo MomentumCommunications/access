@@ -58,14 +58,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "~/components/ui/collapsible";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "~/components/ui/drawer";
 import { Label } from "~/components/ui/label";
 import {
   Select,
@@ -78,6 +70,14 @@ import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
 import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
 import { ScrollArea } from "~/components/ui/scroll-area";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "~/components/ui/sheet";
 
 export const Route = createFileRoute("/_app/classes/")({
   validateSearch: z.object({
@@ -391,21 +391,21 @@ function ClassesPage() {
 
       {!loading && students.length > 0 ? (
         <div className="fixed inset-x-4 bottom-4 z-40 lg:hidden">
-          <Drawer>
-            <DrawerTrigger asChild>
+          <Sheet>
+            <SheetTrigger asChild>
               <Button className="h-11 w-full shadow-lg">
                 <BookOpen />
                 {enrollmentReviewTriggerLabel(review.changeCount)}
               </Button>
-            </DrawerTrigger>
-            <DrawerContent className="max-h-[85svh]">
-              <DrawerHeader className="text-left">
-                <DrawerTitle>Review classes</DrawerTitle>
-                <DrawerDescription>
+            </SheetTrigger>
+            <SheetContent className="w-[85%]">
+              <SheetHeader className="text-left">
+                <SheetTitle>Review classes</SheetTitle>
+                <SheetDescription>
                   Current classes and new choices for{" "}
                   {selectedStudentName || "this student"}.
-                </DrawerDescription>
-              </DrawerHeader>
+                </SheetDescription>
+              </SheetHeader>
               <ScrollArea className="overflow-y-auto px-4 pb-6">
                 <ReviewContent
                   review={review}
@@ -415,8 +415,8 @@ function ClassesPage() {
                   onSave={handleSaveSelections}
                 />
               </ScrollArea>
-            </DrawerContent>
-          </Drawer>
+            </SheetContent>
+          </Sheet>
         </div>
       ) : null}
     </main>

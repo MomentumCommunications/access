@@ -1,7 +1,4 @@
-import {
-  useConvexMutation,
-  useConvexQuery,
-} from "@convex-dev/react-query";
+import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
@@ -45,11 +42,7 @@ import {
   type EnrollmentSelectionStatus,
 } from "../../../shared/class-enrollment-selection";
 import { resolvedClassEnrollmentMode } from "../../../shared/per-session-signup";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "~/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
@@ -84,6 +77,7 @@ import {
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
 import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
+import { ScrollArea } from "~/components/ui/scroll-area";
 
 export const Route = createFileRoute("/_app/classes/")({
   validateSearch: z.object({
@@ -113,7 +107,8 @@ function ClassesPage() {
     {},
   );
   const selectedStudentRow =
-    students?.find((row) => row.student._id === selectedStudent) || students?.[0];
+    students?.find((row) => row.student._id === selectedStudent) ||
+    students?.[0];
   const selectedStudentId = selectedStudentRow?.student._id;
   const filterByAge = ageFilter !== "off";
   const selectedSeasonId =
@@ -411,7 +406,7 @@ function ClassesPage() {
                   {selectedStudentName || "this student"}.
                 </DrawerDescription>
               </DrawerHeader>
-              <div className="overflow-y-auto px-4 pb-6">
+              <ScrollArea className="overflow-y-auto px-4 pb-6">
                 <ReviewContent
                   review={review}
                   estimate={estimate}
@@ -419,7 +414,7 @@ function ClassesPage() {
                   feedback={saveFeedback}
                   onSave={handleSaveSelections}
                 />
-              </div>
+              </ScrollArea>
             </DrawerContent>
           </Drawer>
         </div>
@@ -443,9 +438,7 @@ function EnrollmentClassCard({
   const full =
     classItem.capacity !== undefined &&
     row.activeEnrollmentCount >= classItem.capacity;
-  const enrollmentOpen = resolvedClassEnrollmentOpen(
-    classItem.enrollmentOpen,
-  );
+  const enrollmentOpen = resolvedClassEnrollmentOpen(classItem.enrollmentOpen);
   const eligible = row.ageEligible;
   const recurringStatus = recurringClassSelectionStatus({
     enrollmentStatus: row.enrollment?.status,
@@ -490,10 +483,7 @@ function EnrollmentClassCard({
             </CardDescription>
           </div>
           <Button asChild size="sm" variant="ghost" className="self-start">
-            <Link
-              to="/classes/$classId"
-              params={{ classId: classItem._id }}
-            >
+            <Link to="/classes/$classId" params={{ classId: classItem._id }}>
               Details
             </Link>
           </Button>
@@ -520,8 +510,7 @@ function EnrollmentClassCard({
                 ? `${classItem.capacity} per session`
                 : `${row.activeEnrollmentCount}/${classItem.capacity} requested`}
           </span>
-          {classItem.minAge !== undefined ||
-          classItem.maxAge !== undefined ? (
+          {classItem.minAge !== undefined || classItem.maxAge !== undefined ? (
             <span>{formatAgeRange(classItem.minAge, classItem.maxAge)}</span>
           ) : null}
         </div>
@@ -552,11 +541,7 @@ function EnrollmentClassCard({
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-3">
-              <PerSessionChoices
-                row={row}
-                draft={draft}
-                setDraft={setDraft}
-              />
+              <PerSessionChoices row={row} draft={draft} setDraft={setDraft} />
             </CollapsibleContent>
           </Collapsible>
         )}
@@ -591,9 +576,7 @@ function RecurringSelectionAction({
   }
 
   return (
-    <p className="text-sm text-muted-foreground">
-      {statusExplanation(status)}
-    </p>
+    <p className="text-sm text-muted-foreground">{statusExplanation(status)}</p>
   );
 }
 
@@ -694,14 +677,11 @@ function PerSessionChoices({
           signupStatus: signup?.status,
           selected,
           full,
-          enrollmentOpen: resolvedClassEnrollmentOpen(
-            classItem.enrollmentOpen,
-          ),
+          enrollmentOpen: resolvedClassEnrollmentOpen(classItem.enrollmentOpen),
           ageEligible: row.ageEligible,
           canManage: row.canManage,
         });
-        const locked =
-          status !== "available" && status !== "selected";
+        const locked = status !== "available" && status !== "selected";
         return (
           <label
             key={session._id}
@@ -718,11 +698,7 @@ function PerSessionChoices({
                 disabled={locked}
                 onCheckedChange={() =>
                   setDraft((current) =>
-                    toggleSessionSelection(
-                      current,
-                      classItem._id,
-                      session._id,
-                    ),
+                    toggleSessionSelection(current, classItem._id, session._id),
                   )
                 }
               />
@@ -808,7 +784,10 @@ function ReviewContent({
         emptyText={hasCurrent ? undefined : "No current enrollments"}
       />
       <ReviewSection title="Pending" rows={review.currentPending} />
-      <ReviewSection title="New recurring classes" rows={review.selectedRecurring} />
+      <ReviewSection
+        title="New recurring classes"
+        rows={review.selectedRecurring}
+      />
       {review.selectedPerSession.length > 0 ? (
         <section className="space-y-2">
           <h3 className="text-sm font-semibold">New session dates</h3>
@@ -889,15 +868,11 @@ function EstimateSummary({
           <div className="border-t pt-2">
             <EstimateRow
               label="Current estimated total"
-              value={formatCurrency(
-                estimate.currentEstimatedTotalCents || 0,
-              )}
+              value={formatCurrency(estimate.currentEstimatedTotalCents || 0)}
             />
             <EstimateRow
               label="Estimated new total"
-              value={formatCurrency(
-                estimate.proposedEstimatedTotalCents || 0,
-              )}
+              value={formatCurrency(estimate.proposedEstimatedTotalCents || 0)}
               emphasized
             />
             <EstimateRow
@@ -979,17 +954,19 @@ function ReviewSection({
 
 function StatusBadge({ status }: { status: EnrollmentSelectionStatus }) {
   if (status === "available") return null;
-  const labels: Record<Exclude<EnrollmentSelectionStatus, "available">, string> =
-    {
-      active: "Active",
-      pending: "Pending",
-      waitlisted: "Waitlisted",
-      selected: "Selected",
-      full: "Full",
-      closed: "Closed",
-      ineligible: "Age mismatch",
-      managed: "Managed by staff",
-    };
+  const labels: Record<
+    Exclude<EnrollmentSelectionStatus, "available">,
+    string
+  > = {
+    active: "Active",
+    pending: "Pending",
+    waitlisted: "Waitlisted",
+    selected: "Selected",
+    full: "Full",
+    closed: "Closed",
+    ineligible: "Age mismatch",
+    managed: "Managed by staff",
+  };
   return (
     <Badge
       variant={
@@ -1009,19 +986,13 @@ function perSessionCardStatus(
   row: CatalogClass,
   draft: EnrollmentSelectionDraft,
 ): EnrollmentSelectionStatus {
-  if (
-    row.sessions.some(({ signup }) => signup?.status === "enrolled")
-  ) {
+  if (row.sessions.some(({ signup }) => signup?.status === "enrolled")) {
     return "active";
   }
-  if (
-    row.sessions.some(({ signup }) => signup?.status === "pending")
-  ) {
+  if (row.sessions.some(({ signup }) => signup?.status === "pending")) {
     return "pending";
   }
-  if (
-    row.sessions.some(({ signup }) => signup?.status === "waitlisted")
-  ) {
+  if (row.sessions.some(({ signup }) => signup?.status === "waitlisted")) {
     return "waitlisted";
   }
   if (!row.canManage) return "managed";
@@ -1081,7 +1052,9 @@ function sessionLabel(session: {
   endTime?: string;
 }) {
   const time = formatTimeRange(session.startTime, session.endTime);
-  return time ? `${formatMDYYYY(session.date)} · ${time}` : formatMDYYYY(session.date);
+  return time
+    ? `${formatMDYYYY(session.date)} · ${time}`
+    : formatMDYYYY(session.date);
 }
 
 function formatCurrency(cents: number) {

@@ -20,16 +20,19 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
-import { Field, FieldError, FieldGroup, FieldLabel } from "~/components/ui/field";
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Spinner } from "~/components/ui/spinner";
+import { AdminBulletin } from "~/components/admin-bulletin";
+import { AddBulletin } from "~/components/add-bulletin";
+import { Separator } from "~/components/ui/separator";
 
 export const Route = createFileRoute("/_app/admin/scheduling")({
   component: AdminSchedulingPage,
@@ -71,6 +74,12 @@ function AdminSchedulingPage() {
         </div>
         <SeasonManager />
         <HolidayManager />
+        <div className="flex pt-12 justify-between align-middle">
+          <h1 className="text-4xl font-bold">Bulletin</h1>
+          <AddBulletin />
+        </div>
+        <Separator className="my-4 w-full" />
+        <AdminBulletin />
       </main>
     </RoleGate>
   );
@@ -196,9 +205,7 @@ function SeasonManager() {
     <section className="grid gap-4 lg:grid-cols-[22rem_1fr]">
       <Card className="rounded-lg lg:sticky lg:top-16 lg:h-min">
         <CardHeader>
-          <CardTitle>
-            {editingSeason ? "Edit season" : "Add season"}
-          </CardTitle>
+          <CardTitle>{editingSeason ? "Edit season" : "Add season"}</CardTitle>
         </CardHeader>
         <CardContent>
           <form

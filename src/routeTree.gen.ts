@@ -44,6 +44,7 @@ import { Route as AppClassesClassIdRouteImport } from './routes/_app.classes/$cl
 import { Route as AppChannelChannelIdRouteImport } from './routes/_app.channel/$channelId'
 import { Route as AppAdminSchedulingRouteImport } from './routes/_app.admin/scheduling'
 import { Route as AppAdminGroupsRouteImport } from './routes/_app.admin/groups'
+import { Route as AppAdminAttendanceRouteImport } from './routes/_app.admin/attendance'
 import { Route as AppAdminAccountsRouteImport } from './routes/_app.admin/accounts'
 import { Route as AppBulletinIdEditRouteImport } from './routes/_app.$bulletinId_.edit'
 import { Route as AppAdminStudentsIndexRouteImport } from './routes/_app.admin/students/index'
@@ -63,6 +64,7 @@ import { Route as AppAdminBillingRunsRouteImport } from './routes/_app.admin/bil
 import { Route as AppAdminBillingPrivateChargesRouteImport } from './routes/_app.admin/billing/private-charges'
 import { Route as AppAdminBillingPricingRouteImport } from './routes/_app.admin/billing/pricing'
 import { Route as AppAdminBillingChargesRouteImport } from './routes/_app.admin/billing/charges'
+import { Route as AppAdminAttendanceSessionIdRouteImport } from './routes/_app.admin/attendance_.$sessionId'
 import { Route as AppAdminAccountsCreateRouteImport } from './routes/_app.admin/accounts_.create'
 import { Route as AppAdminAccountsUserIdRouteImport } from './routes/_app.admin/accounts_.$userId'
 import { Route as AppAdminStudentsStudentIdReportRouteImport } from './routes/_app.admin/students/$studentId_.report'
@@ -246,6 +248,11 @@ const AppAdminGroupsRoute = AppAdminGroupsRouteImport.update({
   path: '/admin/groups',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminAttendanceRoute = AppAdminAttendanceRouteImport.update({
+  id: '/admin/attendance',
+  path: '/admin/attendance',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminAccountsRoute = AppAdminAccountsRouteImport.update({
   id: '/admin/accounts',
   path: '/admin/accounts',
@@ -346,6 +353,12 @@ const AppAdminBillingChargesRoute = AppAdminBillingChargesRouteImport.update({
   path: '/admin/billing/charges',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminAttendanceSessionIdRoute =
+  AppAdminAttendanceSessionIdRouteImport.update({
+    id: '/admin/attendance_/$sessionId',
+    path: '/admin/attendance/$sessionId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAdminAccountsCreateRoute = AppAdminAccountsCreateRouteImport.update({
   id: '/admin/accounts_/create',
   path: '/admin/accounts/create',
@@ -416,6 +429,7 @@ export interface FileRoutesByFullPath {
   '/register/': typeof RegisterIndexRoute
   '/$bulletinId/edit': typeof AppBulletinIdEditRoute
   '/admin/accounts': typeof AppAdminAccountsRoute
+  '/admin/attendance': typeof AppAdminAttendanceRoute
   '/admin/groups': typeof AppAdminGroupsRoute
   '/admin/scheduling': typeof AppAdminSchedulingRoute
   '/channel/$channelId': typeof AppChannelChannelIdRoute
@@ -432,6 +446,7 @@ export interface FileRoutesByFullPath {
   '/students/': typeof AppStudentsIndexRoute
   '/admin/accounts/$userId': typeof AppAdminAccountsUserIdRoute
   '/admin/accounts/create': typeof AppAdminAccountsCreateRoute
+  '/admin/attendance/$sessionId': typeof AppAdminAttendanceSessionIdRoute
   '/admin/billing/charges': typeof AppAdminBillingChargesRoute
   '/admin/billing/pricing': typeof AppAdminBillingPricingRoute
   '/admin/billing/private-charges': typeof AppAdminBillingPrivateChargesRoute
@@ -478,6 +493,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterIndexRoute
   '/$bulletinId/edit': typeof AppBulletinIdEditRoute
   '/admin/accounts': typeof AppAdminAccountsRoute
+  '/admin/attendance': typeof AppAdminAttendanceRoute
   '/admin/groups': typeof AppAdminGroupsRoute
   '/admin/scheduling': typeof AppAdminSchedulingRoute
   '/channel/$channelId': typeof AppChannelChannelIdRoute
@@ -494,6 +510,7 @@ export interface FileRoutesByTo {
   '/students': typeof AppStudentsIndexRoute
   '/admin/accounts/$userId': typeof AppAdminAccountsUserIdRoute
   '/admin/accounts/create': typeof AppAdminAccountsCreateRoute
+  '/admin/attendance/$sessionId': typeof AppAdminAttendanceSessionIdRoute
   '/admin/billing/charges': typeof AppAdminBillingChargesRoute
   '/admin/billing/pricing': typeof AppAdminBillingPricingRoute
   '/admin/billing/private-charges': typeof AppAdminBillingPrivateChargesRoute
@@ -543,6 +560,7 @@ export interface FileRoutesById {
   '/register/': typeof RegisterIndexRoute
   '/_app/$bulletinId_/edit': typeof AppBulletinIdEditRoute
   '/_app/admin/accounts': typeof AppAdminAccountsRoute
+  '/_app/admin/attendance': typeof AppAdminAttendanceRoute
   '/_app/admin/groups': typeof AppAdminGroupsRoute
   '/_app/admin/scheduling': typeof AppAdminSchedulingRoute
   '/_app/channel/$channelId': typeof AppChannelChannelIdRoute
@@ -559,6 +577,7 @@ export interface FileRoutesById {
   '/_app/students/': typeof AppStudentsIndexRoute
   '/_app/admin/accounts_/$userId': typeof AppAdminAccountsUserIdRoute
   '/_app/admin/accounts_/create': typeof AppAdminAccountsCreateRoute
+  '/_app/admin/attendance_/$sessionId': typeof AppAdminAttendanceSessionIdRoute
   '/_app/admin/billing/charges': typeof AppAdminBillingChargesRoute
   '/_app/admin/billing/pricing': typeof AppAdminBillingPricingRoute
   '/_app/admin/billing/private-charges': typeof AppAdminBillingPrivateChargesRoute
@@ -608,6 +627,7 @@ export interface FileRouteTypes {
     | '/register/'
     | '/$bulletinId/edit'
     | '/admin/accounts'
+    | '/admin/attendance'
     | '/admin/groups'
     | '/admin/scheduling'
     | '/channel/$channelId'
@@ -624,6 +644,7 @@ export interface FileRouteTypes {
     | '/students/'
     | '/admin/accounts/$userId'
     | '/admin/accounts/create'
+    | '/admin/attendance/$sessionId'
     | '/admin/billing/charges'
     | '/admin/billing/pricing'
     | '/admin/billing/private-charges'
@@ -670,6 +691,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/$bulletinId/edit'
     | '/admin/accounts'
+    | '/admin/attendance'
     | '/admin/groups'
     | '/admin/scheduling'
     | '/channel/$channelId'
@@ -686,6 +708,7 @@ export interface FileRouteTypes {
     | '/students'
     | '/admin/accounts/$userId'
     | '/admin/accounts/create'
+    | '/admin/attendance/$sessionId'
     | '/admin/billing/charges'
     | '/admin/billing/pricing'
     | '/admin/billing/private-charges'
@@ -734,6 +757,7 @@ export interface FileRouteTypes {
     | '/register/'
     | '/_app/$bulletinId_/edit'
     | '/_app/admin/accounts'
+    | '/_app/admin/attendance'
     | '/_app/admin/groups'
     | '/_app/admin/scheduling'
     | '/_app/channel/$channelId'
@@ -750,6 +774,7 @@ export interface FileRouteTypes {
     | '/_app/students/'
     | '/_app/admin/accounts_/$userId'
     | '/_app/admin/accounts_/create'
+    | '/_app/admin/attendance_/$sessionId'
     | '/_app/admin/billing/charges'
     | '/_app/admin/billing/pricing'
     | '/_app/admin/billing/private-charges'
@@ -1031,6 +1056,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminGroupsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/attendance': {
+      id: '/_app/admin/attendance'
+      path: '/admin/attendance'
+      fullPath: '/admin/attendance'
+      preLoaderRoute: typeof AppAdminAttendanceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/accounts': {
       id: '/_app/admin/accounts'
       path: '/admin/accounts'
@@ -1164,6 +1196,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminBillingChargesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/attendance_/$sessionId': {
+      id: '/_app/admin/attendance_/$sessionId'
+      path: '/admin/attendance/$sessionId'
+      fullPath: '/admin/attendance/$sessionId'
+      preLoaderRoute: typeof AppAdminAttendanceSessionIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/accounts_/create': {
       id: '/_app/admin/accounts_/create'
       path: '/admin/accounts/create'
@@ -1235,6 +1274,7 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppBulletinIdEditRoute: typeof AppBulletinIdEditRoute
   AppAdminAccountsRoute: typeof AppAdminAccountsRoute
+  AppAdminAttendanceRoute: typeof AppAdminAttendanceRoute
   AppAdminGroupsRoute: typeof AppAdminGroupsRoute
   AppAdminSchedulingRoute: typeof AppAdminSchedulingRoute
   AppChannelChannelIdRoute: typeof AppChannelChannelIdRoute
@@ -1251,6 +1291,7 @@ interface AppRouteChildren {
   AppStudentsIndexRoute: typeof AppStudentsIndexRoute
   AppAdminAccountsUserIdRoute: typeof AppAdminAccountsUserIdRoute
   AppAdminAccountsCreateRoute: typeof AppAdminAccountsCreateRoute
+  AppAdminAttendanceSessionIdRoute: typeof AppAdminAttendanceSessionIdRoute
   AppAdminBillingChargesRoute: typeof AppAdminBillingChargesRoute
   AppAdminBillingPricingRoute: typeof AppAdminBillingPricingRoute
   AppAdminBillingPrivateChargesRoute: typeof AppAdminBillingPrivateChargesRoute
@@ -1288,6 +1329,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppBulletinIdEditRoute: AppBulletinIdEditRoute,
   AppAdminAccountsRoute: AppAdminAccountsRoute,
+  AppAdminAttendanceRoute: AppAdminAttendanceRoute,
   AppAdminGroupsRoute: AppAdminGroupsRoute,
   AppAdminSchedulingRoute: AppAdminSchedulingRoute,
   AppChannelChannelIdRoute: AppChannelChannelIdRoute,
@@ -1304,6 +1346,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppStudentsIndexRoute: AppStudentsIndexRoute,
   AppAdminAccountsUserIdRoute: AppAdminAccountsUserIdRoute,
   AppAdminAccountsCreateRoute: AppAdminAccountsCreateRoute,
+  AppAdminAttendanceSessionIdRoute: AppAdminAttendanceSessionIdRoute,
   AppAdminBillingChargesRoute: AppAdminBillingChargesRoute,
   AppAdminBillingPricingRoute: AppAdminBillingPricingRoute,
   AppAdminBillingPrivateChargesRoute: AppAdminBillingPrivateChargesRoute,

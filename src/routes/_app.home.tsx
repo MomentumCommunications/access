@@ -216,11 +216,9 @@ function Home() {
         <Authenticated>
           <div className="flex justify-between align-middle">
             <h1 className="text-4xl font-bold">Bulletin</h1>
-            {isAdmin && <LazyAddBulletin />}
           </div>
           <Separator className="my-4 w-full" />
-          {!isAdmin && <BulletinFeed groups={userGroups} />}
-          {isAdmin && <AdminBulletin />}
+          <BulletinFeed groups={userGroups} />
         </Authenticated>
       </main>
     </div>

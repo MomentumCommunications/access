@@ -176,8 +176,7 @@ async function canManageStudent(
 
 function studentDisplayName(student: Doc<"students">) {
   return (
-    student.preferredName ||
-    `${student.firstName} ${student.lastName}`.trim()
+    student.preferredName || `${student.firstName} ${student.lastName}`.trim()
   );
 }
 
@@ -195,10 +194,7 @@ async function getStudentPerSessionClasses(
       .withIndex("byStudent", (q) => q.eq("student", student))
       .collect()
   ).filter((signup) => isActiveSessionSignup(signup.status));
-  const signupsByClass = new Map<
-    Id<"classes">,
-    Doc<"classSessionSignups">[]
-  >();
+  const signupsByClass = new Map<Id<"classes">, Doc<"classSessionSignups">[]>();
   for (const signup of signups) {
     const rows = signupsByClass.get(signup.classId) || [];
     rows.push(signup);
@@ -254,9 +250,7 @@ async function getStudentPerSessionClasses(
               .sort(
                 (left, right) =>
                   left.date.localeCompare(right.date) ||
-                  (left.startTime || "").localeCompare(
-                    right.startTime || "",
-                  ),
+                  (left.startTime || "").localeCompare(right.startTime || ""),
               )
           : [];
 
@@ -352,7 +346,9 @@ function validateClassAgeRange(minAge?: number, maxAge?: number) {
   }
 
   if (minAge !== undefined && maxAge !== undefined && maxAge < minAge) {
-    throw new Error("Maximum age must be greater than or equal to minimum age.");
+    throw new Error(
+      "Maximum age must be greater than or equal to minimum age.",
+    );
   }
 }
 
@@ -367,7 +363,9 @@ async function validateClassVisibilityGroups(
   if (uniqueIds.size !== groupIds.length) {
     throw new Error("Class visibility groups must be unique.");
   }
-  const groups = await Promise.all(groupIds.map((groupId) => ctx.db.get(groupId)));
+  const groups = await Promise.all(
+    groupIds.map((groupId) => ctx.db.get(groupId)),
+  );
   if (groups.some((group) => !group)) {
     throw new Error("One or more class visibility groups no longer exist.");
   }
@@ -400,10 +398,7 @@ async function setClassSeason(
       .map((link) => ctx.db.delete(link._id)),
   );
 
-  if (
-    seasonId &&
-    !existingLinks.some((link) => link.season === seasonId)
-  ) {
+  if (seasonId && !existingLinks.some((link) => link.season === seasonId)) {
     await ctx.db.insert("seasonClasses", {
       season: seasonId,
       class: classId,
@@ -424,7 +419,9 @@ async function getEnrollmentRows(ctx: QueryCtx, classId: Id<"classes">) {
       return {
         ...enrollment,
         student,
-        photoUrl: student?.photo ? await ctx.storage.getUrl(student.photo) : null,
+        photoUrl: student?.photo
+          ? await ctx.storage.getUrl(student.photo)
+          : null,
         requestedBy: enrollment.requestedBy
           ? await ctx.db.get(enrollment.requestedBy)
           : null,
@@ -433,10 +430,7 @@ async function getEnrollmentRows(ctx: QueryCtx, classId: Id<"classes">) {
   );
 }
 
-async function getSessionSignupRows(
-  ctx: QueryCtx,
-  classId: Id<"classes">,
-) {
+async function getSessionSignupRows(ctx: QueryCtx, classId: Id<"classes">) {
   const signups = await ctx.db
     .query("classSessionSignups")
     .withIndex("byClass", (q) => q.eq("classId", classId))
@@ -485,7 +479,9 @@ async function getStaffAttendanceSessionRow(
         ...sessionStudent,
         status: "session" as const,
         student,
-        photoUrl: student?.photo ? await ctx.storage.getUrl(student.photo) : null,
+        photoUrl: student?.photo
+          ? await ctx.storage.getUrl(student.photo)
+          : null,
         requestedBy: await ctx.db.get(sessionStudent.addedBy),
       };
     }),
@@ -502,8 +498,7 @@ async function getStaffAttendanceSessionRow(
             sessionSignups
               .filter(
                 (signup) =>
-                  signup.status === "enrolled" ||
-                  signup.status === "pending",
+                  signup.status === "enrolled" || signup.status === "pending",
               )
               .map(async (signup) => {
                 const student = await ctx.db.get(signup.student);
@@ -552,7 +547,9 @@ async function getStaffAttendanceSessionRow(
       )
       .map(async (student) => ({
         student,
-        photoUrl: student.photo ? await ctx.storage.getUrl(student.photo) : null,
+        photoUrl: student.photo
+          ? await ctx.storage.getUrl(student.photo)
+          : null,
       })),
   );
 
@@ -615,52 +612,55 @@ export const searchApplication = query({
     const accountEmail = (account: Doc<"users">) =>
       Array.isArray(account.email) ? account.email.join(", ") : account.email;
 
-    const accounts = activeRole === "admin"
-      ? (await ctx.db.query("users").collect())
-          .filter((account) =>
-            includesSearch(
-              account.displayName,
-              account.name,
-              account.firstName,
-              account.lastName,
-              [account.firstName, account.lastName].filter(Boolean).join(" "),
-              accountEmail(account),
-              ...resolveUserRoles(account),
-            ),
-          )
-          .sort((a, b) =>
-            (
-              a.displayName ||
-              [a.firstName, a.lastName].filter(Boolean).join(" ") ||
-              a.name ||
-              accountEmail(a) ||
-              ""
-            ).localeCompare(
-              b.displayName ||
-                [b.firstName, b.lastName].filter(Boolean).join(" ") ||
-                b.name ||
-                accountEmail(b) ||
-                "",
-            ),
-          )
-          .slice(0, 10)
-          .map((account) => ({
-            id: account._id,
-            title:
-              account.displayName ||
-              [account.firstName, account.lastName].filter(Boolean).join(" ") ||
-              account.name ||
-              accountEmail(account) ||
-              "Unnamed account",
-            subtitle: [
-              accountEmail(account),
-              resolveUserRoles(account).join(", "),
-            ]
-              .filter(Boolean)
-              .join(" · "),
-            href: `/admin/accounts/${account._id}`,
-          }))
-      : [];
+    const accounts =
+      activeRole === "admin"
+        ? (await ctx.db.query("users").collect())
+            .filter((account) =>
+              includesSearch(
+                account.displayName,
+                account.name,
+                account.firstName,
+                account.lastName,
+                [account.firstName, account.lastName].filter(Boolean).join(" "),
+                accountEmail(account),
+                ...resolveUserRoles(account),
+              ),
+            )
+            .sort((a, b) =>
+              (
+                a.displayName ||
+                [a.firstName, a.lastName].filter(Boolean).join(" ") ||
+                a.name ||
+                accountEmail(a) ||
+                ""
+              ).localeCompare(
+                b.displayName ||
+                  [b.firstName, b.lastName].filter(Boolean).join(" ") ||
+                  b.name ||
+                  accountEmail(b) ||
+                  "",
+              ),
+            )
+            .slice(0, 10)
+            .map((account) => ({
+              id: account._id,
+              title:
+                account.displayName ||
+                [account.firstName, account.lastName]
+                  .filter(Boolean)
+                  .join(" ") ||
+                account.name ||
+                accountEmail(account) ||
+                "Unnamed account",
+              subtitle: [
+                accountEmail(account),
+                resolveUserRoles(account).join(", "),
+              ]
+                .filter(Boolean)
+                .join(" · "),
+              href: `/admin/accounts/${account._id}`,
+            }))
+        : [];
 
     const studentDocs =
       activeRole === "admin"
@@ -701,9 +701,10 @@ export const searchApplication = query({
         title:
           student.preferredName || `${student.firstName} ${student.lastName}`,
         subtitle: `${student.firstName} ${student.lastName} · ${student.status}`,
-        href: activeRole === "admin"
-          ? `/admin/students/${student._id}`
-          : `/students/${student._id}`,
+        href:
+          activeRole === "admin"
+            ? `/admin/students/${student._id}`
+            : `/students/${student._id}`,
       }));
 
     const classDocs = await ctx.db.query("classes").collect();
@@ -740,9 +741,10 @@ export const searchApplication = query({
         ]
           .filter(Boolean)
           .join(" · "),
-        href: activeRole === "admin"
-          ? `/admin/classes/${classItem._id}`
-          : `/classes/${classItem._id}`,
+        href:
+          activeRole === "admin"
+            ? `/admin/classes/${classItem._id}`
+            : `/classes/${classItem._id}`,
       }));
 
     const seasons =
@@ -811,16 +813,15 @@ export const listPublishedClasses = query({
       if (!user) {
         return [];
       }
-      selectedContact =
-        await ctx.db
-          .query("studentContacts")
-          .withIndex("byUser", (q) => q.eq("user", user._id))
-          .collect()
-          .then(
-            (contacts) =>
-              contacts.find((candidate) => candidate.student === studentId) ||
-              null,
-          );
+      selectedContact = await ctx.db
+        .query("studentContacts")
+        .withIndex("byUser", (q) => q.eq("user", user._id))
+        .collect()
+        .then(
+          (contacts) =>
+            contacts.find((candidate) => candidate.student === studentId) ||
+            null,
+        );
       if (!selectedContact) {
         throw new Error("Student is not connected to this account.");
       }
@@ -891,8 +892,7 @@ export const listPublishedClasses = query({
         );
         const activeEnrollmentCount = enrollments.filter(
           (enrollment) =>
-            enrollment.status === "pending" ||
-            enrollment.status === "enrolled",
+            enrollment.status === "pending" || enrollment.status === "enrolled",
         ).length;
 
         return {
@@ -913,9 +913,7 @@ export const listPublishedClasses = query({
             .sort(
               (left, right) =>
                 left.date.localeCompare(right.date) ||
-                (left.startTime || "").localeCompare(
-                  right.startTime || "",
-                ),
+                (left.startTime || "").localeCompare(right.startTime || ""),
             )
             .map((session) => ({
               session,
@@ -940,10 +938,7 @@ export const estimateMyClassSelections = query({
     recurringClassIds: v.array(v.id("classes")),
     sessionSelections: v.array(classSessionSelectionValidator),
   },
-  handler: async (
-    ctx,
-    { student, recurringClassIds, sessionSelections },
-  ) => {
+  handler: async (ctx, { student, recurringClassIds, sessionSelections }) => {
     const user = await getCurrentUserOrThrow(ctx);
     const studentDoc = await ctx.db.get(student);
     if (
@@ -1034,7 +1029,9 @@ export const estimateMyClassSelections = query({
         classItem.status !== "published" ||
         resolvedClassEnrollmentMode(classItem.enrollmentMode) !== "per_session"
       ) {
-        throw new Error("One or more selected session classes are unavailable.");
+        throw new Error(
+          "One or more selected session classes are unavailable.",
+        );
       }
       if (!resolvedClassEnrollmentOpen(classItem.enrollmentOpen)) {
         throw new Error(
@@ -1084,8 +1081,7 @@ export const estimateMyClassSelections = query({
           classId: classItem._id,
           title: classItem.title,
           sessionCount: newSessionIds.length,
-          amountCents:
-            newSessionIds.length * classItem.perSessionPriceCents!,
+          amountCents: newSessionIds.length * classItem.perSessionPriceCents!,
         });
       }
     }
@@ -1198,10 +1194,7 @@ export const getClassForSignup = query({
           .withIndex("byUser", (q) => q.eq("user", user._id))
           .collect()
       : [];
-    if (
-      classItem.visibleToGroupIds &&
-      classItem.visibleToGroupIds.length > 0
-    ) {
+    if (classItem.visibleToGroupIds && classItem.visibleToGroupIds.length > 0) {
       const connectedStudents = await Promise.all(
         contacts.map((contact) => ctx.db.get(contact.student)),
       );
@@ -1503,10 +1496,7 @@ async function validateSelectedSessions(
   if (resolvedClassEnrollmentMode(classItem.enrollmentMode) !== "per_session") {
     throw new Error("This class does not use per-session signup.");
   }
-  validateClassEnrollmentConfig(
-    "per_session",
-    classItem.perSessionPriceCents,
-  );
+  validateClassEnrollmentConfig("per_session", classItem.perSessionPriceCents);
   const uniqueSessionIds = [...new Set(sessionIds)];
   if (uniqueSessionIds.length === 0) {
     throw new Error("Select at least one session.");
@@ -1576,16 +1566,10 @@ async function syncStudentSessionSignups(
     existing.map((signup) => [signup.session, signup]),
   );
 
-  if (
-    classItem.capacity !== undefined &&
-    occupiesSessionCapacity(status)
-  ) {
+  if (classItem.capacity !== undefined && occupiesSessionCapacity(status)) {
     for (const session of selected) {
       const existingSignup = existingBySession.get(session);
-      if (
-        existingSignup &&
-        occupiesSessionCapacity(existingSignup.status)
-      ) {
+      if (existingSignup && occupiesSessionCapacity(existingSignup.status)) {
         continue;
       }
       const activeSignupCount = (
@@ -1747,10 +1731,7 @@ export const saveMyClassSelections = mutation({
     recurringClassIds: v.array(v.id("classes")),
     sessionSelections: v.array(classSessionSelectionValidator),
   },
-  handler: async (
-    ctx,
-    { student, recurringClassIds, sessionSelections },
-  ) => {
+  handler: async (ctx, { student, recurringClassIds, sessionSelections }) => {
     const user = await getCurrentUserOrThrow(ctx);
     const studentDoc = await ctx.db.get(student);
     if (
@@ -1819,8 +1800,7 @@ export const saveMyClassSelections = mutation({
             .collect()
         ).filter(
           (enrollment) =>
-            enrollment.status === "pending" ||
-            enrollment.status === "enrolled",
+            enrollment.status === "pending" || enrollment.status === "enrolled",
         ).length;
         if (occupied >= classItem.capacity) {
           throw new Error(`${classItem.title} is currently full.`);
@@ -1837,7 +1817,9 @@ export const saveMyClassSelections = mutation({
         classItem.status !== "published" ||
         resolvedClassEnrollmentMode(classItem.enrollmentMode) !== "per_session"
       ) {
-        throw new Error("One or more selected session classes are unavailable.");
+        throw new Error(
+          "One or more selected session classes are unavailable.",
+        );
       }
       if (!resolvedClassEnrollmentOpen(classItem.enrollmentOpen)) {
         throw new Error(
@@ -2357,9 +2339,7 @@ export const adminGetStudentAttendanceReport = query({
       )
     ).filter((row) => row !== null);
 
-    attendanceRows.sort((a, b) =>
-      b.session.date.localeCompare(a.session.date),
-    );
+    attendanceRows.sort((a, b) => b.session.date.localeCompare(a.session.date));
 
     return {
       student: studentDoc,
@@ -2367,15 +2347,12 @@ export const adminGetStudentAttendanceReport = query({
         ? await ctx.storage.getUrl(studentDoc.photo)
         : null,
       summary: {
-        present: attendanceRows.filter(
-          (row) => row.record.status === "present",
-        ).length,
+        present: attendanceRows.filter((row) => row.record.status === "present")
+          .length,
         absent: attendanceRows.filter((row) => row.record.status === "absent")
           .length,
       },
-      absences: attendanceRows.filter(
-        (row) => row.record.status === "absent",
-      ),
+      absences: attendanceRows.filter((row) => row.record.status === "absent"),
     };
   },
 });
@@ -2397,10 +2374,7 @@ export const adminCreateStudent = mutation({
   },
   handler: async (ctx, { accountUser, relationship, ...studentValues }) => {
     await requireAdmin(ctx);
-    if (
-      studentValues.groupId &&
-      !(await ctx.db.get(studentValues.groupId))
-    ) {
+    if (studentValues.groupId && !(await ctx.db.get(studentValues.groupId))) {
       throw new Error("The selected group no longer exists.");
     }
     if (accountUser && !(await ctx.db.get(accountUser))) {
@@ -2449,9 +2423,7 @@ export const adminUpdateStudent = mutation({
     if (groupId && !(await ctx.db.get(groupId))) {
       throw new Error("The selected group no longer exists.");
     }
-    if (
-      requiresStudentStatusConfirmation(existing.status, updates.status)
-    ) {
+    if (requiresStudentStatusConfirmation(existing.status, updates.status)) {
       const today = todayValue();
       const enrollments = await ctx.db
         .query("classEnrollments")
@@ -2503,15 +2475,7 @@ export const adminEnrollStudentInClass = mutation({
   },
   handler: async (
     ctx,
-    {
-      student,
-      classId,
-      status,
-      notes,
-      startDate,
-      endDate,
-      prorateTuition,
-    },
+    { student, classId, status, notes, startDate, endDate, prorateTuition },
   ) => {
     const user = await requireAdmin(ctx);
     const studentDoc = await ctx.db.get(student);
@@ -2541,9 +2505,7 @@ export const adminEnrollStudentInClass = mutation({
         startDate,
         endDate,
         prorateTuition:
-          status === "enrolled"
-            ? prorateTuition
-            : existing.prorateTuition,
+          status === "enrolled" ? prorateTuition : existing.prorateTuition,
       });
       return existing._id;
     }
@@ -2685,9 +2647,7 @@ export const adminCreateClass = mutation({
     await validateClassVisibilityGroups(ctx, args.visibleToGroupIds);
     const classId = await ctx.db.insert("classes", {
       ...args,
-      visibleToGroupIds: normalizeClassVisibilityGroups(
-        args.visibleToGroupIds,
-      ),
+      visibleToGroupIds: normalizeClassVisibilityGroups(args.visibleToGroupIds),
       enrollmentOpen: true,
       timezone: args.timezone || "America/New_York",
       scheduleVersion: 1,
@@ -2916,6 +2876,54 @@ export const staffListSessionsByDate = query({
         : sessionRows.filter((row) => canAccessAttendanceSession(user, row));
 
     return visibleRows;
+  },
+});
+
+export const adminListSessionsByDate = query({
+  args: {
+    date: v.string(),
+  },
+  handler: async (ctx, { date }) => {
+    const sessions = await ctx.db
+      .query("sessions")
+      .withIndex("byDate", (q) => q.eq("date", date))
+      .collect();
+    const activeSessions = sessions.filter((session) => session.active);
+
+    const sessionRows = await Promise.all(
+      activeSessions.map((session) =>
+        getStaffAttendanceSessionRow(ctx, session),
+      ),
+    );
+
+    return sessionRows;
+  },
+});
+
+export const listUnmarkedAttendance = query({
+  args: {},
+  handler: async (ctx) => {
+    const sessions = await ctx.db.query("sessions").collect();
+    const activeSessions = sessions.filter((session) => session.active);
+
+    const sessionRows = await Promise.all(
+      activeSessions.map((session) =>
+        getStaffAttendanceSessionRow(ctx, session),
+      ),
+    );
+
+    // get sessionRows where date was before today
+
+    const priorSessions = sessionRows.filter((row) => {
+      const date = new Date(row.session.date);
+      const today = new Date();
+      return date < today;
+    });
+
+    const incompleteAttendance = priorSessions.filter((row) => {
+      return row.enrollments.length !== row.attendance.length;
+    });
+    return incompleteAttendance;
   },
 });
 

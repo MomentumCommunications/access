@@ -16,6 +16,8 @@ import {
   LogIn,
   CreditCard,
   Users,
+  ListChecks,
+  Group,
 } from "lucide-react";
 import {
   Collapsible,
@@ -215,7 +217,7 @@ const AppSidebarComponent = memo(() => {
                       onClick={closeMobileSidebar}
                     >
                       <Link to="/admin/groups">
-                        <Users />
+                        <Group />
                         <span>Groups</span>
                       </Link>
                     </SidebarMenuButton>
@@ -229,6 +231,18 @@ const AppSidebarComponent = memo(() => {
                       <Link to="/admin/classes">
                         <BookOpen />
                         <span>All Classes</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip="Attendance"
+                      onClick={closeMobileSidebar}
+                    >
+                      <Link to="/admin/attendance">
+                        <ListChecks />
+                        <span>Attendance</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -256,11 +270,7 @@ const AppSidebarComponent = memo(() => {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  <Collapsible
-                    asChild
-                    defaultOpen
-                    className="group/collapsible"
-                  >
+                  <Collapsible asChild className="group/collapsible">
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>
                         <SidebarMenuButton tooltip="Billing">

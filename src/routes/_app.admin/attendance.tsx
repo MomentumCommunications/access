@@ -28,6 +28,8 @@ import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
 import { useIsMobile } from "~/hooks/use-mobile";
 import { format } from "date-fns";
+import { cn } from "~/lib/utils";
+import { Badge } from "~/components/ui/badge";
 
 export const Route = createFileRoute("/_app/admin/attendance")({
   component: AttendancePage,
@@ -122,17 +124,18 @@ function AttendancePage() {
                   <TableRow>
                     <TableHead>Class</TableHead>
                     <TableHead>Time</TableHead>
-                    {!isMobile && (
-                      <>
-                        <TableHead>Students</TableHead>
-                        <TableHead>Marked</TableHead>
-                      </>
-                    )}
+                    <TableHead>Marked</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {sessions.map((row) => (
-                    <TableRow key={row.session._id}>
+                    <TableRow
+                      key={row.session._id}
+                      className={cn(
+                        "cursor-pointer hover:bg-muted/50",
+                        targetSessionId === row.session._id && "bg-muted",
+                      )}
+                    >
                       <TableCell>
                         {isMobile && (
                           <Button asChild variant="link" className="h-auto p-0">
@@ -159,12 +162,17 @@ function AttendancePage() {
                         {" · "}
                         {row.session.startTime}
                       </TableCell>
-                      {!isMobile && (
-                        <>
-                          <TableCell>{row.enrollments.length}</TableCell>
-                          <TableCell>{row.attendance.length}</TableCell>
-                        </>
-                      )}
+                      <TableCell>
+                        <Badge
+                          className={cn(
+                            "text-muted-foreground",
+                            row.attendance.length === row.enrollments.length &&
+                              "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300",
+                            row.attendance.length === 0 &&
+                              "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300",
+                          )}
+                        >{`${row.attendance.length}/${row.enrollments.length}`}</Badge>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

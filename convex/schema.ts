@@ -282,6 +282,7 @@ export default defineSchema({
   })
     .index("byClass", ["classId"])
     .index("byStudent", ["student"])
+    .index("byStatus", ["status"])
     .index("byClassStudent", ["classId", "student"]),
   pricingSchemas: defineTable({
     name: v.string(),

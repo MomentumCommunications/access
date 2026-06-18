@@ -123,7 +123,7 @@ function AttendancePage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Class</TableHead>
-                    <TableHead>Time</TableHead>
+                    <TableHead>DateTime</TableHead>
                     <TableHead>Marked</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -132,13 +132,17 @@ function AttendancePage() {
                     <TableRow
                       key={row.session._id}
                       className={cn(
-                        "cursor-pointer hover:bg-muted/50",
-                        targetSessionId === row.session._id && "bg-muted",
+                        "hover:bg-muted/50",
+                        targetSessionId === row.session._id && "bg-muted/80",
                       )}
                     >
-                      <TableCell>
+                      <TableCell className="flex px-0 place-items-start justify-start">
                         {isMobile && (
-                          <Button asChild variant="link" className="h-auto p-0">
+                          <Button
+                            asChild
+                            variant="link"
+                            className="h-auto w-full justify-start cursor-pointer px-1"
+                          >
                             <Link
                               to="/staff/attendance/$sessionId"
                               params={{ sessionId: row.session._id }}
@@ -150,7 +154,7 @@ function AttendancePage() {
                         {!isMobile && (
                           <Button
                             variant="link"
-                            className="h-auto p-0"
+                            className="h-auto p-1"
                             onClick={() => setTargetSessionId(row.session._id)}
                           >
                             {row.classItem?.title || "Untitled class"}
@@ -168,7 +172,7 @@ function AttendancePage() {
                             "text-muted-foreground",
                             row.attendance.length === row.enrollments.length &&
                               "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300",
-                            row.attendance.length === 0 &&
+                            row.attendance.length !== row.enrollments.length &&
                               "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300",
                           )}
                         >{`${row.attendance.length}/${row.enrollments.length}`}</Badge>
@@ -180,18 +184,20 @@ function AttendancePage() {
             )}
           </div>
         </ScrollArea>
-        <div className="hidden h-screen w-full px-6 pt-6 pb-48 md:block">
-          <Card className="h-full rounded-lg">
-            {!targetSessionId && (
-              <div className="flex h-full items-center justify-center">
-                <Scan className="size-12 text-muted-foreground" />
-              </div>
-            )}
-            {targetSessionId && (
-              <AttendanceSession
-                sessionId={targetSessionId as Id<"sessions">}
-              />
-            )}
+        <div className="hidden w-full px-6 pt-6 md:block">
+          <Card className="rounded-lg h-[calc(100svh-120px)]">
+            <ScrollArea className="h-full">
+              {!targetSessionId && (
+                <div className="flex h-[calc(100svh-120px)] items-center justify-center">
+                  <Scan className="size-12 text-muted-foreground" />
+                </div>
+              )}
+              {targetSessionId && (
+                <AttendanceSession
+                  sessionId={targetSessionId as Id<"sessions">}
+                />
+              )}
+            </ScrollArea>
           </Card>
         </div>
       </div>

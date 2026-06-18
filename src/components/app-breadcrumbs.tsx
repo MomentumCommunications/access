@@ -6,6 +6,7 @@ import type { Id } from "convex/_generated/dataModel";
 import { Fragment } from "react";
 import {
   Breadcrumb,
+  BreadcrumbEllipsis,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
@@ -243,7 +244,22 @@ export function AppBreadcrumbs() {
 
   return (
     <Breadcrumb className="min-w-0 max-w-[80vw] overflow-hidden">
-      <BreadcrumbList className="flex-nowrap overflow-hidden">
+      <BreadcrumbList className="flex-nowrap overflow-hidden sm:hidden">
+        {crumbs.length > 1 ? (
+          <>
+            <BreadcrumbItem>
+              <BreadcrumbEllipsis className="size-6" />
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+          </>
+        ) : null}
+        <BreadcrumbItem className="min-w-0">
+          <BreadcrumbPage className="truncate">
+            {crumbs.at(-1)?.label}
+          </BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+      <BreadcrumbList className="hidden flex-nowrap overflow-hidden sm:flex">
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1;
 

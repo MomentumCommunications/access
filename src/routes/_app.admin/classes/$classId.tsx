@@ -46,6 +46,7 @@ import { ScrollArea } from "~/components/ui/scroll-area";
 import { Switch } from "~/components/ui/switch";
 import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
 import { hasUserRole } from "~/lib/roles";
+import { ArrowUpDown } from "lucide-react";
 
 export const Route = createFileRoute("/_app/admin/classes/$classId")({
   component: AdminClassDetailPage,
@@ -53,6 +54,7 @@ export const Route = createFileRoute("/_app/admin/classes/$classId")({
 
 type SessionStatus = "scheduled" | "cancelled" | "completed";
 type EnrollmentStatus = "pending" | "enrolled" | "waitlisted" | "dropped";
+type EnrollmentStatusFilter = EnrollmentStatus | "all";
 type BillingTreatment = "" | "prorate" | "full";
 
 function todayValue() {
@@ -103,9 +105,12 @@ function AdminClassDetailPage() {
   const [enrollmentToActivate, setEnrollmentToActivate] =
     useState<EnrollmentRow | null>(null);
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
-  const [sessionSignupStatus, setSessionSignupStatus] =
-    useState<"pending" | "enrolled" | "waitlisted">("enrolled");
+  const [sessionSignupStatus, setSessionSignupStatus] = useState<
+    "pending" | "enrolled" | "waitlisted"
+  >("enrolled");
   const [enrollmentOpenSaving, setEnrollmentOpenSaving] = useState(false);
+  const [enrollmentStatusFilter, setEnrollmentStatusFilter] =
+    useState<EnrollmentStatusFilter>("enrolled");
   const classMode = resolvedClassEnrollmentMode(
     classData?.classItem.enrollmentMode,
   );
@@ -144,26 +149,36 @@ function AdminClassDetailPage() {
       ),
     [classData?.sessionSignups, selectedStudent],
   );
+  const filteredEnrollments = useMemo(() => {
+    if (!classData) return [];
+    if (enrollmentStatusFilter === "all") {
+      return classData.enrollments;
+    }
+    return classData.enrollments.filter(
+      (enrollment) => enrollment.status === enrollmentStatusFilter,
+    );
+  }, [classData, enrollmentStatusFilter]);
 
   useEffect(() => {
     setSelectedSessionIds(
-      existingSelectedSignups
-        .filter(
-          (signup) =>
-            signup.session?.active &&
-            signup.session.status !== "cancelled" &&
-            signup.session.date >= todayValue(),
-        )
-        .map((signup) => signup.session?._id)
-        .filter((sessionId): sessionId is string => Boolean(sessionId)),
+      existingSelectedSignups.flatMap((signup) => {
+        const session = signup.session;
+        if (
+          !session ||
+          !session.active ||
+          session.status === "cancelled" ||
+          session.date < todayValue()
+        ) {
+          return [];
+        }
+        return [session._id];
+      }),
     );
     const statuses = new Set(
       existingSelectedSignups
         .map((signup) => signup.status)
         .filter(
-          (
-            status,
-          ): status is "pending" | "enrolled" | "waitlisted" =>
+          (status): status is "pending" | "enrolled" | "waitlisted" =>
             status !== "cancelled",
         ),
     );
@@ -177,7 +192,18 @@ function AdminClassDetailPage() {
       accessorFn: (row) =>
         row.student ? `${row.student.firstName} ${row.student.lastName}` : "",
       id: "student",
-      header: "Student",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            className="-ml-3"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Student
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
       cell: ({ row }) =>
         row.original.student
           ? `${row.original.student.firstName} ${row.original.student.lastName}`
@@ -200,10 +226,7 @@ function AdminClassDetailPage() {
             void updateEnrollment({
               enrollment: row.original._id,
               status: nextStatus as EnrollmentStatus,
-              endDate:
-                nextStatus === "dropped"
-                  ? todayValue()
-                  : undefined,
+              endDate: nextStatus === "dropped" ? todayValue() : undefined,
             });
           }}
         >
@@ -223,9 +246,7 @@ function AdminClassDetailPage() {
       id: "proration",
       header: "Tuition",
       cell: ({ row }) =>
-        row.original.prorateTuition === false
-          ? "Full period"
-          : "Prorated",
+        row.original.prorateTuition === false ? "Full period" : "Prorated",
     },
     {
       id: "requestedBy",
@@ -246,9 +267,7 @@ function AdminClassDetailPage() {
   const sessionSignupColumns: ColumnDef<SessionSignupRow>[] = [
     {
       accessorFn: (row) =>
-        row.student
-          ? `${row.student.firstName} ${row.student.lastName}`
-          : "",
+        row.student ? `${row.student.firstName} ${row.student.lastName}` : "",
       id: "student",
       header: "Student",
       cell: ({ row }) =>
@@ -441,8 +460,7 @@ function AdminClassDetailPage() {
                           style: "currency",
                           currency: "USD",
                         }).format(
-                          (classData.classItem.perSessionPriceCents || 0) /
-                            100,
+                          (classData.classItem.perSessionPriceCents || 0) / 100,
                         )}`
                       : "Standard · all sessions"}
                   </div>
@@ -450,9 +468,7 @@ function AdminClassDetailPage() {
                 <div className="rounded-md border p-3">
                   <div className="flex items-center justify-between gap-4">
                     <div className="space-y-1">
-                      <div className="font-medium">
-                        Self-service enrollment
-                      </div>
+                      <div className="font-medium">Self-service enrollment</div>
                       <div className="text-muted-foreground">
                         {enrollmentOpen
                           ? "Open to customer enrollment requests"
@@ -604,9 +620,7 @@ function AdminClassDetailPage() {
                         <Select
                           value={newEnrollmentStatus}
                           onValueChange={(value) => {
-                            setNewEnrollmentStatus(
-                              value as EnrollmentStatus,
-                            );
+                            setNewEnrollmentStatus(value as EnrollmentStatus);
                             if (value !== "enrolled") {
                               setBillingTreatment("");
                             }
@@ -818,9 +832,30 @@ function AdminClassDetailPage() {
                 ) : (
                   <DataTable
                     columns={enrollmentColumns}
-                    data={classData.enrollments}
+                    data={filteredEnrollments}
                     filterColumn="student"
                     filterPlaceholder="Filter students..."
+                    toolbar={
+                      <Select
+                        value={enrollmentStatusFilter}
+                        onValueChange={(value) =>
+                          setEnrollmentStatusFilter(
+                            value as EnrollmentStatusFilter,
+                          )
+                        }
+                      >
+                        <SelectTrigger className="w-full shrink-0 sm:w-44">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="enrolled">Enrolled</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="waitlisted">Waitlisted</SelectItem>
+                          <SelectItem value="dropped">Dropped</SelectItem>
+                          <SelectItem value="all">All</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    }
                   />
                 )}
               </CardContent>

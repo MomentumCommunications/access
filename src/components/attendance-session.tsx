@@ -1,4 +1,5 @@
 import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
+import { Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
 import { Check, CheckCheck, UserPlus, X } from "lucide-react";
@@ -227,9 +228,16 @@ function AttendanceSession({ sessionId }: { sessionId: Id<"sessions"> }) {
         <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 lg:p-8">
           <div className="space-y-2">
             <div>
-              <h1 className="text-3xl font-bold">
-                {sessionData.classItem?.title || "Untitled class"}
-              </h1>
+              <Link
+                to="/admin/classes/$classId"
+                params={{
+                  classId: sessionData.classItem?._id as Id<"classes">,
+                }}
+              >
+                <h1 className="text-3xl font-bold">
+                  {sessionData.classItem?.title || "Untitled class"}
+                </h1>
+              </Link>
               <p className="text-muted-foreground">
                 {formatMDYYYY(sessionData.session.date)} ·{" "}
                 {formatTimeRange(

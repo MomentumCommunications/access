@@ -51,6 +51,7 @@ import {
   studentSelfServiceEnrollmentAllowed,
 } from "../shared/class-enrollment-policy";
 import { resolvedClassEnrollmentOpen } from "../shared/class-enrollment-selection";
+import { buildEnrollmentDeletedEvent } from "../shared/enrollment-activity";
 import { calculateEnrollmentEstimate } from "../shared/class-enrollment-estimate";
 import { matchTuitionTier } from "../shared/tuition-pricing";
 import { classWeeklyMinutes } from "./lib/billing/weeklyClassHours";
@@ -77,6 +78,12 @@ const enrollmentStatusValidator = v.union(
   v.literal("enrolled"),
   v.literal("waitlisted"),
   v.literal("dropped"),
+);
+
+const pendingEnrollmentActionValidator = v.union(
+  v.literal("enroll"),
+  v.literal("waitlist"),
+  v.literal("delete"),
 );
 
 const classEnrollmentModeValidator = v.union(
@@ -2585,6 +2592,121 @@ export const adminListClasses = query({
         };
       }),
     );
+  },
+});
+
+export const adminListPendingEnrollments = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const pending = await ctx.db
+      .query("classEnrollments")
+      .withIndex("byStatus", (q) => q.eq("status", "pending"))
+      .collect();
+
+    return (
+      await Promise.all(
+        pending.map(async (enrollment) => {
+          const [student, requestedBy, classItem] = await Promise.all([
+            ctx.db.get(enrollment.student),
+            enrollment.requestedBy
+              ? ctx.db.get(enrollment.requestedBy)
+              : Promise.resolve(null),
+            ctx.db.get(enrollment.classId),
+          ]);
+          if (!student || !classItem) {
+            return null;
+          }
+          return {
+            enrollment,
+            student,
+            requestedBy,
+            classItem,
+          };
+        }),
+      )
+    )
+      .filter((row) => row !== null)
+      .sort(
+        (left, right) =>
+          right.enrollment._creationTime - left.enrollment._creationTime,
+      );
+  },
+});
+
+export const adminApplyPendingEnrollmentAction = mutation({
+  args: {
+    enrollments: v.array(v.id("classEnrollments")),
+    action: pendingEnrollmentActionValidator,
+  },
+  handler: async (ctx, { enrollments, action }) => {
+    const admin = await requireAdmin(ctx);
+    const uniqueIds = [...new Set(enrollments)];
+    if (uniqueIds.length === 0) {
+      throw new Error("Select at least one pending enrollment.");
+    }
+
+    const rows = await Promise.all(
+      uniqueIds.map(async (enrollmentId) => {
+        const enrollment = await ctx.db.get(enrollmentId);
+        if (!enrollment || enrollment.status !== "pending") {
+          throw new Error(
+            "One or more enrollment requests are no longer pending.",
+          );
+        }
+        const [student, classItem] = await Promise.all([
+          ctx.db.get(enrollment.student),
+          ctx.db.get(enrollment.classId),
+        ]);
+        if (!student || !classItem) {
+          throw new Error(
+            "One or more enrollment requests reference missing records.",
+          );
+        }
+        return { enrollment, student, classItem };
+      }),
+    );
+
+    for (const { enrollment, student, classItem } of rows) {
+      if (action === "delete") {
+        const event = buildEnrollmentDeletedEvent({
+          enrollmentId: enrollment._id,
+          studentId: student._id,
+          studentName: studentDisplayName(student),
+          classId: classItem._id,
+          className: classItem.title,
+          requestedBy: enrollment.requestedBy,
+          actorId: admin._id,
+          startDate: enrollment.startDate,
+          endDate: enrollment.endDate,
+        });
+        await recordActivityEvent(ctx, {
+          ...event,
+          actorId: admin._id,
+        });
+        await ctx.db.delete(enrollment._id);
+        continue;
+      }
+
+      const nextStatus = action === "enroll" ? "enrolled" : "waitlisted";
+      const dates = resolveEnrollmentStatusDates({
+        existingStatus: enrollment.status,
+        nextStatus,
+        existingStartDate: enrollment.startDate,
+        existingEndDate: enrollment.endDate,
+        today: todayValue(),
+      });
+      await ctx.db.patch(enrollment._id, {
+        status: nextStatus,
+        ...dates,
+        prorateTuition:
+          nextStatus === "enrolled"
+            ? enrollment.prorateTuition ?? true
+            : enrollment.prorateTuition,
+      });
+    }
+
+    return { updated: rows.length };
   },
 });
 

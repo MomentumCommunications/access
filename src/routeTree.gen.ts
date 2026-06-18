@@ -57,6 +57,7 @@ import { Route as AppAdminStudentsCreateRouteImport } from './routes/_app.admin/
 import { Route as AppAdminStudentsStudentIdRouteImport } from './routes/_app.admin/students/$studentId'
 import { Route as AppAdminPrivatesCreateRouteImport } from './routes/_app.admin/privates/create'
 import { Route as AppAdminPrivatesPrivateIdRouteImport } from './routes/_app.admin/privates/$privateId'
+import { Route as AppAdminClassesEnrollmentsRouteImport } from './routes/_app.admin/classes/enrollments'
 import { Route as AppAdminClassesCreateRouteImport } from './routes/_app.admin/classes/create'
 import { Route as AppAdminClassesClassIdRouteImport } from './routes/_app.admin/classes/$classId'
 import { Route as AppAdminBillingTuitionsRouteImport } from './routes/_app.admin/billing/tuitions'
@@ -317,6 +318,12 @@ const AppAdminPrivatesPrivateIdRoute =
     path: '/admin/privates/$privateId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppAdminClassesEnrollmentsRoute =
+  AppAdminClassesEnrollmentsRouteImport.update({
+    id: '/admin/classes/enrollments',
+    path: '/admin/classes/enrollments',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAdminClassesCreateRoute = AppAdminClassesCreateRouteImport.update({
   id: '/admin/classes/create',
   path: '/admin/classes/create',
@@ -454,6 +461,7 @@ export interface FileRoutesByFullPath {
   '/admin/billing/tuitions': typeof AppAdminBillingTuitionsRoute
   '/admin/classes/$classId': typeof AppAdminClassesClassIdRoute
   '/admin/classes/create': typeof AppAdminClassesCreateRoute
+  '/admin/classes/enrollments': typeof AppAdminClassesEnrollmentsRoute
   '/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/admin/privates/create': typeof AppAdminPrivatesCreateRoute
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
@@ -518,6 +526,7 @@ export interface FileRoutesByTo {
   '/admin/billing/tuitions': typeof AppAdminBillingTuitionsRoute
   '/admin/classes/$classId': typeof AppAdminClassesClassIdRoute
   '/admin/classes/create': typeof AppAdminClassesCreateRoute
+  '/admin/classes/enrollments': typeof AppAdminClassesEnrollmentsRoute
   '/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/admin/privates/create': typeof AppAdminPrivatesCreateRoute
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
@@ -585,6 +594,7 @@ export interface FileRoutesById {
   '/_app/admin/billing/tuitions': typeof AppAdminBillingTuitionsRoute
   '/_app/admin/classes/$classId': typeof AppAdminClassesClassIdRoute
   '/_app/admin/classes/create': typeof AppAdminClassesCreateRoute
+  '/_app/admin/classes/enrollments': typeof AppAdminClassesEnrollmentsRoute
   '/_app/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/_app/admin/privates/create': typeof AppAdminPrivatesCreateRoute
   '/_app/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
@@ -652,6 +662,7 @@ export interface FileRouteTypes {
     | '/admin/billing/tuitions'
     | '/admin/classes/$classId'
     | '/admin/classes/create'
+    | '/admin/classes/enrollments'
     | '/admin/privates/$privateId'
     | '/admin/privates/create'
     | '/admin/students/$studentId'
@@ -716,6 +727,7 @@ export interface FileRouteTypes {
     | '/admin/billing/tuitions'
     | '/admin/classes/$classId'
     | '/admin/classes/create'
+    | '/admin/classes/enrollments'
     | '/admin/privates/$privateId'
     | '/admin/privates/create'
     | '/admin/students/$studentId'
@@ -782,6 +794,7 @@ export interface FileRouteTypes {
     | '/_app/admin/billing/tuitions'
     | '/_app/admin/classes/$classId'
     | '/_app/admin/classes/create'
+    | '/_app/admin/classes/enrollments'
     | '/_app/admin/privates/$privateId'
     | '/_app/admin/privates/create'
     | '/_app/admin/students/$studentId'
@@ -1147,6 +1160,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminPrivatesPrivateIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/classes/enrollments': {
+      id: '/_app/admin/classes/enrollments'
+      path: '/admin/classes/enrollments'
+      fullPath: '/admin/classes/enrollments'
+      preLoaderRoute: typeof AppAdminClassesEnrollmentsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/classes/create': {
       id: '/_app/admin/classes/create'
       path: '/admin/classes/create'
@@ -1299,6 +1319,7 @@ interface AppRouteChildren {
   AppAdminBillingTuitionsRoute: typeof AppAdminBillingTuitionsRoute
   AppAdminClassesClassIdRoute: typeof AppAdminClassesClassIdRoute
   AppAdminClassesCreateRoute: typeof AppAdminClassesCreateRoute
+  AppAdminClassesEnrollmentsRoute: typeof AppAdminClassesEnrollmentsRoute
   AppAdminPrivatesPrivateIdRoute: typeof AppAdminPrivatesPrivateIdRoute
   AppAdminPrivatesCreateRoute: typeof AppAdminPrivatesCreateRoute
   AppAdminStudentsStudentIdRoute: typeof AppAdminStudentsStudentIdRoute
@@ -1354,6 +1375,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminBillingTuitionsRoute: AppAdminBillingTuitionsRoute,
   AppAdminClassesClassIdRoute: AppAdminClassesClassIdRoute,
   AppAdminClassesCreateRoute: AppAdminClassesCreateRoute,
+  AppAdminClassesEnrollmentsRoute: AppAdminClassesEnrollmentsRoute,
   AppAdminPrivatesPrivateIdRoute: AppAdminPrivatesPrivateIdRoute,
   AppAdminPrivatesCreateRoute: AppAdminPrivatesCreateRoute,
   AppAdminStudentsStudentIdRoute: AppAdminStudentsStudentIdRoute,

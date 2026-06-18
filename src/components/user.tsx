@@ -27,7 +27,7 @@ export function NavUser({ user }: { user: Doc<"users"> }) {
   const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
-  const name = user.displayName || user.name || "User";
+  const name = user.firstName + " " + user.lastName || "User";
   const email = Array.isArray(user.email) ? user.email[0] : user.email;
   const initials = name
     .split(" ")
@@ -62,9 +62,8 @@ export function NavUser({ user }: { user: Doc<"users"> }) {
                   {initials || <User className="size-4" />}
                 </AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{name}</span>
-                {email && <span className="truncate text-xs">{email}</span>}
+              <div className="flex flex-1 items-end h-full text-left text-sm leading-tight">
+                <span className="truncate h-min font-medium">{name}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>

@@ -1,7 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useConvexQuery } from "@convex-dev/react-query";
+import {
+  createFileRoute,
+  notFound,
+  useNavigate,
+} from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
-import { useQuery } from "convex/react";
 import { ArrowLeft, EyeOff } from "lucide-react";
 import { useMemo } from "react";
 import { Markdown } from "~/components/markdown-wrapper";
@@ -9,6 +13,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import { formatBulletinDate } from "~/lib/bulletin-date";
+import { getGlobalClients } from "~/lib/query-client";
 import { cn } from "~/lib/utils";
 
 type Bulletin = {
@@ -31,15 +36,24 @@ type Group = {
 };
 
 export const Route = createFileRoute("/_app/$bulletinId")({
+  loader: async ({ params }) => {
+    const { convex } = getGlobalClients();
+    const bulletin = await convex.query(api.bulletins.getBulletin, {
+      id: params.bulletinId,
+    });
+    if (!bulletin) {
+      throw notFound();
+    }
+  },
   component: RouteComponent,
 });
 
 function RouteComponent() {
   const { bulletinId } = Route.useParams();
-  const bulletin = useQuery(api.bulletins.getBulletin, {
-    id: bulletinId as Id<"bulletin">,
+  const bulletin = useConvexQuery(api.bulletins.getBulletin, {
+    id: bulletinId,
   });
-  const groups = useQuery(api.etcFunctions.getGroups, {});
+  const groups = useConvexQuery(api.etcFunctions.getGroups, {});
   const navigate = useNavigate();
 
   if (bulletin === undefined) {
@@ -50,14 +64,7 @@ function RouteComponent() {
     );
   }
 
-  if (bulletin === null) {
-    return (
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-2 pb-2">
-        <BackButton />
-        <p>Bulletin not found.</p>
-      </div>
-    );
-  }
+  if (bulletin === null) throw notFound();
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-2 pb-12">

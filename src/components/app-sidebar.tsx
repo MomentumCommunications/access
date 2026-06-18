@@ -1,9 +1,7 @@
 import { memo } from "react";
 import {
-  BookOpen,
   BookOpenCheck,
   CalendarCheck,
-  CalendarClock,
   CalendarDays,
   ChevronRight,
   CoffeeIcon,
@@ -16,8 +14,8 @@ import {
   LogIn,
   CreditCard,
   Users,
-  ListChecks,
   Group,
+  SportShoe,
 } from "lucide-react";
 import {
   Collapsible,
@@ -225,30 +223,6 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
-                      tooltip="Classes"
-                      onClick={closeMobileSidebar}
-                    >
-                      <Link to="/admin/classes">
-                        <BookOpen />
-                        <span>All Classes</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
-                      tooltip="Attendance"
-                      onClick={closeMobileSidebar}
-                    >
-                      <Link to="/admin/attendance">
-                        <ListChecks />
-                        <span>Attendance</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
                       tooltip="Scheduling"
                       onClick={closeMobileSidebar}
                     >
@@ -258,18 +232,37 @@ const AppSidebarComponent = memo(() => {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
-                      tooltip="Privates"
-                      onClick={closeMobileSidebar}
-                    >
-                      <Link to="/admin/privates">
-                        <CalendarClock />
-                        <span>Privates</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <Collapsible asChild className="group/collapsible">
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton tooltip="Billing">
+                          <SportShoe />
+                          <span>Classes</span>
+                          <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {[
+                            ["All", "/admin/classes"],
+                            ["Create", "/admin/classes/create"],
+                            ["Attendance", "/admin/attendance"],
+                            ["Enrollments", "/admin/classes/enrollments"],
+                            ["Privates", "/admin/privates"],
+                          ].map(([label, to]) => (
+                            <SidebarMenuSubItem key={to}>
+                              <SidebarMenuSubButton
+                                asChild
+                                onClick={closeMobileSidebar}
+                              >
+                                <Link to={to as never}>{label}</Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
                   <Collapsible asChild className="group/collapsible">
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>

@@ -23,6 +23,8 @@ type PasswordResetFormProps = Omit<
   email?: string;
   error?: string | null;
   isSubmitting?: boolean;
+  accountInitiated?: boolean;
+  unavailable?: string;
   onCancelVerification?: () => void;
   onSubmit: React.FormEventHandler<HTMLFormElement>;
 };
@@ -31,6 +33,8 @@ export function PasswordResetForm({
   email,
   error,
   isSubmitting,
+  accountInitiated = false,
+  unavailable,
   onCancelVerification,
   onSubmit,
   ...props
@@ -51,7 +55,18 @@ export function PasswordResetForm({
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit}>
-          {isVerificationStep ? (
+          {unavailable ? (
+            <FieldGroup>
+              <FieldDescription className="text-destructive">
+                {unavailable}
+              </FieldDescription>
+              <Button asChild variant="outline">
+                <Link to={accountInitiated ? "/account" : "/login"}>
+                  {accountInitiated ? "Back to account" : "Back to sign in"}
+                </Link>
+              </Button>
+            </FieldGroup>
+          ) : isVerificationStep ? (
             <>
               <input name="flow" type="hidden" value="reset-verification" />
               <input name="email" type="hidden" value={email} />
@@ -59,75 +74,79 @@ export function PasswordResetForm({
           ) : (
             <input name="flow" type="hidden" value="reset" />
           )}
-          <FieldGroup>
-            {isVerificationStep ? (
-              <>
-                <Field>
-                  <FieldLabel htmlFor="code">Reset code</FieldLabel>
-                  <Input
-                    id="code"
-                    name="code"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    required
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="new-password">New password</FieldLabel>
-                  <PasswordInput
-                    id="new-password"
-                    name="newPassword"
-                    autoComplete="new-password"
-                    required
-                  />
-                  <FieldDescription>
-                    Must be at least 8 characters long.
-                  </FieldDescription>
-                </Field>
-              </>
-            ) : (
-              <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  autoComplete="email"
-                  required
-                />
-              </Field>
-            )}
-            {error ? (
-              <FieldDescription className="text-destructive">
-                {error}
-              </FieldDescription>
-            ) : null}
-            <Field>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting
-                  ? isVerificationStep
-                    ? "Resetting..."
-                    : "Sending..."
-                  : isVerificationStep
-                    ? "Reset Password"
-                    : "Send Code"}
-              </Button>
+          {!unavailable ? (
+            <FieldGroup>
               {isVerificationStep ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onCancelVerification}
-                >
-                  Cancel
-                </Button>
+                <>
+                  <Field>
+                    <FieldLabel htmlFor="code">Reset code</FieldLabel>
+                    <Input
+                      id="code"
+                      name="code"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      required
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="new-password">
+                      New password
+                    </FieldLabel>
+                    <PasswordInput
+                      id="new-password"
+                      name="newPassword"
+                      autoComplete="new-password"
+                      required
+                    />
+                    <FieldDescription>
+                      Must be at least 8 characters long.
+                    </FieldDescription>
+                  </Field>
+                </>
               ) : (
-                <FieldDescription className="text-center">
-                  Remember your password? <Link to="/login">Sign in</Link>
-                </FieldDescription>
+                <Field>
+                  <FieldLabel htmlFor="email">Email</FieldLabel>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="m@example.com"
+                    autoComplete="email"
+                    required
+                  />
+                </Field>
               )}
-            </Field>
-          </FieldGroup>
+              {error ? (
+                <FieldDescription className="text-destructive">
+                  {error}
+                </FieldDescription>
+              ) : null}
+              <Field>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting
+                    ? isVerificationStep
+                      ? "Resetting..."
+                      : "Sending..."
+                    : isVerificationStep
+                      ? "Reset Password"
+                      : "Send Code"}
+                </Button>
+                {isVerificationStep ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onCancelVerification}
+                  >
+                    Cancel
+                  </Button>
+                ) : (
+                  <FieldDescription className="text-center">
+                    Remember your password? <Link to="/login">Sign in</Link>
+                  </FieldDescription>
+                )}
+              </Field>
+            </FieldGroup>
+          ) : null}
         </form>
       </CardContent>
     </Card>

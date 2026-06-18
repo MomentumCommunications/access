@@ -1,20 +1,19 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Authenticated, Unauthenticated } from "convex/react";
 import { Download, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { LazyAddBulletin } from "~/components/lazy/AdminComponents";
-import { AdminBulletin } from "~/components/admin-bulletin";
 import { ProtectedContent } from "~/components/protected-content";
 import { Button } from "~/components/ui/button";
 import { Card, CardDescription, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Separator } from "~/components/ui/separator";
 import { BulletinFeed } from "~/components/bulletin-feed";
+import { useActiveRole } from "~/contexts/ActiveRoleContext";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
-import { hasUserRole } from "~/lib/roles";
+import { ROLE_HOME } from "~/lib/roles";
 
 export const Route = createFileRoute("/_app/home")({
   component: Home,
@@ -112,10 +111,26 @@ function PwaInstallBanner() {
 }
 
 function Home() {
+  const { activeRole, isReady } = useActiveRole();
+
+  if (!isReady) {
+    return (
+      <div className="flex min-h-[calc(100svh-54px)] items-center justify-center">
+        <div className="size-5 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+      </div>
+    );
+  }
+
+  if (activeRole !== "member") {
+    return <Navigate to={ROLE_HOME[activeRole]} replace />;
+  }
+
+  return <MemberHome />;
+}
+
+function MemberHome() {
   // TODO: change array indexed passkeys to be more dynamic
   const { data: userData, isLoading } = useCurrentUser();
-
-  const isAdmin = hasUserRole(userData, "admin");
 
   const userGroups = userData?.group || [];
 

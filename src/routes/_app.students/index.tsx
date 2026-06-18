@@ -1,7 +1,7 @@
 import { useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
-import { Plus } from "lucide-react";
+import { BookOpen, Plus } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -191,6 +191,15 @@ function StudentsPage() {
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
+                  <Button asChild className="w-full">
+                    <Link
+                      to="/classes"
+                      search={{ student: student._id }}
+                    >
+                      <BookOpen />
+                      Enroll this student in classes
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             );

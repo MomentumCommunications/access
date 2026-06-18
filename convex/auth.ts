@@ -3,6 +3,8 @@ import { Password } from "@convex-dev/auth/providers/Password";
 import { ResendOTPPasswordReset } from "./ResendOTPPasswordReset";
 import { ResendOTPEmailVerification } from "./ResendOTPEmailVerification";
 import { resolveUserRoles, highestUserRole } from "./lib/roles";
+import { createAdminNotifications } from "./lib/notifications";
+import { newUserNotification } from "../shared/notifications";
 
 function normalizedEmails(email: string | string[] | undefined) {
   if (!email) return [];
@@ -120,6 +122,31 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
           createdStudentIds: [],
           startedAt: Date.now(),
         });
+      }
+
+      const registeredUser = await ctx.db.get(userId);
+      if (registeredUser) {
+        const fullName = [
+          registeredUser.firstName,
+          registeredUser.lastName,
+        ]
+          .filter(Boolean)
+          .join(" ");
+        await createAdminNotifications(
+          ctx,
+          newUserNotification({
+            userId,
+            name:
+              fullName ||
+              registeredUser.displayName ||
+              registeredUser.name,
+            email:
+              typeof registeredUser.email === "string"
+                ? registeredUser.email
+                : registeredUser.email?.[0],
+          }),
+          userId,
+        );
       }
 
       return userId;

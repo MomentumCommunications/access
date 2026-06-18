@@ -28,9 +28,10 @@ export const createBulletin = mutation({
 });
 
 export const getBulletin = query({
-  args: { id: v.id("bulletin") },
+  args: { id: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const bulletinId = ctx.db.normalizeId("bulletin", args.id);
+    return bulletinId ? await ctx.db.get(bulletinId) : null;
   },
 });
 

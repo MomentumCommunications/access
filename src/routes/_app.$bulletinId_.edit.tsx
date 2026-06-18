@@ -1,9 +1,15 @@
-import { useConvexMutation } from "@convex-dev/react-query";
+import {
+  useConvexMutation,
+  useConvexQuery,
+} from "@convex-dev/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  notFound,
+  useNavigate,
+} from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
-import { useQuery } from "convex/react";
 import { format } from "date-fns";
 import { ArrowLeft, CalendarIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -33,6 +39,7 @@ import { Separator } from "~/components/ui/separator";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { parseBulletinDate } from "~/lib/bulletin-date";
+import { getGlobalClients } from "~/lib/query-client";
 
 type Bulletin = {
   _id: Id<"bulletin">;
@@ -49,6 +56,15 @@ type Bulletin = {
 };
 
 export const Route = createFileRoute("/_app/$bulletinId_/edit")({
+  loader: async ({ params }) => {
+    const { convex } = getGlobalClients();
+    const bulletin = await convex.query(api.bulletins.getBulletin, {
+      id: params.bulletinId,
+    });
+    if (!bulletin) {
+      throw notFound();
+    }
+  },
   component: RouteComponent,
 });
 
@@ -182,10 +198,10 @@ function DateRangePicker({
 
 function RouteComponent() {
   const { bulletinId } = Route.useParams();
-  const bulletin = useQuery(api.bulletins.getBulletin, {
-    id: bulletinId as Id<"bulletin">,
+  const bulletin = useConvexQuery(api.bulletins.getBulletin, {
+    id: bulletinId,
   });
-  const currentUser = useQuery(api.users.current, {});
+  const currentUser = useConvexQuery(api.users.current, {});
   const navigate = useNavigate();
 
   if (bulletin === undefined) {
@@ -196,19 +212,7 @@ function RouteComponent() {
     );
   }
 
-  if (bulletin === null) {
-    return (
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-2 pb-2">
-        <div className="flex w-full items-center justify-end">
-          <Button variant={"link"} onClick={() => navigate({ to: "/home" })}>
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back</span>
-          </Button>
-        </div>
-        <p>Bulletin not found.</p>
-      </div>
-    );
-  }
+  if (bulletin === null) throw notFound();
 
   if (currentUser === undefined) {
     return (

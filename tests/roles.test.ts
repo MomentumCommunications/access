@@ -6,6 +6,7 @@ import {
   getDefaultActiveRole,
   getValidActiveRole,
   highestUserRole,
+  ROLE_HOME,
   resolveUserRoles,
 } from "../src/lib/roles.ts";
 
@@ -53,5 +54,13 @@ describe("role access", () => {
       getValidActiveRole({ roles: ["staff", "member"] }, "member"),
       "member",
     );
+  });
+
+  it("maps each active role to its landing page", () => {
+    assert.deepEqual(ROLE_HOME, {
+      admin: "/admin",
+      staff: "/staff",
+      member: "/home",
+    });
   });
 });

@@ -47,6 +47,56 @@ export default defineSchema({
     .index("email", ["email"])
     .index("phone", ["phone"])
     .index("byExternalId", ["externalId"]),
+  accountSecurityChallenges: defineTable({
+    userId: v.id("users"),
+    type: v.union(
+      v.literal("email_change"),
+      v.literal("password_reset"),
+    ),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("confirming"),
+      v.literal("consumed"),
+      v.literal("expired"),
+      v.literal("superseded"),
+      v.literal("too_many_attempts"),
+    ),
+    codeHash: v.string(),
+    currentEmail: v.string(),
+    newEmail: v.optional(v.string()),
+    attemptCount: v.number(),
+    maxAttempts: v.number(),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    sentAt: v.number(),
+  })
+    .index("byUser", ["userId"])
+    .index("byUserAndType", ["userId", "type"]),
+  accountSecurityThrottles: defineTable({
+    userId: v.id("users"),
+    emailChangeWindowStartedAt: v.optional(v.number()),
+    emailChangeSendCount: v.optional(v.number()),
+    emailChangeLastSentAt: v.optional(v.number()),
+    passwordResetWindowStartedAt: v.optional(v.number()),
+    passwordResetSendCount: v.optional(v.number()),
+    passwordResetLastSentAt: v.optional(v.number()),
+  }).index("byUser", ["userId"]),
+  notifications: defineTable({
+    recipientUserId: v.id("users"),
+    type: v.string(),
+    title: v.string(),
+    body: v.string(),
+    href: v.string(),
+    actorUserId: v.optional(v.id("users")),
+    entityType: v.optional(v.string()),
+    entityId: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("byRecipient", ["recipientUserId"])
+    .index("byRecipientAndCreatedAt", ["recipientUserId", "createdAt"]),
   groups: defineTable({
     name: v.string(),
     description: v.string(),

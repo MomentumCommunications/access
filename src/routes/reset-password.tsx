@@ -1,19 +1,37 @@
 import { useAuthActions } from "@convex-dev/auth/react";
+import {
+  useConvexAction,
+  useConvexQuery,
+} from "@convex-dev/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { api } from "convex/_generated/api";
+import type { Id } from "convex/_generated/dataModel";
 import { useState } from "react";
+import { z } from "zod";
 import { PasswordResetForm } from "~/components/password-reset-form";
 import { getAuthErrorMessage } from "~/lib/auth-errors";
 
 export const Route = createFileRoute("/reset-password")({
+  validateSearch: z.object({
+    accountChallenge: z.string().optional(),
+  }),
   component: ResetPasswordRoute,
 });
 
 function ResetPasswordRoute() {
+  const { accountChallenge } = Route.useSearch();
   const { signIn } = useAuthActions();
+  const confirmAccountPasswordReset = useConvexAction(
+    api.stripe.confirmAccountPasswordReset,
+  );
   const navigate = useNavigate();
   const [resetEmail, setResetEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const accountReset = useConvexQuery(
+    api.users.getAccountPasswordResetChallenge,
+    accountChallenge ? { challengeId: accountChallenge } : "skip",
+  );
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -22,6 +40,15 @@ function ResetPasswordRoute() {
 
     try {
       const formData = new FormData(event.currentTarget);
+      if (accountChallenge) {
+        await confirmAccountPasswordReset({
+          challengeId: accountChallenge as Id<"accountSecurityChallenges">,
+          code: String(formData.get("code") || ""),
+          newPassword: String(formData.get("newPassword") || ""),
+        });
+        await navigate({ to: "/account" });
+        return;
+      }
       await signIn("password", formData);
 
       if (resetEmail) {
@@ -35,6 +62,14 @@ function ResetPasswordRoute() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (accountChallenge && accountReset === undefined) {
+    return (
+      <main className="flex min-h-svh items-center justify-center">
+        <div className="size-5 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+      </main>
+    );
   }
 
   return (
@@ -54,14 +89,29 @@ function ResetPasswordRoute() {
           </div>
         </div>
         <PasswordResetForm
-          email={resetEmail ?? undefined}
+          email={
+            accountChallenge ? accountReset?.email : resetEmail ?? undefined
+          }
           error={error}
           isSubmitting={isSubmitting}
           onCancelVerification={() => {
+            if (accountChallenge) {
+              void navigate({ to: "/account" });
+              return;
+            }
             setResetEmail(null);
             setError(null);
           }}
           onSubmit={handleSubmit}
+          accountInitiated={Boolean(accountChallenge)}
+          unavailable={
+            accountChallenge && !accountReset
+              ? "This password change request is invalid or is not associated with your current account."
+              : accountReset &&
+                  accountReset.status !== "pending"
+                ? "This password change request is no longer active."
+                : undefined
+          }
         />
       </div>
     </main>

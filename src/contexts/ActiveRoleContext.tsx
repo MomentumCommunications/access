@@ -18,6 +18,7 @@ import {
 type ActiveRoleContextValue = {
   activeRole: UserRole;
   availableRoles: UserRole[];
+  isReady: boolean;
   setActiveRole: (role: UserRole) => void;
 };
 
@@ -28,22 +29,27 @@ function storageKey(userId: string) {
 }
 
 export function ActiveRoleProvider({ children }: { children: ReactNode }) {
-  const { data: user } = useCurrentUser();
+  const { data: user, isLoading } = useCurrentUser();
   const availableRoles = useMemo(() => resolveUserRoles(user), [user]);
   const [selectedRole, setSelectedRole] = useState<UserRole>(() =>
     getDefaultActiveRole(user),
   );
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
   const activeRole = getValidActiveRole(user, selectedRole);
+  const isReady =
+    !isLoading && (!user?._id || loadedUserId === user._id);
 
   useEffect(() => {
     if (!user?._id) {
       setSelectedRole(getDefaultActiveRole(user));
+      setLoadedUserId(null);
       return;
     }
 
     const storedRole = window.localStorage.getItem(storageKey(user._id));
     const nextRole = getValidActiveRole(user, storedRole);
     setSelectedRole(nextRole);
+    setLoadedUserId(user._id);
     window.localStorage.setItem(storageKey(user._id), nextRole);
   }, [user]);
 
@@ -61,8 +67,8 @@ export function ActiveRoleProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ activeRole, availableRoles, setActiveRole }),
-    [activeRole, availableRoles, setActiveRole],
+    () => ({ activeRole, availableRoles, isReady, setActiveRole }),
+    [activeRole, availableRoles, isReady, setActiveRole],
   );
 
   return (

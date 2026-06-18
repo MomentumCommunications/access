@@ -57,7 +57,9 @@ import { matchTuitionTier } from "../shared/tuition-pricing";
 import { classWeeklyMinutes } from "./lib/billing/weeklyClassHours";
 import { recordActivityEvent } from "./lib/activityLog";
 import { ensureDefaultHouseholdBilling } from "./lib/householdBilling";
+import { createAdminNotifications } from "./lib/notifications";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
+import { pendingEnrollmentNotification } from "../shared/notifications";
 
 const roleValidator = v.union(
   v.literal("admin"),
@@ -119,6 +121,34 @@ const attendanceReasonValidator = v.union(
   v.literal("school-event"),
   v.literal("no-ride"),
 );
+
+async function notifyAdminsOfPendingEnrollment(
+  ctx: MutationCtx,
+  {
+    enrollmentId,
+    requestedBy,
+    student,
+    classItem,
+  }: {
+    enrollmentId: Id<"classEnrollments">;
+    requestedBy?: Id<"users">;
+    student: Doc<"students">;
+    classItem: Doc<"classes">;
+  },
+) {
+  await createAdminNotifications(
+    ctx,
+    pendingEnrollmentNotification({
+      enrollmentId,
+      requestedBy,
+      studentName: studentDisplayName(student),
+      className: classItem.title,
+      classId: classItem._id,
+      studentId: student._id,
+    }),
+    requestedBy,
+  );
+}
 
 const weekdayValidator = v.union(
   v.literal("sunday"),
@@ -1163,9 +1193,12 @@ export const listMyStudentsForClassSelection = query({
           if (!student) {
             return null;
           }
+          const group = await getStudentEnrollmentGroup(ctx, student);
           return {
             student,
             contact,
+            selfServiceEnrollmentAllowed:
+              studentSelfServiceEnrollmentAllowed(group),
             photoUrl: student.photo
               ? await ctx.storage.getUrl(student.photo)
               : null,
@@ -1485,13 +1518,20 @@ export const signUpStudentForClass = mutation({
       return existing._id;
     }
 
-    return await ctx.db.insert("classEnrollments", {
+    const enrollmentId = await ctx.db.insert("classEnrollments", {
       classId,
       student,
       requestedBy: user._id,
       status: "pending",
       startDate: todayValue(classItem.timezone),
     });
+    await notifyAdminsOfPendingEnrollment(ctx, {
+      enrollmentId,
+      requestedBy: user._id,
+      student: studentDoc,
+      classItem,
+    });
+    return enrollmentId;
   },
 });
 
@@ -1900,15 +1940,23 @@ export const saveMyClassSelections = mutation({
         startDate: todayValue(classItem.timezone),
         endDate: undefined,
       };
+      let enrollmentId: Id<"classEnrollments">;
       if (existing) {
         await ctx.db.patch(existing._id, enrollment);
+        enrollmentId = existing._id;
       } else {
-        await ctx.db.insert("classEnrollments", {
+        enrollmentId = await ctx.db.insert("classEnrollments", {
           classId: classItem._id,
           student,
           ...enrollment,
         });
       }
+      await notifyAdminsOfPendingEnrollment(ctx, {
+        enrollmentId,
+        requestedBy: user._id,
+        student: studentDoc,
+        classItem,
+      });
     }
     for (const { classItem, combinedIds } of sessionPlans) {
       await syncStudentSessionSignups(ctx, {
@@ -2506,6 +2554,7 @@ export const adminEnrollStudentInClass = mutation({
       .unique();
 
     if (existing) {
+      const wasPending = existing.status === "pending";
       await ctx.db.patch(existing._id, {
         status,
         notes,
@@ -2514,10 +2563,18 @@ export const adminEnrollStudentInClass = mutation({
         prorateTuition:
           status === "enrolled" ? prorateTuition : existing.prorateTuition,
       });
+      if (status === "pending" && !wasPending) {
+        await notifyAdminsOfPendingEnrollment(ctx, {
+          enrollmentId: existing._id,
+          requestedBy: user._id,
+          student: studentDoc,
+          classItem,
+        });
+      }
       return existing._id;
     }
 
-    return await ctx.db.insert("classEnrollments", {
+    const enrollmentId = await ctx.db.insert("classEnrollments", {
       classId,
       student,
       requestedBy: user._id,
@@ -2527,6 +2584,15 @@ export const adminEnrollStudentInClass = mutation({
       endDate,
       prorateTuition,
     });
+    if (status === "pending") {
+      await notifyAdminsOfPendingEnrollment(ctx, {
+        enrollmentId,
+        requestedBy: user._id,
+        student: studentDoc,
+        classItem,
+      });
+    }
+    return enrollmentId;
   },
 });
 

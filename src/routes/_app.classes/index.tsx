@@ -9,6 +9,7 @@ import {
   Check,
   ChevronDown,
   Clock3,
+  LockKeyhole,
   MapPin,
   Users,
 } from "lucide-react";
@@ -42,6 +43,7 @@ import {
   type EnrollmentSelectionStatus,
 } from "../../../shared/class-enrollment-selection";
 import { resolvedClassEnrollmentMode } from "../../../shared/per-session-signup";
+import { resolveManagedStudentId } from "../../../shared/member-class-selection";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -106,10 +108,17 @@ function ClassesPage() {
     api.classes.listMyStudentsForClassSelection,
     {},
   );
+  const selectedStudentIdFromAccess = resolveManagedStudentId(
+    selectedStudent,
+    students?.map((row) => row.student._id) || [],
+  );
   const selectedStudentRow =
-    students?.find((row) => row.student._id === selectedStudent) ||
-    students?.[0];
+    students?.find(
+      (row) => row.student._id === selectedStudentIdFromAccess,
+    ) || students?.[0];
   const selectedStudentId = selectedStudentRow?.student._id;
+  const selectedStudentIsManaged =
+    selectedStudentRow?.selfServiceEnrollmentAllowed === false;
   const filterByAge = ageFilter !== "off";
   const selectedSeasonId =
     selectedSeason === "all"
@@ -141,7 +150,7 @@ function ClassesPage() {
   );
   const estimate = useConvexQuery(
     api.classes.estimateMyClassSelections,
-    selectedStudentId
+    selectedStudentId && !selectedStudentIsManaged
       ? {
           student: selectedStudentId,
           recurringClassIds:
@@ -199,7 +208,14 @@ function ClassesPage() {
     classes === undefined || seasons === undefined || students === undefined;
 
   async function handleSaveSelections() {
-    if (!selectedStudentId || review.changeCount === 0 || saving) return;
+    if (
+      !selectedStudentId ||
+      selectedStudentIsManaged ||
+      review.changeCount === 0 ||
+      saving
+    ) {
+      return;
+    }
     setSaving(true);
     setSaveFeedback(null);
     try {
@@ -351,6 +367,30 @@ function ClassesPage() {
             </Button>
           </CardContent>
         </Card>
+      ) : selectedStudentIsManaged ? (
+        <Card className="rounded-lg">
+          <CardHeader>
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
+                <LockKeyhole className="size-5 text-muted-foreground" />
+              </div>
+              <div className="space-y-1.5">
+                <CardTitle>This student is on a managed plan</CardTitle>
+                <CardDescription>
+                  An Access Momentum administrator manages class enrollment for{" "}
+                  {selectedStudentName || "this student"}. Please contact an
+                  administrator if you would like to request a change.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              You can still choose another student above to browse and request
+              classes for them.
+            </p>
+          </CardContent>
+        </Card>
       ) : classes.length === 0 ? (
         <Card className="rounded-lg">
           <CardHeader>
@@ -389,7 +429,7 @@ function ClassesPage() {
         </div>
       )}
 
-      {!loading && students.length > 0 ? (
+      {!loading && students.length > 0 && !selectedStudentIsManaged ? (
         <div className="fixed inset-x-4 bottom-4 z-40 lg:hidden">
           <Sheet>
             <SheetTrigger asChild>

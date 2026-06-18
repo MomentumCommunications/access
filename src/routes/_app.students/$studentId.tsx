@@ -2,7 +2,7 @@ import { useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
-import { Pencil } from "lucide-react";
+import { BookOpen, Pencil } from "lucide-react";
 import { PerSessionClassCard } from "~/components/per-session-class-card";
 import { Button } from "~/components/ui/button";
 import {
@@ -130,11 +130,19 @@ function StudentDetailPage() {
         </Card>
       </section>
       <section className="space-y-4">
-        <div>
-          <h1 className="text-3xl font-bold">Classes</h1>
-          <p className="text-muted-foreground">
-            Classes currently connected to this student.
-          </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Classes</h1>
+            <p className="text-muted-foreground">
+              Classes currently connected to this student.
+            </p>
+          </div>
+          <Button asChild>
+            <Link to="/classes" search={{ student: student._id }}>
+              <BookOpen />
+              Enroll this student in classes
+            </Link>
+          </Button>
         </div>
         <Card className="rounded-lg">
           <CardContent className="pt-6">

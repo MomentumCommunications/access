@@ -25,6 +25,17 @@ import {
 } from "~/components/ui/form";
 
 const formSchema = z.object({
+  firstName: z
+    .string()
+    .trim()
+    .min(1, "First name is required")
+    .max(80, "First name must be 80 characters or fewer"),
+  lastName: z
+    .string()
+    .trim()
+    .min(1, "Last name is required")
+    .max(80, "Last name must be 80 characters or fewer"),
+  phone: z.string().trim().max(30, "Phone number must be 30 characters or fewer"),
   displayName: z
     .string()
     .trim()
@@ -51,6 +62,9 @@ function RouteComponent() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      firstName: "",
+      lastName: "",
+      phone: "",
       displayName: "",
       bio: convexUser?.description || "",
     },
@@ -80,6 +94,9 @@ function RouteComponent() {
     }
 
     form.reset({
+      firstName: convexUser.firstName || "",
+      lastName: convexUser.lastName || "",
+      phone: convexUser.phone || "",
       displayName: convexUser.displayName || convexUser.name || "",
       bio: convexUser.description || "",
     });
@@ -119,6 +136,9 @@ function RouteComponent() {
     try {
       const imageStorageId = await uploadProfileImage();
       await updateProfile({
+        firstName: values.firstName,
+        lastName: values.lastName,
+        phone: values.phone,
         displayName: values.displayName,
         description: values.bio || undefined,
         ...(imageStorageId ? { imageStorageId } : {}),
@@ -171,7 +191,8 @@ function RouteComponent() {
           <div className="flex w-full flex-col gap-2">
             <h1 className="text-2xl font-semibold">Profile</h1>
             <p className="text-muted-foreground">
-              Manage how your name, photo, and bio appear to other members.
+              Manage your account information and how your profile appears to
+              other members.
             </p>
             <Separator />
             <Form {...form}>
@@ -226,6 +247,47 @@ function RouteComponent() {
                     </FormDescription>
                   </div>
                 </div>
+                <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First name</FormLabel>
+                        <FormControl>
+                          <Input {...field} autoComplete="given-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last name</FormLabel>
+                        <FormControl>
+                          <Input {...field} autoComplete="family-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem className="max-w-sm">
+                      <FormLabel>Phone number</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="tel" autoComplete="tel" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="displayName"

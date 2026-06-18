@@ -39,17 +39,42 @@ export const generateProfileImageUploadUrl = mutation({
 
 export const updateProfile = mutation({
   args: {
+    firstName: v.string(),
+    lastName: v.string(),
+    phone: v.string(),
     displayName: v.string(),
     description: v.optional(v.string()),
     imageStorageId: v.optional(v.id("_storage")),
   },
-  handler: async (ctx, { displayName, description, imageStorageId }) => {
+  handler: async (
+    ctx,
+    {
+      firstName,
+      lastName,
+      phone,
+      displayName,
+      description,
+      imageStorageId,
+    },
+  ) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) {
       throw new Error("Not authenticated");
     }
 
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName.trim();
+    const trimmedPhone = phone.trim();
     const trimmedDisplayName = displayName.trim();
+    if (trimmedFirstName.length === 0 || trimmedFirstName.length > 80) {
+      throw new Error("First name must be between 1 and 80 characters");
+    }
+    if (trimmedLastName.length === 0 || trimmedLastName.length > 80) {
+      throw new Error("Last name must be between 1 and 80 characters");
+    }
+    if (trimmedPhone.length > 30) {
+      throw new Error("Phone number must be 30 characters or fewer");
+    }
     if (trimmedDisplayName.length === 0 || trimmedDisplayName.length > 80) {
       throw new Error("Display name must be between 1 and 80 characters");
     }
@@ -63,6 +88,9 @@ export const updateProfile = mutation({
       : undefined;
 
     await ctx.db.patch(userId, {
+      firstName: trimmedFirstName,
+      lastName: trimmedLastName,
+      phone: trimmedPhone || undefined,
       displayName: trimmedDisplayName,
       description,
       ...(image ? { image } : {}),

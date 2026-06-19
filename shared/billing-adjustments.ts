@@ -1,6 +1,8 @@
 export const billingAdjustmentScopeTypes = [
   "household_tuition",
   "billing_run_item",
+  "student_tuition",
+  "student_private_charges",
 ] as const;
 export const billingAdjustmentKinds = ["discount", "surcharge"] as const;
 export const billingAdjustmentCalculationTypes = [
@@ -44,6 +46,30 @@ export type BillingAdjustmentLike = BillingAdjustmentInput & {
   status: BillingAdjustmentStatus;
   createdAt: number;
 };
+
+export type AppliedBillingAdjustment = BillingAdjustmentLike & {
+  applicable: boolean;
+  amountCents: number;
+  percentageBaseCents?: number;
+};
+
+export function billingPeriodsOverlap(
+  adjustmentStart: string,
+  adjustmentEnd: string,
+  periodStart: string,
+  periodEnd: string,
+) {
+  return adjustmentStart <= periodEnd && adjustmentEnd >= periodStart;
+}
+
+export function isRecurringStudentAdjustment(
+  scopeType: BillingAdjustmentScopeType,
+) {
+  return (
+    scopeType === "student_tuition" ||
+    scopeType === "student_private_charges"
+  );
+}
 
 function isValidIsoDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -105,6 +131,21 @@ export function assertBillingAdjustmentEditable(
   }
 }
 
+export function assertBillingAdjustmentFinanciallyEditable({
+  status,
+  hasDispatchedUsage,
+}: {
+  status: BillingAdjustmentStatus;
+  hasDispatchedUsage: boolean;
+}) {
+  assertBillingAdjustmentEditable(status);
+  if (hasDispatchedUsage) {
+    throw new Error(
+      "This adjustment has affected a dispatched billing run. Void it and create a replacement instead.",
+    );
+  }
+}
+
 export function buildBillingAdjustmentActivityEvent({
   adjustmentId,
   actorId,
@@ -144,13 +185,71 @@ export function selectBillingAdjustments(
       (adjustment) =>
         adjustment.scopeType === scopeType &&
         adjustment.scopeId === scopeId &&
-        adjustment.periodStart === periodStart &&
-        adjustment.periodEnd === periodEnd,
+        (isRecurringStudentAdjustment(adjustment.scopeType)
+          ? billingPeriodsOverlap(
+              adjustment.periodStart,
+              adjustment.periodEnd,
+              periodStart,
+              periodEnd,
+            )
+          : adjustment.periodStart === periodStart &&
+            adjustment.periodEnd === periodEnd),
     )
     .sort(
       (left, right) =>
         left.createdAt - right.createdAt || left.id.localeCompare(right.id),
     );
+}
+
+export function applyTargetedBillingAdjustments(
+  percentageBaseCents: number,
+  adjustments: BillingAdjustmentLike[],
+) {
+  if (!Number.isSafeInteger(percentageBaseCents)) {
+    throw new Error("Billing adjustment base must be an integer cent value.");
+  }
+  const applicable = percentageBaseCents > 0;
+  const resolved: AppliedBillingAdjustment[] = adjustments
+    .filter((adjustment) => adjustment.status === "active")
+    .sort(
+      (left, right) =>
+        left.createdAt - right.createdAt || left.id.localeCompare(right.id),
+    )
+    .map((adjustment) => {
+      const absoluteAmountCents = !applicable
+        ? 0
+        : adjustment.calculationType === "fixed_cents"
+          ? adjustment.amount
+          : Math.round((percentageBaseCents * adjustment.amount) / 10_000);
+      return {
+        ...adjustment,
+        applicable,
+        amountCents: !applicable
+          ? 0
+          : adjustment.kind === "discount"
+            ? -absoluteAmountCents
+            : absoluteAmountCents,
+        percentageBaseCents:
+          adjustment.calculationType === "percent"
+            ? percentageBaseCents
+            : undefined,
+      };
+    });
+
+  return {
+    percentageBaseCents,
+    adjustments: resolved,
+    adjustmentTotalCents: resolved.reduce(
+      (total, adjustment) => total + adjustment.amountCents,
+      0,
+    ),
+    totalCents:
+      percentageBaseCents +
+      resolved.reduce(
+        (total, adjustment) => total + adjustment.amountCents,
+        0,
+      ),
+  };
 }
 
 export function applyBillingAdjustments(

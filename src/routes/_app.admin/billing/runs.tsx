@@ -15,18 +15,13 @@ import {
   ReceiptText,
   Send,
 } from "lucide-react";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import {
   parseCurrencyToCents,
   parsePercentToBasisPoints,
 } from "../../../../shared/tuition-pricing";
+import { BillingDateRangePicker } from "~/components/billing-date-range-picker";
 import { RoleGate } from "~/components/role-gate";
 import {
   AlertDialog,
@@ -66,9 +61,7 @@ export const Route = createFileRoute("/_app/admin/billing/runs")({
   component: BillingRunsPage,
 });
 
-type BillingRuns = FunctionReturnType<
-  typeof api.billing.adminListBillingRuns
->;
+type BillingRuns = FunctionReturnType<typeof api.billing.adminListBillingRuns>;
 type BillingRun = BillingRuns[number];
 type BillingRunItem = BillingRun["items"][number];
 type RunAdjustment = BillingRunItem["adjustments"][number];
@@ -167,8 +160,9 @@ function BillingRunsAdminPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [dispatchRun, setDispatchRun] = useState<BillingRun | null>(null);
   const [isDispatching, setIsDispatching] = useState(false);
-  const [adjustmentItem, setAdjustmentItem] =
-    useState<BillingRunItem | null>(null);
+  const [adjustmentItem, setAdjustmentItem] = useState<BillingRunItem | null>(
+    null,
+  );
   const [editingAdjustment, setEditingAdjustment] =
     useState<RunAdjustment | null>(null);
   const [voidingAdjustment, setVoidingAdjustment] =
@@ -275,7 +269,9 @@ function BillingRunsAdminPage() {
     const itemIds = dispatchRun.items
       .filter(
         (item) =>
-          item.status !== "dispatched" && selectedIds.has(item._id),
+          item.status !== "dispatched" &&
+          !item.requiresAdminReview &&
+          selectedIds.has(item._id),
       )
       .map((item) => item._id);
     if (itemIds.length === 0) return;
@@ -309,10 +305,7 @@ function BillingRunsAdminPage() {
     }
   }
 
-  function openAdjustment(
-    item: BillingRunItem,
-    adjustment?: RunAdjustment,
-  ) {
+  function openAdjustment(item: BillingRunItem, adjustment?: RunAdjustment) {
     setAdjustmentItem(item);
     setEditingAdjustment(adjustment || null);
     setAdjustmentValues(adjustmentForm(adjustment));
@@ -404,41 +397,22 @@ function BillingRunsAdminPage() {
             creating duplicates.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4 lg:grid-cols-[auto_auto_1fr_auto] lg:items-end">
-          <div className="space-y-2">
-            <Label htmlFor="run-start">Start</Label>
-            <Input
-              id="run-start"
-              type="date"
-              value={startDate}
-              onChange={(event) => {
-                if (!event.target.value) return;
-                setStartDate(event.target.value);
-                if (endDate < event.target.value) {
-                  setEndDate(event.target.value);
-                }
-              }}
-              className="w-full lg:w-44"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="run-end">End</Label>
-            <Input
-              id="run-end"
-              type="date"
-              min={startDate}
-              value={endDate}
-              onChange={(event) => {
-                if (event.target.value) setEndDate(event.target.value);
-              }}
-              className="w-full lg:w-44"
-            />
-          </div>
+        <CardContent className="grid gap-4 lg:grid-cols-[auto_1fr_auto] lg:items-end">
+          <BillingDateRangePicker
+            id="run-period"
+            start={startDate}
+            end={endDate}
+            onChange={(start, end) => {
+              setStartDate(start);
+              setEndDate(end);
+            }}
+          />
           <div className="space-y-2">
             <Label htmlFor="run-source">Include</Label>
             <select
               id="run-source"
               value={sourceMode}
+              defaultValue="charges"
               onChange={(event) =>
                 setSourceMode(event.target.value as SourceMode)
               }
@@ -492,12 +466,10 @@ function BillingRunsAdminPage() {
       ) : (
         runs.map((run) => {
           const selectedCount = run.items.filter(
-            (item) =>
-              item.status !== "dispatched" &&
-              selectedIds.has(item._id),
+            (item) => item.status !== "dispatched" && selectedIds.has(item._id),
           ).length;
           const draftItems = run.items.filter(
-            (item) => item.status !== "dispatched",
+            (item) => item.status !== "dispatched" && !item.requiresAdminReview,
           );
           const allSelected =
             draftItems.length > 0 && selectedCount === draftItems.length;
@@ -573,7 +545,9 @@ function BillingRunsAdminPage() {
                         item.status !== "dispatched" &&
                         selectedIds.has(item._id)
                       }
-                      disabled={item.status === "dispatched"}
+                      disabled={
+                        item.status === "dispatched" || item.requiresAdminReview
+                      }
                       onCheckedChange={(checked) => {
                         setSelectedIds((current) => {
                           const next = new Set(current);
@@ -608,13 +582,18 @@ function BillingRunsAdminPage() {
                       <p className="mt-2 text-xs text-muted-foreground">
                         {item.sourceSummary.tuitionStudentCount} tuition
                         students · {item.sourceSummary.privateChargeCount}{" "}
-                        private ·{" "}
-                        {item.sourceSummary.perSessionChargeCount} per-session
+                        private · {item.sourceSummary.perSessionChargeCount}{" "}
+                        per-session
                       </p>
                       {item.sourceSummary.tuitionIncomplete ||
                       item.sourceSummary.unpricedChargeCount > 0 ? (
                         <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
                           Incomplete source pricing is present.
+                        </p>
+                      ) : null}
+                      {item.requiresAdminReview ? (
+                        <p className="mt-1 text-xs text-destructive">
+                          {item.adminReviewReason}
                         </p>
                       ) : null}
                       {item.dispatchFailureReason ? (
@@ -636,6 +615,29 @@ function BillingRunsAdminPage() {
                       ) : null}
                     </div>
                     <div className="space-y-2">
+                      {item.sourceAdjustments.length > 0 ? (
+                        <div className="space-y-1 border-b pb-3">
+                          <span className="text-sm font-medium">
+                            Student adjustments
+                          </span>
+                          {item.sourceAdjustments.map((adjustment) => (
+                            <div
+                              key={`${adjustment.adjustmentId}-${adjustment.scopeType}`}
+                              className="flex items-center justify-between gap-2 text-sm"
+                            >
+                              <span>
+                                {adjustment.studentName} ·{" "}
+                                {reasonLabels[adjustment.reasonCode]}
+                              </span>
+                              <span>
+                                {adjustment.applicable
+                                  ? formatCurrency(adjustment.amountCents)
+                                  : "No applicable subtotal"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="text-sm font-medium">
                           Final adjustments
@@ -737,11 +739,9 @@ function BillingRunsAdminPage() {
                       ) : null}
                       <div className="flex justify-between gap-6">
                         <span className="text-muted-foreground">
-                          Run adjustments
+                          All adjustments
                         </span>
-                        <span>
-                          {formatCurrency(item.adjustmentTotalCents)}
-                        </span>
+                        <span>{formatCurrency(item.adjustmentTotalCents)}</span>
                       </div>
                       <div className="flex justify-between gap-6 border-t pt-2 text-base font-semibold">
                         <span>Final total</span>

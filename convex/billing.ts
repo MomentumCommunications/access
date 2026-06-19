@@ -40,8 +40,12 @@ import {
 } from "./lib/billing/privatePricing";
 import {
   applyBillingAdjustments,
-  assertBillingAdjustmentEditable,
+  applyTargetedBillingAdjustments,
+  assertBillingAdjustmentFinanciallyEditable,
+  billingPeriodsOverlap,
   buildBillingAdjustmentActivityEvent,
+  isRecurringStudentAdjustment,
+  selectBillingAdjustments,
   validateBillingAdjustmentInput,
   type BillingAdjustmentInput,
 } from "../shared/billing-adjustments";
@@ -50,10 +54,12 @@ import {
   buildBillingRunBundles,
   buildBillingRunItemSnapshot,
   calculateBillingRunItemTotal,
+  resolveBillingRunSourceAdjustments,
   resolveBillingRunGeneration,
   type BillingRunSourceMode,
 } from "../shared/billing-runs";
 import { recordActivityEvent } from "./lib/activityLog";
+import { resolveBillingRunItemSourceComponents } from "./lib/billing/runSourceComponents";
 
 function accountName(account: {
   displayName?: string;
@@ -106,6 +112,8 @@ const privateParticipantCountValidator = v.union(
 const billingAdjustmentScopeTypeValidator = v.union(
   v.literal("household_tuition"),
   v.literal("billing_run_item"),
+  v.literal("student_tuition"),
+  v.literal("student_private_charges"),
 );
 const billingAdjustmentKindValidator = v.union(
   v.literal("discount"),
@@ -200,6 +208,48 @@ async function assertRunAdjustmentScopeEditable(
   ) {
     throw new Error("Billing adjustment period must match its run item.");
   }
+}
+
+async function assertBillingAdjustmentTargetExists(
+  ctx: BillingCtx,
+  input: Pick<BillingAdjustmentInput, "scopeType" | "scopeId">,
+) {
+  if (!isRecurringStudentAdjustment(input.scopeType)) return;
+  const studentId = ctx.db.normalizeId("students", input.scopeId);
+  if (!studentId || !(await ctx.db.get(studentId))) {
+    throw new Error("Billing adjustment student not found.");
+  }
+}
+
+async function hasDispatchedAdjustmentUsage(
+  ctx: BillingCtx,
+  adjustmentId: Id<"billingAdjustments">,
+) {
+  const dispatched = (await ctx.db.query("billingRunItems").collect()).filter(
+    (item) => item.status === "dispatched",
+  );
+  return dispatched.some((item) =>
+    item.dispatchedSourceAdjustments?.some(
+      (adjustment) => adjustment.adjustmentId === adjustmentId,
+    ),
+  );
+}
+
+async function getRecurringStudentAdjustments(
+  ctx: BillingCtx,
+  periodStart: string,
+  periodEnd: string,
+) {
+  return (await ctx.db.query("billingAdjustments").collect()).filter(
+    (adjustment) =>
+      isRecurringStudentAdjustment(adjustment.scopeType) &&
+      billingPeriodsOverlap(
+        adjustment.periodStart,
+        adjustment.periodEnd,
+        periodStart,
+        periodEnd,
+      ),
+  );
 }
 
 async function getPricingSchemaTiers(
@@ -531,7 +581,35 @@ async function getPeriodTuitionReview(
         };
       }),
     );
-    const tuitionRows = rows.filter((row) => row !== null);
+    const recurringAdjustments = await getRecurringStudentAdjustments(
+      ctx,
+      periodStart,
+      periodEnd,
+    );
+    const tuitionRows = rows
+      .filter((row) => row !== null)
+      .map((row) => {
+        const rawBaseTuitionCents = row.baseTuitionCents;
+        const applied = applyTargetedBillingAdjustments(
+          rawBaseTuitionCents || 0,
+          selectBillingAdjustments(
+            recurringAdjustments.map(billingAdjustmentLike),
+            "student_tuition",
+            row.studentId,
+            periodStart,
+            periodEnd,
+          ),
+        );
+        return {
+          ...row,
+          rawBaseTuitionCents,
+          baseTuitionCents:
+            rawBaseTuitionCents === undefined
+              ? undefined
+              : applied.totalCents,
+          studentBillingAdjustments: applied.adjustments,
+        };
+      });
     const householdTuitions = aggregateHouseholdTuitions(
       tuitionRows,
       activeSchema.siblingDiscount || disabledSiblingDiscount,
@@ -597,6 +675,8 @@ async function getPeriodTuitionReview(
       name: activeSchema.name,
       version: activeSchema.version,
     },
+    siblingDiscount:
+      activeSchema.siblingDiscount || disabledSiblingDiscount,
     rows: tuitionRows,
     households,
     excludedEnrollments,
@@ -631,6 +711,7 @@ export const adminCreateBillingAdjustment = mutation({
     const input = storedBillingAdjustmentInput(args);
     validateBillingAdjustmentInput(input);
     await assertRunAdjustmentScopeEditable(ctx, input);
+    await assertBillingAdjustmentTargetExists(ctx, input);
     const now = Date.now();
     const adjustmentId = await ctx.db.insert("billingAdjustments", {
       ...input,
@@ -680,7 +761,13 @@ export const adminUpdateBillingAdjustment = mutation({
     if (!adjustment) {
       throw new Error("Billing adjustment not found.");
     }
-    assertBillingAdjustmentEditable(adjustment.status);
+    assertBillingAdjustmentFinanciallyEditable({
+      status: adjustment.status,
+      hasDispatchedUsage: await hasDispatchedAdjustmentUsage(
+        ctx,
+        adjustment._id,
+      ),
+    });
     await assertRunAdjustmentScopeEditable(ctx, adjustment);
     const input = storedBillingAdjustmentInput({
       scopeType: adjustment.scopeType,
@@ -694,6 +781,7 @@ export const adminUpdateBillingAdjustment = mutation({
       note,
     });
     validateBillingAdjustmentInput(input);
+    await assertBillingAdjustmentTargetExists(ctx, input);
     const previous = {
       kind: adjustment.kind,
       calculationType: adjustment.calculationType,
@@ -773,6 +861,120 @@ export const adminVoidBillingAdjustment = mutation({
         },
       }),
     );
+  },
+});
+
+export const adminListBillingAdjustments = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const [adjustments, students, items] = await Promise.all([
+      ctx.db.query("billingAdjustments").collect(),
+      ctx.db.query("students").collect(),
+      ctx.db.query("billingRunItems").collect(),
+    ]);
+    const studentById = new Map(
+      students.map((student) => [student._id, student]),
+    );
+
+    const rows = await Promise.all(
+      adjustments
+        .sort(
+          (left, right) =>
+            right.createdAt - left.createdAt ||
+            left._id.localeCompare(right._id),
+        )
+        .map(async (adjustment) => {
+          const history = [];
+          if (isRecurringStudentAdjustment(adjustment.scopeType)) {
+            for (const item of items) {
+              if (
+                !billingPeriodsOverlap(
+                  adjustment.periodStart,
+                  adjustment.periodEnd,
+                  item.periodStart,
+                  item.periodEnd,
+                )
+              ) {
+                continue;
+              }
+              const sourceComponentsResolution =
+                item.status === "draft"
+                  ? await resolveBillingRunItemSourceComponents(ctx, item)
+                  : null;
+              const resolved =
+                item.status === "dispatched"
+                  ? item.dispatchedSourceAdjustments || []
+                  : sourceComponentsResolution?.status === "ready"
+                    ? resolveBillingRunSourceAdjustments({
+                        periodStart: item.periodStart,
+                        periodEnd: item.periodEnd,
+                        components: sourceComponentsResolution.components,
+                        adjustments: [billingAdjustmentLike(adjustment)],
+                      }).sourceAdjustments
+                    : [];
+              const applied = resolved.find(
+                (candidate) =>
+                  candidate.adjustmentId === adjustment._id,
+              );
+              if (applied) {
+                history.push({
+                  billingRunItemId: item._id,
+                  householdName: item.householdName,
+                  periodStart: item.periodStart,
+                  periodEnd: item.periodEnd,
+                  runStatus: item.status,
+                  applicable: applied.applicable,
+                  amountCents: applied.amountCents,
+                });
+              }
+            }
+          }
+          const studentId = isRecurringStudentAdjustment(
+            adjustment.scopeType,
+          )
+            ? ctx.db.normalizeId("students", adjustment.scopeId)
+            : null;
+          const student = studentId ? studentById.get(studentId) : null;
+          const hasDispatchedUsage = history.some(
+            (entry) => entry.runStatus === "dispatched",
+          );
+          return {
+            ...adjustment,
+            targetName: student
+              ? `${student.firstName} ${student.lastName}`
+              : adjustment.scopeId,
+            history: history.sort(
+              (left, right) =>
+                right.periodStart.localeCompare(left.periodStart) ||
+                left.billingRunItemId.localeCompare(
+                  right.billingRunItemId,
+                ),
+            ),
+            hasDispatchedUsage,
+            canEdit:
+              adjustment.status === "active" && !hasDispatchedUsage,
+          };
+        }),
+    );
+
+    return {
+      adjustments: rows,
+      students: students
+        .filter((student) => student.status === "active")
+        .sort(
+          (left, right) =>
+            `${left.firstName} ${left.lastName}`.localeCompare(
+              `${right.firstName} ${right.lastName}`,
+            ) || left._id.localeCompare(right._id),
+        )
+        .map((student) => ({
+          _id: student._id,
+          name:
+            student.preferredName ||
+            `${student.firstName} ${student.lastName}`,
+        })),
+    };
   },
 });
 
@@ -1139,6 +1341,20 @@ export const adminGenerateBillingRun = mutation({
         totalTuitionCents: household.totalTuitionCents,
         studentCount: household.students.length,
         hasIncompleteTuition: household.hasIncompleteTuition,
+        students: household.students.map((student) => ({
+          studentId: student.studentId,
+          studentName: student.studentName,
+          baseTuitionCents: student.rawBaseTuitionCents,
+        })),
+        siblingDiscount: tuitionReview.siblingDiscount,
+        householdTuitionAdjustmentTotalCents:
+          household.billingAdjustments
+            .filter((adjustment) => adjustment.status === "active")
+            .reduce(
+              (total, adjustment) =>
+                total + (adjustment.appliedAmountCents || 0),
+              0,
+            ),
       })) || [];
     const privateChargeSources =
       chargesReview?.privateCharges.map((charge) => ({
@@ -1152,6 +1368,8 @@ export const adminGenerateBillingRun = mutation({
         sourceType: "private" as const,
         sourceId: charge.participation._id,
         amountCents: charge.pricing.amountCents,
+        studentId: charge.student._id,
+        studentName: `${charge.student.firstName} ${charge.student.lastName}`,
       })) || [];
     const perSessionChargeSources =
       chargesReview?.perSessionCharges.map((charge) => ({
@@ -1165,6 +1383,8 @@ export const adminGenerateBillingRun = mutation({
         sourceType: "per_session" as const,
         sourceId: `${charge.studentId}:${charge.classId}`,
         amountCents: charge.aggregateAmountCents,
+        studentId: charge.studentId,
+        studentName: `${charge.student.firstName} ${charge.student.lastName}`,
       })) || [];
     const bundles = buildBillingRunBundles({
       sourceMode: args.sourceMode,
@@ -1179,6 +1399,13 @@ export const adminGenerateBillingRun = mutation({
     }
 
     const now = Date.now();
+    const recurringAdjustments = (
+      await getRecurringStudentAdjustments(
+        ctx,
+        args.periodStart,
+        args.periodEnd,
+      )
+    ).map(billingAdjustmentLike);
     const billingRunId = await ctx.db.insert("billingRuns", {
       periodStart: args.periodStart,
       periodEnd: args.periodEnd,
@@ -1189,6 +1416,12 @@ export const adminGenerateBillingRun = mutation({
       updatedAt: now,
     });
     for (const bundle of bundles) {
+      const resolvedSources = resolveBillingRunSourceAdjustments({
+        periodStart: args.periodStart,
+        periodEnd: args.periodEnd,
+        components: bundle.sourceComponents,
+        adjustments: recurringAdjustments,
+      });
       await ctx.db.insert("billingRunItems", {
         billingRunId,
         ...buildBillingRunItemSnapshot(
@@ -1196,6 +1429,10 @@ export const adminGenerateBillingRun = mutation({
           args.periodStart,
           args.periodEnd,
         ),
+        tuitionSubtotalCents: resolvedSources.tuitionSubtotalCents,
+        chargesSubtotalCents: resolvedSources.chargesSubtotalCents,
+        subtotalBeforeRunAdjustmentsCents:
+          resolvedSources.subtotalAfterSourceAdjustmentsCents,
         status: "draft",
         createdAt: now,
         updatedAt: now,
@@ -1249,6 +1486,13 @@ export const adminListBillingRuns = query({
 
     return await Promise.all(
       runs.map(async (run) => {
+        const recurringAdjustments = (
+          await getRecurringStudentAdjustments(
+            ctx,
+            run.periodStart,
+            run.periodEnd,
+          )
+        ).map(billingAdjustmentLike);
         const items = (
           await ctx.db
             .query("billingRunItems")
@@ -1272,8 +1516,43 @@ export const adminListBillingRuns = query({
                 left.createdAt - right.createdAt ||
                 left._id.localeCompare(right._id),
             );
+            const sourceComponentsResolution =
+              item.status === "draft" && recurringAdjustments.length > 0
+                ? await resolveBillingRunItemSourceComponents(ctx, item)
+                : null;
+            const sourceResolution =
+              item.status === "dispatched"
+                ? {
+                    tuitionSubtotalCents:
+                      item.dispatchedTuitionSubtotalCents ??
+                      item.tuitionSubtotalCents,
+                    chargesSubtotalCents:
+                      item.dispatchedChargesSubtotalCents ??
+                      item.chargesSubtotalCents,
+                    sourceAdjustments:
+                      item.dispatchedSourceAdjustments || [],
+                    subtotalAfterSourceAdjustmentsCents:
+                      (item.dispatchedTuitionSubtotalCents ??
+                        item.tuitionSubtotalCents) +
+                      (item.dispatchedChargesSubtotalCents ??
+                        item.chargesSubtotalCents) +
+                      (item.dispatchedSourceAdjustments || []).reduce(
+                        (total, adjustment) =>
+                          total + adjustment.amountCents,
+                        0,
+                      ),
+                  }
+                : sourceComponentsResolution?.status === "ready"
+                  ? resolveBillingRunSourceAdjustments({
+                      periodStart: item.periodStart,
+                      periodEnd: item.periodEnd,
+                      components: sourceComponentsResolution.components,
+                      adjustments: recurringAdjustments,
+                    })
+                  : null;
             const calculated = calculateBillingRunItemTotal(
-              item.subtotalBeforeRunAdjustmentsCents,
+              sourceResolution?.subtotalAfterSourceAdjustmentsCents ??
+                item.subtotalBeforeRunAdjustmentsCents,
               adjustments.map(billingAdjustmentLike),
             );
             const appliedById = new Map(
@@ -1284,6 +1563,20 @@ export const adminListBillingRuns = query({
             );
             return {
               ...item,
+              tuitionSubtotalCents:
+                sourceResolution?.tuitionSubtotalCents ??
+                item.tuitionSubtotalCents,
+              chargesSubtotalCents:
+                sourceResolution?.chargesSubtotalCents ??
+                item.chargesSubtotalCents,
+              sourceAdjustments:
+                sourceResolution?.sourceAdjustments || [],
+              requiresAdminReview:
+                sourceComponentsResolution?.status === "requires_review",
+              adminReviewReason:
+                sourceComponentsResolution?.status === "requires_review"
+                  ? sourceComponentsResolution.reason
+                  : undefined,
               adjustments: adjustments.map((adjustment) => ({
                 ...adjustment,
                 appliedAmountCents: appliedById.get(adjustment._id)
@@ -1291,7 +1584,12 @@ export const adminListBillingRuns = query({
               })),
               adjustmentTotalCents:
                 item.dispatchedAdjustmentTotalCents ??
-                calculated.adjustmentTotalCents,
+                ((sourceResolution?.sourceAdjustments || []).reduce(
+                  (total, adjustment) =>
+                    total + adjustment.amountCents,
+                  0,
+                ) +
+                  calculated.adjustmentTotalCents),
               finalTotalCents:
                 item.dispatchedFinalTotalCents ?? calculated.totalCents,
             };

@@ -276,6 +276,7 @@ const AppSidebarComponent = memo(() => {
                         <SidebarMenuSub>
                           {[
                             ["Pricing", "/admin/billing/pricing"],
+                            ["Adjustments", "/admin/billing/adjustments"],
                             ["Tuitions", "/admin/billing/tuitions"],
                             ["Charges", "/admin/billing/charges"],
                             ["Runs", "/admin/billing/runs"],

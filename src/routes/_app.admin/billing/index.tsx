@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Banknote,
+  CalendarRange,
   Layers3,
   ReceiptText,
   SlidersHorizontal,
@@ -26,6 +27,13 @@ const destinations = [
     description: "Configure tuition tiers and future billing adjustments.",
     to: "/admin/billing/pricing",
     icon: <SlidersHorizontal />,
+  },
+  {
+    title: "Adjustments",
+    description:
+      "Schedule recurring student tuition and private-charge adjustments.",
+    to: "/admin/billing/adjustments",
+    icon: <CalendarRange />,
   },
   {
     title: "Tuitions",

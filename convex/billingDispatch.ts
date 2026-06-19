@@ -145,6 +145,9 @@ export const adminDispatchBillingRunItems = action({
             autopayEnabled: dispatched.autopayEnabled,
             adjustmentTotalCents: prepared.item.adjustmentTotalCents,
             finalTotalCents: prepared.item.finalTotalCents,
+            tuitionSubtotalCents: prepared.item.tuitionSubtotalCents,
+            chargesSubtotalCents: prepared.item.chargesSubtotalCents,
+            sourceAdjustments: prepared.item.sourceAdjustments,
           },
         );
         results.push({

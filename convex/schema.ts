@@ -369,6 +369,8 @@ export default defineSchema({
     scopeType: v.union(
       v.literal("household_tuition"),
       v.literal("billing_run_item"),
+      v.literal("student_tuition"),
+      v.literal("student_private_charges"),
     ),
     scopeId: v.string(),
     periodStart: v.string(),
@@ -444,6 +446,63 @@ export default defineSchema({
       privateChargeIds: v.array(v.string()),
       perSessionChargeIds: v.array(v.string()),
     }),
+    sourceComponents: v.optional(
+      v.object({
+        tuitionStudents: v.array(
+          v.object({
+            studentId: v.string(),
+            studentName: v.string(),
+            baseTuitionCents: v.optional(v.number()),
+          }),
+        ),
+        privateStudents: v.array(
+          v.object({
+            studentId: v.string(),
+            studentName: v.string(),
+            subtotalCents: v.number(),
+          }),
+        ),
+        perSessionChargesCents: v.number(),
+        householdTuitionAdjustmentTotalCents: v.number(),
+        siblingDiscount: v.optional(
+          v.object({
+            enabled: v.boolean(),
+            percentOffBasisPoints: v.number(),
+            appliesTo: v.literal("all_but_highest"),
+          }),
+        ),
+      }),
+    ),
+    dispatchedSourceAdjustments: v.optional(
+      v.array(
+        v.object({
+          adjustmentId: v.string(),
+          scopeType: v.union(
+            v.literal("student_tuition"),
+            v.literal("student_private_charges"),
+          ),
+          scopeId: v.string(),
+          studentName: v.string(),
+          kind: v.union(v.literal("discount"), v.literal("surcharge")),
+          calculationType: v.union(
+            v.literal("fixed_cents"),
+            v.literal("percent"),
+          ),
+          reasonCode: v.union(
+            v.literal("scholarship"),
+            v.literal("goodwill"),
+            v.literal("manual_correction"),
+            v.literal("waiver"),
+            v.literal("surcharge"),
+            v.literal("other"),
+          ),
+          note: v.optional(v.string()),
+          applicable: v.boolean(),
+          amountCents: v.number(),
+          percentageBaseCents: v.optional(v.number()),
+        }),
+      ),
+    ),
     status: v.union(
       v.literal("draft"),
       v.literal("dispatch_failed"),
@@ -455,6 +514,8 @@ export default defineSchema({
     dispatchedAt: v.optional(v.number()),
     dispatchedAdjustmentTotalCents: v.optional(v.number()),
     dispatchedFinalTotalCents: v.optional(v.number()),
+    dispatchedTuitionSubtotalCents: v.optional(v.number()),
+    dispatchedChargesSubtotalCents: v.optional(v.number()),
     stripeCustomerId: v.optional(v.string()),
     stripeInvoiceId: v.optional(v.string()),
     collectionMethod: v.optional(

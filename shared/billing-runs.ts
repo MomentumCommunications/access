@@ -1,7 +1,11 @@
 import {
   applyBillingAdjustments,
+  applyTargetedBillingAdjustments,
+  selectBillingAdjustments,
   type BillingAdjustmentLike,
+  type BillingAdjustmentReasonCode,
 } from "./billing-adjustments.ts";
+import type { SiblingDiscountConfig } from "./tuition-pricing.ts";
 
 export const billingRunSourceModes = ["tuition", "charges", "both"] as const;
 export type BillingRunSourceMode = (typeof billingRunSourceModes)[number];
@@ -13,6 +17,13 @@ export type BillingRunTuitionSource = {
   totalTuitionCents: number;
   studentCount: number;
   hasIncompleteTuition: boolean;
+  students?: {
+    studentId: string;
+    studentName: string;
+    baseTuitionCents?: number;
+  }[];
+  siblingDiscount?: SiblingDiscountConfig;
+  householdTuitionAdjustmentTotalCents?: number;
 };
 
 export type BillingRunChargeSource = {
@@ -22,6 +33,38 @@ export type BillingRunChargeSource = {
   sourceType: "private" | "per_session";
   sourceId: string;
   amountCents?: number;
+  studentId?: string;
+  studentName?: string;
+};
+
+export type BillingRunSourceComponents = {
+  tuitionStudents: {
+    studentId: string;
+    studentName: string;
+    baseTuitionCents?: number;
+  }[];
+  privateStudents: {
+    studentId: string;
+    studentName: string;
+    subtotalCents: number;
+  }[];
+  perSessionChargesCents: number;
+  householdTuitionAdjustmentTotalCents: number;
+  siblingDiscount?: SiblingDiscountConfig;
+};
+
+export type ResolvedSourceAdjustment = {
+  adjustmentId: string;
+  scopeType: "student_tuition" | "student_private_charges";
+  scopeId: string;
+  studentName: string;
+  kind: "discount" | "surcharge";
+  calculationType: "fixed_cents" | "percent";
+  reasonCode: BillingAdjustmentReasonCode;
+  note?: string;
+  applicable: boolean;
+  amountCents: number;
+  percentageBaseCents?: number;
 };
 
 export type BillingRunBundle = {
@@ -45,6 +88,7 @@ export type BillingRunBundle = {
     privateChargeIds: string[];
     perSessionChargeIds: string[];
   };
+  sourceComponents: BillingRunSourceComponents;
 };
 
 export function buildBillingRunItemSnapshot(
@@ -122,6 +166,12 @@ export function buildBillingRunBundles({
         privateChargeIds: [],
         perSessionChargeIds: [],
       },
+      sourceComponents: {
+        tuitionStudents: [],
+        privateStudents: [],
+        perSessionChargesCents: 0,
+        householdTuitionAdjustmentTotalCents: 0,
+      },
     };
     grouped.set(householdId, bundle);
     return bundle;
@@ -134,6 +184,25 @@ export function buildBillingRunBundles({
       bundle.sourceSummary.tuitionStudentCount = tuition.studentCount;
       bundle.sourceSummary.tuitionIncomplete = tuition.hasIncompleteTuition;
       bundle.sourceReferences.tuitionHouseholdId = tuition.householdId;
+      bundle.sourceComponents.tuitionStudents = tuition.students || [];
+      bundle.sourceComponents.siblingDiscount = tuition.siblingDiscount;
+      bundle.sourceComponents.householdTuitionAdjustmentTotalCents =
+        tuition.householdTuitionAdjustmentTotalCents || 0;
+      if (includesCharges(sourceMode)) {
+        for (const student of tuition.students || []) {
+          if (
+            !bundle.sourceComponents.privateStudents.some(
+              (row) => row.studentId === student.studentId,
+            )
+          ) {
+            bundle.sourceComponents.privateStudents.push({
+              studentId: student.studentId,
+              studentName: student.studentName,
+              subtotalCents: 0,
+            });
+          }
+        }
+      }
     }
   }
 
@@ -148,9 +217,37 @@ export function buildBillingRunBundles({
       if (charge.sourceType === "private") {
         bundle.sourceSummary.privateChargeCount += 1;
         bundle.sourceReferences.privateChargeIds.push(charge.sourceId);
+        if (charge.amountCents !== undefined && charge.studentId) {
+          const existing = bundle.sourceComponents.privateStudents.find(
+            (row) => row.studentId === charge.studentId,
+          );
+          if (existing) {
+            existing.subtotalCents += charge.amountCents;
+          } else {
+            bundle.sourceComponents.privateStudents.push({
+              studentId: charge.studentId,
+              studentName: charge.studentName || "Student",
+              subtotalCents: charge.amountCents,
+            });
+          }
+        }
       } else {
         bundle.sourceSummary.perSessionChargeCount += 1;
         bundle.sourceReferences.perSessionChargeIds.push(charge.sourceId);
+        bundle.sourceComponents.perSessionChargesCents +=
+          charge.amountCents || 0;
+        if (
+          charge.studentId &&
+          !bundle.sourceComponents.privateStudents.some(
+            (row) => row.studentId === charge.studentId,
+          )
+        ) {
+          bundle.sourceComponents.privateStudents.push({
+            studentId: charge.studentId,
+            studentName: charge.studentName || "Student",
+            subtotalCents: 0,
+          });
+        }
       }
     }
   }
@@ -167,12 +264,175 @@ export function buildBillingRunBundles({
           ...bundle.sourceReferences.perSessionChargeIds,
         ].sort(),
       },
+      sourceComponents: {
+        ...bundle.sourceComponents,
+        tuitionStudents: [...bundle.sourceComponents.tuitionStudents].sort(
+          (left, right) =>
+            left.studentName.localeCompare(right.studentName) ||
+            left.studentId.localeCompare(right.studentId),
+        ),
+        privateStudents: [...bundle.sourceComponents.privateStudents].sort(
+          (left, right) =>
+            left.studentName.localeCompare(right.studentName) ||
+            left.studentId.localeCompare(right.studentId),
+        ),
+      },
     }))
     .sort(
       (left, right) =>
         left.householdName.localeCompare(right.householdName) ||
         left.householdId.localeCompare(right.householdId),
     );
+}
+
+function siblingAdjustmentTotal(
+  students: { studentId: string; studentName: string; subtotalCents: number }[],
+  siblingDiscount?: SiblingDiscountConfig,
+) {
+  if (
+    !siblingDiscount?.enabled ||
+    siblingDiscount.appliesTo !== "all_but_highest" ||
+    siblingDiscount.percentOffBasisPoints <= 0
+  ) {
+    return 0;
+  }
+  const eligible = students
+    .filter((student) => student.subtotalCents > 0)
+    .sort(
+      (left, right) =>
+        right.subtotalCents - left.subtotalCents ||
+        left.studentName.localeCompare(right.studentName) ||
+        left.studentId.localeCompare(right.studentId),
+    );
+  return eligible.slice(1).reduce(
+    (total, student) =>
+      total -
+      Math.round(
+        (student.subtotalCents *
+          siblingDiscount.percentOffBasisPoints) /
+          10_000,
+      ),
+    0,
+  );
+}
+
+export function resolveBillingRunSourceAdjustments({
+  periodStart,
+  periodEnd,
+  components,
+  adjustments,
+}: {
+  periodStart: string;
+  periodEnd: string;
+  components: BillingRunSourceComponents;
+  adjustments: BillingAdjustmentLike[];
+}) {
+  const resolved: ResolvedSourceAdjustment[] = [];
+  const tuitionStudents = components.tuitionStudents.map((student) => {
+    const base = student.baseTuitionCents || 0;
+    const applied = applyTargetedBillingAdjustments(
+      base,
+      selectBillingAdjustments(
+        adjustments,
+        "student_tuition",
+        student.studentId,
+        periodStart,
+        periodEnd,
+      ),
+    );
+    resolved.push(
+      ...applied.adjustments.map((adjustment) => ({
+        adjustmentId: adjustment.id,
+        scopeType: "student_tuition" as const,
+        scopeId: student.studentId,
+        studentName: student.studentName,
+        kind: adjustment.kind,
+        calculationType: adjustment.calculationType,
+        reasonCode: adjustment.reasonCode,
+        note: adjustment.note,
+        applicable: adjustment.applicable,
+        amountCents: adjustment.amountCents,
+        percentageBaseCents: adjustment.percentageBaseCents,
+      })),
+    );
+    return {
+      studentId: student.studentId,
+      studentName: student.studentName,
+      subtotalCents: applied.totalCents,
+    };
+  });
+  const adjustedTuitionBeforeHousehold =
+    tuitionStudents.reduce(
+      (total, student) => total + student.subtotalCents,
+      0,
+    ) +
+    siblingAdjustmentTotal(tuitionStudents, components.siblingDiscount) +
+    components.householdTuitionAdjustmentTotalCents;
+
+  let adjustedPrivateSubtotalCents = 0;
+  for (const student of components.privateStudents) {
+    const applied = applyTargetedBillingAdjustments(
+      student.subtotalCents,
+      selectBillingAdjustments(
+        adjustments,
+        "student_private_charges",
+        student.studentId,
+        periodStart,
+        periodEnd,
+      ),
+    );
+    adjustedPrivateSubtotalCents += applied.totalCents;
+    resolved.push(
+      ...applied.adjustments.map((adjustment) => ({
+        adjustmentId: adjustment.id,
+        scopeType: "student_private_charges" as const,
+        scopeId: student.studentId,
+        studentName: student.studentName,
+        kind: adjustment.kind,
+        calculationType: adjustment.calculationType,
+        reasonCode: adjustment.reasonCode,
+        note: adjustment.note,
+        applicable: adjustment.applicable,
+        amountCents: adjustment.amountCents,
+        percentageBaseCents: adjustment.percentageBaseCents,
+      })),
+    );
+  }
+
+  const sourceAdjustmentTotalCents = resolved.reduce(
+    (total, adjustment) => total + adjustment.amountCents,
+    0,
+  );
+  const tuitionAdjustmentTotalCents = resolved
+    .filter((adjustment) => adjustment.scopeType === "student_tuition")
+    .reduce((total, adjustment) => total + adjustment.amountCents, 0);
+  const privateAdjustmentTotalCents = resolved
+    .filter(
+      (adjustment) =>
+        adjustment.scopeType === "student_private_charges",
+    )
+    .reduce((total, adjustment) => total + adjustment.amountCents, 0);
+  const tuitionSubtotalCents =
+    adjustedTuitionBeforeHousehold - tuitionAdjustmentTotalCents;
+  const chargesSubtotalCents =
+    adjustedPrivateSubtotalCents -
+    privateAdjustmentTotalCents +
+    components.perSessionChargesCents;
+
+  return {
+    tuitionSubtotalCents,
+    chargesSubtotalCents,
+    sourceAdjustments: resolved.sort(
+      (left, right) =>
+        left.adjustmentId.localeCompare(right.adjustmentId) ||
+        left.scopeType.localeCompare(right.scopeType),
+    ),
+    sourceAdjustmentTotalCents,
+    subtotalAfterSourceAdjustmentsCents:
+      tuitionSubtotalCents +
+      chargesSubtotalCents +
+      sourceAdjustmentTotalCents,
+  };
 }
 
 export function calculateBillingRunItemTotal(

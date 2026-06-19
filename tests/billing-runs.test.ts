@@ -6,6 +6,7 @@ import {
   buildBillingRunBundles,
   buildBillingRunItemSnapshot,
   calculateBillingRunItemTotal,
+  resolveBillingRunSourceAdjustments,
   pendingBillingRunItems,
   resolveBillingRunGeneration,
   selectBillingRunItemsForDispatch,
@@ -182,6 +183,130 @@ describe("billing run adjustment math", () => {
     const result = calculateBillingRunItemTotal(20000, adjustments);
     assert.equal(result.adjustmentTotalCents, -1500);
     assert.equal(result.totalCents, 18500);
+  });
+});
+
+describe("recurring student adjustments in billing runs", () => {
+  const components = {
+    tuitionStudents: [
+      {
+        studentId: "student-a",
+        studentName: "Alex Avery",
+        baseTuitionCents: 12000,
+      },
+      {
+        studentId: "student-b",
+        studentName: "Blair Avery",
+        baseTuitionCents: 10000,
+      },
+    ],
+    privateStudents: [
+      {
+        studentId: "student-a",
+        studentName: "Alex Avery",
+        subtotalCents: 4000,
+      },
+    ],
+    perSessionChargesCents: 3000,
+    householdTuitionAdjustmentTotalCents: 0,
+    siblingDiscount: {
+      enabled: true,
+      percentOffBasisPoints: 1000,
+      appliesTo: "all_but_highest" as const,
+    },
+  };
+
+  it("applies tuition adjustments before sibling math", () => {
+    const result = resolveBillingRunSourceAdjustments({
+      periodStart: "2026-06-01",
+      periodEnd: "2026-06-30",
+      components,
+      adjustments: [
+        {
+          id: "student-discount",
+          scopeType: "student_tuition",
+          scopeId: "student-a",
+          periodStart: "2026-01-01",
+          periodEnd: "2026-12-31",
+          kind: "discount",
+          calculationType: "fixed_cents",
+          amount: 4000,
+          reasonCode: "scholarship",
+          status: "active",
+          createdAt: 1,
+        },
+      ],
+    });
+
+    // Alex becomes $80, Blair remains $100, then Alex receives the 10% sibling discount.
+    assert.equal(result.tuitionSubtotalCents, 21200);
+    assert.equal(result.sourceAdjustmentTotalCents, -4000);
+    assert.equal(result.subtotalAfterSourceAdjustmentsCents, 24200);
+  });
+
+  it("targets private charges only and excludes per-session charges", () => {
+    const result = resolveBillingRunSourceAdjustments({
+      periodStart: "2026-06-01",
+      periodEnd: "2026-06-30",
+      components,
+      adjustments: [
+        {
+          id: "private-half",
+          scopeType: "student_private_charges",
+          scopeId: "student-a",
+          periodStart: "2026-06-30",
+          periodEnd: "2026-07-01",
+          kind: "discount",
+          calculationType: "percent",
+          amount: 5000,
+          reasonCode: "goodwill",
+          status: "active",
+          createdAt: 1,
+        },
+      ],
+    });
+
+    assert.equal(result.chargesSubtotalCents, 7000);
+    assert.equal(result.sourceAdjustmentTotalCents, -2000);
+    assert.equal(
+      result.sourceAdjustments[0].percentageBaseCents,
+      4000,
+    );
+  });
+
+  it("reports no applicable subtotal without changing totals", () => {
+    const result = resolveBillingRunSourceAdjustments({
+      periodStart: "2026-06-01",
+      periodEnd: "2026-06-30",
+      components: {
+        ...components,
+        privateStudents: [
+          {
+            studentId: "student-a",
+            studentName: "Alex Avery",
+            subtotalCents: 0,
+          },
+        ],
+      },
+      adjustments: [
+        {
+          id: "private-fixed",
+          scopeType: "student_private_charges",
+          scopeId: "student-a",
+          periodStart: "2026-01-01",
+          periodEnd: "2026-12-31",
+          kind: "discount",
+          calculationType: "fixed_cents",
+          amount: 2500,
+          reasonCode: "waiver",
+          status: "active",
+          createdAt: 1,
+        },
+      ],
+    });
+
+    assert.equal(result.sourceAdjustments[0].applicable, false);
+    assert.equal(result.sourceAdjustments[0].amountCents, 0);
   });
 });
 

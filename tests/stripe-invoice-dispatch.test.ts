@@ -142,6 +142,9 @@ const item = {
       reasonCode: "scholarship" as const,
       note: "Summer award",
       amountCents: -1500,
+      scopeType: "student_tuition",
+      scopeId: "student-1",
+      studentName: "Alex Avery",
     },
     {
       id: "adjustment-2",
@@ -168,7 +171,14 @@ describe("Stripe invoice line mapping", () => {
     );
     assert.match(lines[0].description, /2 students/);
     assert.match(lines[1].description, /1 private, 2 per-session/);
-    assert.match(lines[2].description, /Scholarship: Summer award/);
+    assert.match(
+      lines[2].description,
+      /Scholarship for Alex Avery: Summer award/,
+    );
+    assert.equal(
+      lines[2].metadata.billing_adjustment_scope_type,
+      "student_tuition",
+    );
   });
 });
 

@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   applyBillingAdjustments,
+  applyTargetedBillingAdjustments,
   assertBillingAdjustmentEditable,
+  assertBillingAdjustmentFinanciallyEditable,
+  billingPeriodsOverlap,
   buildBillingAdjustmentActivityEvent,
   selectBillingAdjustments,
   validateBillingAdjustmentInput,
@@ -205,6 +208,113 @@ describe("billing adjustment query selection", () => {
         "2026-06-30",
       ).map((item) => item.id),
       ["adjustment-1"],
+    );
+  });
+
+  it("uses inclusive overlap for recurring student adjustments", () => {
+    const rows = [
+      adjustment({
+        scopeType: "student_tuition",
+        scopeId: "student-1",
+        periodStart: "2026-05-15",
+        periodEnd: "2026-06-01",
+      }),
+      adjustment({
+        id: "starts-last-day",
+        scopeType: "student_tuition",
+        scopeId: "student-1",
+        periodStart: "2026-06-30",
+        periodEnd: "2026-08-01",
+      }),
+      adjustment({
+        id: "outside",
+        scopeType: "student_tuition",
+        scopeId: "student-1",
+        periodStart: "2026-07-01",
+        periodEnd: "2026-07-31",
+      }),
+    ];
+
+    assert.equal(
+      billingPeriodsOverlap(
+        "2026-05-15",
+        "2026-06-01",
+        "2026-06-01",
+        "2026-06-30",
+      ),
+      true,
+    );
+    assert.deepEqual(
+      selectBillingAdjustments(
+        rows,
+        "student_tuition",
+        "student-1",
+        "2026-06-01",
+        "2026-06-30",
+      ).map((item) => item.id),
+      ["adjustment-1", "starts-last-day"],
+    );
+  });
+});
+
+describe("targeted recurring adjustment math", () => {
+  it("uses one common original base for percentages and full fixed amounts", () => {
+    const result = applyTargetedBillingAdjustments(10000, [
+      adjustment({
+        id: "ten-percent",
+        scopeType: "student_tuition",
+        calculationType: "percent",
+        amount: 1000,
+      }),
+      adjustment({
+        id: "five-percent",
+        scopeType: "student_tuition",
+        calculationType: "percent",
+        amount: 500,
+        createdAt: 2,
+      }),
+      adjustment({
+        id: "fixed",
+        scopeType: "student_tuition",
+        amount: 2500,
+        createdAt: 3,
+      }),
+    ]);
+
+    assert.deepEqual(
+      result.adjustments.map((item) => item.amountCents),
+      [-1000, -500, -2500],
+    );
+    assert.equal(result.totalCents, 6000);
+  });
+
+  it("records active adjustments as non-applicable on an empty subtotal", () => {
+    const result = applyTargetedBillingAdjustments(0, [
+      adjustment({ scopeType: "student_private_charges" }),
+    ]);
+    assert.equal(result.totalCents, 0);
+    assert.deepEqual(result.adjustments[0], {
+      ...adjustment({ scopeType: "student_private_charges" }),
+      applicable: false,
+      amountCents: 0,
+      percentageBaseCents: undefined,
+    });
+  });
+
+  it("requires void and recreate after dispatched usage", () => {
+    assert.throws(
+      () =>
+        assertBillingAdjustmentFinanciallyEditable({
+          status: "active",
+          hasDispatchedUsage: true,
+        }),
+      /Void it and create a replacement/,
+    );
+    assert.doesNotThrow(() =>
+      assertBillingAdjustmentFinanciallyEditable({
+        status: "active",
+        hasDispatchedUsage: false,
+      }),
     );
   });
 });

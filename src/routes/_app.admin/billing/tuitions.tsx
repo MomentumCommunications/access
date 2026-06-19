@@ -13,6 +13,7 @@ import {
   parseCurrencyToCents,
   parsePercentToBasisPoints,
 } from "../../../../shared/tuition-pricing";
+import { BillingDateRangePicker } from "~/components/billing-date-range-picker";
 import { RoleGate } from "~/components/role-gate";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import {
@@ -207,14 +208,29 @@ function HouseholdTuitionCard({
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  {student.totalTuitionCents === undefined ? (
+                  {student.baseTuitionCents === undefined ? (
                     <span className="text-destructive">
                       {student.warning || "Unable to calculate"}
                     </span>
                   ) : (
-                    <span className="font-medium">
-                      {formatCurrency(student.totalTuitionCents)}
-                    </span>
+                    <div>
+                      <span className="font-medium">
+                        {formatCurrency(student.baseTuitionCents)}
+                      </span>
+                      {student.studentBillingAdjustments.map(
+                        (adjustment) => (
+                          <div
+                            key={adjustment.id}
+                            className="text-xs text-muted-foreground"
+                          >
+                            {reasonLabels[adjustment.reasonCode]}:{" "}
+                            {adjustment.applicable
+                              ? formatCurrency(adjustment.amountCents)
+                              : "No applicable subtotal"}
+                          </div>
+                        ),
+                      )}
+                    </div>
                   )}
                 </TableCell>
               </TableRow>
@@ -755,36 +771,15 @@ function TuitionsAdminPage() {
       </div>
 
       <div className="flex flex-wrap items-end gap-2 rounded-lg border p-4">
-        <div className="space-y-2">
-          <Label htmlFor="tuition-period-start">Billing period start</Label>
-          <Input
-            id="tuition-period-start"
-            type="date"
-            value={periodStart}
-            onChange={(event) => {
-              const value = event.target.value;
-              if (!value) return;
-              setPeriodStart(value);
-              if (periodEnd < value) setPeriodEnd(value);
-            }}
-            className="w-44"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="tuition-period-end">Billing period end</Label>
-          <Input
-            id="tuition-period-end"
-            type="date"
-            min={periodStart}
-            value={periodEnd}
-            onChange={(event) => {
-              if (event.target.value) {
-                setPeriodEnd(event.target.value);
-              }
-            }}
-            className="w-44"
-          />
-        </div>
+        <BillingDateRangePicker
+          id="tuition-period"
+          start={periodStart}
+          end={periodEnd}
+          onChange={(start, end) => {
+            setPeriodStart(start);
+            setPeriodEnd(end);
+          }}
+        />
         {!validPeriod ? (
           <p className="text-sm text-destructive">
             End date must be on or after start date.

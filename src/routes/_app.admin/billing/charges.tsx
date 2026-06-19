@@ -5,6 +5,7 @@ import { api } from "convex/_generated/api";
 import type { FunctionReturnType } from "convex/server";
 import { CalendarCheck, GraduationCap } from "lucide-react";
 import { useMemo, useState } from "react";
+import { BillingDateRangePicker } from "~/components/billing-date-range-picker";
 import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
 import { Badge } from "~/components/ui/badge";
@@ -15,8 +16,6 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
 import { Spinner } from "~/components/ui/spinner";
 import {
   Tabs,
@@ -327,35 +326,16 @@ function ChargesAdminPage() {
               one-off charges remain in Stripe.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="space-y-2">
-              <Label htmlFor="charge-start">Start</Label>
-              <Input
-                id="charge-start"
-                type="date"
-                value={startDate}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (!value) return;
-                  setStartDate(value);
-                  if (endDate < value) setEndDate(value);
-                }}
-                className="w-full sm:w-44"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="charge-end">End</Label>
-              <Input
-                id="charge-end"
-                type="date"
-                min={startDate}
-                value={endDate}
-                onChange={(event) => {
-                  if (event.target.value) setEndDate(event.target.value);
-                }}
-                className="w-full sm:w-44"
-              />
-            </div>
+          <CardContent>
+            <BillingDateRangePicker
+              id="charge-period"
+              start={startDate}
+              end={endDate}
+              onChange={(start, end) => {
+                setStartDate(start);
+                setEndDate(end);
+              }}
+            />
           </CardContent>
         </Card>
         {review === undefined ? (

@@ -252,7 +252,6 @@ function PricingAdminPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {[
             ["Packages", "Reserved for package-based pricing."],
-            ["Adjustments", "Reserved for scholarships and manual changes."],
           ].map(([title, description]) => (
             <Card key={title} className="rounded-lg">
               <CardHeader>

@@ -23,6 +23,7 @@ import type * as lib_activityLog from "../lib/activityLog.js";
 import type * as lib_age from "../lib/age.js";
 import type * as lib_billing_householdTuition from "../lib/billing/householdTuition.js";
 import type * as lib_billing_privatePricing from "../lib/billing/privatePricing.js";
+import type * as lib_billing_runSourceComponents from "../lib/billing/runSourceComponents.js";
 import type * as lib_billing_tuitionCalculation from "../lib/billing/tuitionCalculation.js";
 import type * as lib_billing_weeklyClassHours from "../lib/billing/weeklyClassHours.js";
 import type * as lib_classSorting from "../lib/classSorting.js";
@@ -67,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   "lib/age": typeof lib_age;
   "lib/billing/householdTuition": typeof lib_billing_householdTuition;
   "lib/billing/privatePricing": typeof lib_billing_privatePricing;
+  "lib/billing/runSourceComponents": typeof lib_billing_runSourceComponents;
   "lib/billing/tuitionCalculation": typeof lib_billing_tuitionCalculation;
   "lib/billing/weeklyClassHours": typeof lib_billing_weeklyClassHours;
   "lib/classSorting": typeof lib_classSorting;

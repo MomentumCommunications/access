@@ -4,7 +4,13 @@ import { hasUserRole } from "./lib/roles";
 import { getCurrentUserOrThrow } from "./users";
 import { recordActivityEvent } from "./lib/activityLog";
 import { calculateBillingRunItemTotal } from "../shared/billing-runs";
+import { resolveBillingRunSourceAdjustments } from "../shared/billing-runs";
+import {
+  billingPeriodsOverlap,
+  isRecurringStudentAdjustment,
+} from "../shared/billing-adjustments";
 import { resolveHouseholdStripeBillingTarget } from "../shared/stripe-invoice-dispatch";
+import { resolveBillingRunItemSourceComponents } from "./lib/billing/runSourceComponents";
 
 async function requireAdmin(ctx: Parameters<typeof getCurrentUserOrThrow>[0]) {
   const user = await getCurrentUserOrThrow(ctx);
@@ -17,7 +23,11 @@ async function requireAdmin(ctx: Parameters<typeof getCurrentUserOrThrow>[0]) {
 function adjustmentLike(
   adjustment: {
     _id: string;
-    scopeType: "household_tuition" | "billing_run_item";
+    scopeType:
+      | "household_tuition"
+      | "billing_run_item"
+      | "student_tuition"
+      | "student_private_charges";
     scopeId: string;
     periodStart: string;
     periodEnd: string;
@@ -85,8 +95,46 @@ export const prepareBillingRunItemDispatch = internalQuery({
           .eq("periodEnd", item.periodEnd),
       )
       .collect();
+    const recurringAdjustments = (
+      await ctx.db.query("billingAdjustments").collect()
+    ).filter(
+      (adjustment) =>
+        isRecurringStudentAdjustment(adjustment.scopeType) &&
+        billingPeriodsOverlap(
+          adjustment.periodStart,
+          adjustment.periodEnd,
+          item.periodStart,
+          item.periodEnd,
+        ),
+    );
+    const sourceComponentsResolution =
+      recurringAdjustments.length > 0
+        ? await resolveBillingRunItemSourceComponents(ctx, item)
+        : null;
+    if (sourceComponentsResolution?.status === "requires_review") {
+      throw new Error(sourceComponentsResolution.reason);
+    }
+    const sourceComponents =
+      sourceComponentsResolution?.status === "ready"
+        ? sourceComponentsResolution.components
+        : item.sourceComponents;
+    const sourceResolution = sourceComponents
+      ? resolveBillingRunSourceAdjustments({
+          periodStart: item.periodStart,
+          periodEnd: item.periodEnd,
+          components: sourceComponents,
+          adjustments: recurringAdjustments.map(adjustmentLike),
+        })
+      : {
+          tuitionSubtotalCents: item.tuitionSubtotalCents,
+          chargesSubtotalCents: item.chargesSubtotalCents,
+          sourceAdjustments: [],
+          sourceAdjustmentTotalCents: 0,
+          subtotalAfterSourceAdjustmentsCents:
+            item.subtotalBeforeRunAdjustmentsCents,
+        };
     const calculated = calculateBillingRunItemTotal(
-      item.subtotalBeforeRunAdjustmentsCents,
+      sourceResolution.subtotalAfterSourceAdjustmentsCents,
       adjustments.map(adjustmentLike),
     );
 
@@ -138,21 +186,37 @@ export const prepareBillingRunItemDispatch = internalQuery({
         householdName: item.householdName,
         periodStart: item.periodStart,
         periodEnd: item.periodEnd,
-        tuitionSubtotalCents: item.tuitionSubtotalCents,
-        chargesSubtotalCents: item.chargesSubtotalCents,
+        tuitionSubtotalCents: sourceResolution.tuitionSubtotalCents,
+        chargesSubtotalCents: sourceResolution.chargesSubtotalCents,
         sourceSummary: {
           tuitionStudentCount: item.sourceSummary.tuitionStudentCount,
           privateChargeCount: item.sourceSummary.privateChargeCount,
           perSessionChargeCount:
             item.sourceSummary.perSessionChargeCount,
         },
-        adjustments: calculated.adjustments.map((adjustment) => ({
-          id: adjustment.id,
-          reasonCode: adjustment.reasonCode,
-          note: adjustment.note,
-          amountCents: adjustment.amountCents,
-        })),
-        adjustmentTotalCents: calculated.adjustmentTotalCents,
+        adjustments: [
+          ...sourceResolution.sourceAdjustments.map((adjustment) => ({
+            id: adjustment.adjustmentId,
+            reasonCode: adjustment.reasonCode,
+            note: adjustment.note,
+            amountCents: adjustment.amountCents,
+            scopeType: adjustment.scopeType,
+            scopeId: adjustment.scopeId,
+            studentName: adjustment.studentName,
+          })),
+          ...calculated.adjustments.map((adjustment) => ({
+            id: adjustment.id,
+            reasonCode: adjustment.reasonCode,
+            note: adjustment.note,
+            amountCents: adjustment.amountCents,
+            scopeType: adjustment.scopeType,
+            scopeId: adjustment.scopeId,
+          })),
+        ],
+        sourceAdjustments: sourceResolution.sourceAdjustments,
+        adjustmentTotalCents:
+          sourceResolution.sourceAdjustmentTotalCents +
+          calculated.adjustmentTotalCents,
         finalTotalCents: calculated.totalCents,
         existingStripeInvoiceId: item.stripeInvoiceId,
       },
@@ -229,6 +293,36 @@ export const markBillingRunItemDispatched = internalMutation({
     autopayEnabled: v.boolean(),
     adjustmentTotalCents: v.number(),
     finalTotalCents: v.number(),
+    tuitionSubtotalCents: v.number(),
+    chargesSubtotalCents: v.number(),
+    sourceAdjustments: v.array(
+      v.object({
+        adjustmentId: v.string(),
+        scopeType: v.union(
+          v.literal("student_tuition"),
+          v.literal("student_private_charges"),
+        ),
+        scopeId: v.string(),
+        studentName: v.string(),
+        kind: v.union(v.literal("discount"), v.literal("surcharge")),
+        calculationType: v.union(
+          v.literal("fixed_cents"),
+          v.literal("percent"),
+        ),
+        reasonCode: v.union(
+          v.literal("scholarship"),
+          v.literal("goodwill"),
+          v.literal("manual_correction"),
+          v.literal("waiver"),
+          v.literal("surcharge"),
+          v.literal("other"),
+        ),
+        note: v.optional(v.string()),
+        applicable: v.boolean(),
+        amountCents: v.number(),
+        percentageBaseCents: v.optional(v.number()),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const actor = await requireAdmin(ctx);
@@ -249,6 +343,9 @@ export const markBillingRunItemDispatched = internalMutation({
       dispatchedAt: now,
       dispatchedAdjustmentTotalCents: args.adjustmentTotalCents,
       dispatchedFinalTotalCents: args.finalTotalCents,
+      dispatchedTuitionSubtotalCents: args.tuitionSubtotalCents,
+      dispatchedChargesSubtotalCents: args.chargesSubtotalCents,
+      dispatchedSourceAdjustments: args.sourceAdjustments,
       stripeInvoiceId: args.stripeInvoiceId,
       stripeCustomerId: args.stripeCustomerId,
       collectionMethod: args.collectionMethod,

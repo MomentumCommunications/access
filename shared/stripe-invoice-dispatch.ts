@@ -196,6 +196,9 @@ export function buildBillingRunStripeInvoiceLines({
     reasonCode: BillingAdjustmentReasonCode;
     note?: string;
     amountCents: number;
+    scopeType?: string;
+    scopeId?: string;
+    studentName?: string;
   }[];
 }) {
   const lines: StripeInvoiceLine[] = [];
@@ -235,15 +238,22 @@ export function buildBillingRunStripeInvoiceLines({
   for (const adjustment of [...adjustments].sort(
     (left, right) => left.id.localeCompare(right.id),
   )) {
+    if (adjustment.amountCents === 0) continue;
     const label = adjustmentReasonLabels[adjustment.reasonCode];
     lines.push({
       key: `adjustment-${adjustment.id}`,
       amountCents: adjustment.amountCents,
-      description: `Adjustment - ${label}${adjustment.note ? `: ${adjustment.note}` : ""}`,
+      description: `Adjustment - ${label}${adjustment.studentName ? ` for ${adjustment.studentName}` : ""}${adjustment.note ? `: ${adjustment.note}` : ""}`,
       metadata: {
         access_line_type: "adjustment",
         billing_adjustment_id: adjustment.id,
         billing_run_item_id: item.id,
+        ...(adjustment.scopeType
+          ? { billing_adjustment_scope_type: adjustment.scopeType }
+          : {}),
+        ...(adjustment.scopeId
+          ? { billing_adjustment_scope_id: adjustment.scopeId }
+          : {}),
       },
     });
   }

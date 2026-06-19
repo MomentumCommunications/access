@@ -5,6 +5,7 @@ import { internal } from "./_generated/api";
 import { action } from "./_generated/server";
 import { getStripeClient } from "./lib/stripe";
 import { createStripePortalSessionForAccess } from "../shared/payments-access";
+import { loadStripeBillingAttention } from "../shared/billing-attention";
 
 export const createCurrentUserStripePortalSession = action({
   args: {
@@ -26,6 +27,24 @@ export const createCurrentUserStripePortalSession = action({
           });
         return { url: session.url };
       },
+    });
+  },
+});
+
+export const getCurrentUserBillingAttention = action({
+  args: {},
+  handler: async (ctx) => {
+    const access = await ctx.runQuery(
+      internal.paymentsData.getCurrentBillingAttentionAccess,
+      {},
+    );
+    if (access.status !== "ready" || !access.stripeCustomerId) {
+      return { status: "ineligible" as const };
+    }
+
+    return await loadStripeBillingAttention({
+      retrieveCustomer: () =>
+        getStripeClient().customers.retrieve(access.stripeCustomerId),
     });
   },
 });

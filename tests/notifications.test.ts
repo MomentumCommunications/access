@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  enrollmentOutcomeNotification,
   markAllNotificationsRead,
   markNotificationRead,
   newUserNotification,
@@ -52,6 +53,43 @@ describe("notification event generation", () => {
           studentId: "student-1",
         },
       },
+    );
+  });
+
+  it("builds member enrollment outcome notifications", () => {
+    const input = {
+      enrollmentId: "enrollment-1",
+      actorUserId: "admin-1",
+      studentName: "Grace Hopper",
+      className: "Jazz I",
+      classId: "class-1",
+      studentId: "student-1",
+    };
+
+    assert.deepEqual(
+      enrollmentOutcomeNotification({ ...input, outcome: "enrolled" }),
+      {
+        type: "enrollment.enrolled",
+        title: "Enrollment approved",
+        body: "Grace Hopper is now enrolled in Jazz I.",
+        href: "/students/student-1",
+        actorUserId: "admin-1",
+        entityType: "classEnrollment",
+        entityId: "enrollment-1",
+        metadata: {
+          classId: "class-1",
+          studentId: "student-1",
+          outcome: "enrolled",
+        },
+      },
+    );
+    assert.equal(
+      enrollmentOutcomeNotification({ ...input, outcome: "waitlisted" }).body,
+      "Grace Hopper was added to the waitlist for Jazz I.",
+    );
+    assert.equal(
+      enrollmentOutcomeNotification({ ...input, outcome: "rejected" }).body,
+      "Grace Hopper's enrollment request for Jazz I was not approved.",
     );
   });
 });

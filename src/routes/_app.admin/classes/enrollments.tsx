@@ -220,7 +220,7 @@ function PendingEnrollmentsPage() {
 
   return (
     <RoleGate allow="admin">
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 lg:p-8">
+      <main className="mx-auto max-w-screen flex w-full md:max-w-7xl flex-col gap-4 p-4 lg:p-8">
         <div>
           <h1 className="text-3xl font-bold">Pending Enrollments</h1>
           <p className="text-muted-foreground">

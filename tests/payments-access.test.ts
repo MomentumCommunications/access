@@ -5,6 +5,11 @@ import {
   resolvePaymentsAccess,
   validateStripePortalReturnUrl,
 } from "../shared/payments-access.ts";
+import {
+  billingAttentionPortalHref,
+  loadStripeBillingAttention,
+  resolveStripeBillingAttention,
+} from "../shared/billing-attention.ts";
 
 const household = { id: "household-1" };
 const membership = {
@@ -168,6 +173,62 @@ describe("Stripe portal session creation", () => {
           createSession: async () => ({ url: null }),
         }),
       /did not return a portal URL/,
+    );
+  });
+});
+
+describe("Stripe billing attention", () => {
+  it("warns when the default payment method is missing", () => {
+    assert.equal(
+      resolveStripeBillingAttention({
+        delinquent: false,
+        invoice_settings: { default_payment_method: null },
+      }),
+      "missing_default_payment_method",
+    );
+  });
+
+  it("gives delinquency precedence over a missing payment method", () => {
+    assert.equal(
+      resolveStripeBillingAttention({
+        delinquent: true,
+        invoice_settings: { default_payment_method: null },
+      }),
+      "delinquent",
+    );
+  });
+
+  it("does not warn for a healthy Stripe customer", () => {
+    assert.equal(
+      resolveStripeBillingAttention({
+        delinquent: false,
+        invoice_settings: { default_payment_method: "pm_123" },
+      }),
+      "ok",
+    );
+  });
+
+  it("routes the banner CTA through the existing payments portal flow", () => {
+    assert.equal(billingAttentionPortalHref(), "/payments");
+  });
+
+  it("fails gracefully when Stripe status cannot be retrieved", async () => {
+    assert.deepEqual(
+      await loadStripeBillingAttention({
+        retrieveCustomer: async () => {
+          throw new Error("Stripe unavailable");
+        },
+      }),
+      { status: "unavailable" },
+    );
+  });
+
+  it("does not warn for a deleted Stripe customer", async () => {
+    assert.deepEqual(
+      await loadStripeBillingAttention({
+        retrieveCustomer: async () => ({ deleted: true }),
+      }),
+      { status: "ineligible" },
     );
   });
 });

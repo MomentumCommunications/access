@@ -1,11 +1,21 @@
-import { convexQuery } from "@convex-dev/react-query";
+import {
+  convexQuery,
+  useConvexAction,
+} from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Authenticated, Unauthenticated } from "convex/react";
-import { Download, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { CreditCard, Download, TriangleAlert, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import type { BillingAttentionStatus } from "../../shared/billing-attention";
+import { billingAttentionPortalHref } from "../../shared/billing-attention";
 import { ProtectedContent } from "~/components/protected-content";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import { Card, CardDescription, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -13,7 +23,7 @@ import { Separator } from "~/components/ui/separator";
 import { BulletinFeed } from "~/components/bulletin-feed";
 import { useActiveRole } from "~/contexts/ActiveRoleContext";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
-import { ROLE_HOME } from "~/lib/roles";
+import { hasUserRole, ROLE_HOME } from "~/lib/roles";
 
 export const Route = createFileRoute("/_app/home")({
   component: Home,
@@ -131,6 +141,37 @@ function Home() {
 function MemberHome() {
   // TODO: change array indexed passkeys to be more dynamic
   const { data: userData, isLoading } = useCurrentUser();
+  const getBillingAttention = useConvexAction(
+    api.payments.getCurrentUserBillingAttention,
+  );
+  const billingLookupStarted = useRef(false);
+  const [billingAttention, setBillingAttention] =
+    useState<BillingAttentionStatus | null>(null);
+
+  useEffect(() => {
+    if (
+      !userData ||
+      billingLookupStarted.current ||
+      hasUserRole(userData, "staff") ||
+      hasUserRole(userData, "admin")
+    ) {
+      return;
+    }
+
+    billingLookupStarted.current = true;
+    void getBillingAttention({})
+      .then((result) => {
+        if (
+          result.status === "delinquent" ||
+          result.status === "missing_default_payment_method"
+        ) {
+          setBillingAttention(result.status);
+        }
+      })
+      .catch(() => {
+        // Billing status is advisory and must never prevent Home from loading.
+      });
+  }, [getBillingAttention, userData]);
 
   const userGroups = userData?.group || [];
 
@@ -218,6 +259,9 @@ function MemberHome() {
     <div className="flex justify-center overscroll-contain">
       <main className="w-full max-w-3xl p-4">
         <PwaInstallBanner />
+        <Authenticated>
+          <BillingAttentionBanner status={billingAttention} />
+        </Authenticated>
         <div className="flex flex-col justify-start gap-4 py-4">
           <Unauthenticated>
             <div className="py-4">
@@ -237,5 +281,51 @@ function MemberHome() {
         </Authenticated>
       </main>
     </div>
+  );
+}
+
+function BillingAttentionBanner({
+  status,
+}: {
+  status: BillingAttentionStatus | null;
+}) {
+  if (!status || status === "ok") {
+    return null;
+  }
+
+  const delinquent = status === "delinquent";
+  return (
+    <Alert
+      variant={delinquent ? "destructive" : "default"}
+      className={
+        delinquent
+          ? "mt-4"
+          : "mt-4 border-amber-500/50 bg-amber-500/10 text-amber-950 dark:text-amber-100"
+      }
+    >
+      {delinquent ? <TriangleAlert /> : <CreditCard />}
+      <AlertTitle>
+        {delinquent
+          ? "Your account has a billing issue that needs attention"
+          : "No default payment method on file"}
+      </AlertTitle>
+      <AlertDescription>
+        <p>
+          {delinquent
+            ? "Please review your payment settings in Stripe."
+            : "Add a payment method to help avoid billing issues."}
+        </p>
+        <Button
+          asChild
+          size="sm"
+          variant={delinquent ? "destructive" : "outline"}
+          className="mt-2"
+        >
+          <Link to={billingAttentionPortalHref()}>
+            Manage billing in Stripe
+          </Link>
+        </Button>
+      </AlertDescription>
+    </Alert>
   );
 }

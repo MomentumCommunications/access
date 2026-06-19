@@ -57,9 +57,20 @@ import { matchTuitionTier } from "../shared/tuition-pricing";
 import { classWeeklyMinutes } from "./lib/billing/weeklyClassHours";
 import { recordActivityEvent } from "./lib/activityLog";
 import { ensureDefaultHouseholdBilling } from "./lib/householdBilling";
-import { createAdminNotifications } from "./lib/notifications";
+import {
+  createAdminNotifications,
+  createStudentManagerNotifications,
+} from "./lib/notifications";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
-import { pendingEnrollmentNotification } from "../shared/notifications";
+import {
+  enrollmentOutcomeNotification,
+  pendingEnrollmentNotification,
+  type EnrollmentOutcome,
+} from "../shared/notifications";
+import {
+  classMatchesWeekday,
+  type ClassWeekday,
+} from "../shared/class-weekday-filter";
 
 const roleValidator = v.union(
   v.literal("admin"),
@@ -147,6 +158,38 @@ async function notifyAdminsOfPendingEnrollment(
       studentId: student._id,
     }),
     requestedBy,
+  );
+}
+
+async function notifyStudentManagersOfEnrollmentOutcome(
+  ctx: MutationCtx,
+  {
+    enrollmentId,
+    actorUserId,
+    outcome,
+    student,
+    classItem,
+  }: {
+    enrollmentId: Id<"classEnrollments">;
+    actorUserId: Id<"users">;
+    outcome: EnrollmentOutcome;
+    student: Doc<"students">;
+    classItem: Doc<"classes">;
+  },
+) {
+  await createStudentManagerNotifications(
+    ctx,
+    student._id,
+    enrollmentOutcomeNotification({
+      enrollmentId,
+      actorUserId,
+      outcome,
+      studentName: studentDisplayName(student),
+      className: classItem.title,
+      classId: classItem._id,
+      studentId: student._id,
+    }),
+    actorUserId,
   );
 }
 
@@ -822,8 +865,12 @@ export const listPublishedClasses = query({
     seasonId: v.optional(v.id("seasons")),
     studentId: v.optional(v.id("students")),
     filterByAge: v.boolean(),
+    weekday: v.optional(weekdayValidator),
   },
-  handler: async (ctx, { seasonId, studentId, filterByAge }) => {
+  handler: async (
+    ctx,
+    { seasonId, studentId, filterByAge, weekday },
+  ) => {
     const user = await getCurrentUser(ctx);
     let classes = await ctx.db
       .query("classes")
@@ -841,6 +888,12 @@ export const listPublishedClasses = query({
       );
       classes = classes.filter((classItem) =>
         seasonClassIds.has(classItem._id),
+      );
+    }
+
+    if (weekday) {
+      classes = classes.filter((classItem) =>
+        classMatchesWeekday(classItem, weekday as ClassWeekday),
       );
     }
 
@@ -2470,7 +2523,7 @@ export const adminUpdateStudent = mutation({
     status: studentStatusValidator,
   },
   handler: async (ctx, { student, groupId, ...updates }) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
     const existing = await ctx.db.get(student);
     if (!existing) {
       throw new Error("Student not found.");
@@ -2487,6 +2540,16 @@ export const adminUpdateStudent = mutation({
       for (const enrollment of enrollments) {
         const cleanup = studentEnrollmentCleanup(enrollment, today);
         if (cleanup.action === "delete") {
+          const classItem = await ctx.db.get(enrollment.classId);
+          if (enrollment.status === "pending" && classItem) {
+            await notifyStudentManagersOfEnrollmentOutcome(ctx, {
+              enrollmentId: enrollment._id,
+              actorUserId: admin._id,
+              outcome: "rejected",
+              student: existing,
+              classItem,
+            });
+          }
           await ctx.db.delete(enrollment._id);
         } else if (cleanup.action === "drop") {
           await ctx.db.patch(enrollment._id, {
@@ -2567,6 +2630,17 @@ export const adminEnrollStudentInClass = mutation({
         await notifyAdminsOfPendingEnrollment(ctx, {
           enrollmentId: existing._id,
           requestedBy: user._id,
+          student: studentDoc,
+          classItem,
+        });
+      } else if (
+        wasPending &&
+        (status === "enrolled" || status === "waitlisted")
+      ) {
+        await notifyStudentManagersOfEnrollmentOutcome(ctx, {
+          enrollmentId: existing._id,
+          actorUserId: user._id,
+          outcome: status,
           student: studentDoc,
           classItem,
         });
@@ -2750,6 +2824,13 @@ export const adminApplyPendingEnrollmentAction = mutation({
           ...event,
           actorId: admin._id,
         });
+        await notifyStudentManagersOfEnrollmentOutcome(ctx, {
+          enrollmentId: enrollment._id,
+          actorUserId: admin._id,
+          outcome: "rejected",
+          student,
+          classItem,
+        });
         await ctx.db.delete(enrollment._id);
         continue;
       }
@@ -2769,6 +2850,13 @@ export const adminApplyPendingEnrollmentAction = mutation({
           nextStatus === "enrolled"
             ? enrollment.prorateTuition ?? true
             : enrollment.prorateTuition,
+      });
+      await notifyStudentManagersOfEnrollmentOutcome(ctx, {
+        enrollmentId: enrollment._id,
+        actorUserId: admin._id,
+        outcome: nextStatus,
+        student,
+        classItem,
       });
     }
 
@@ -2994,7 +3082,7 @@ export const adminUpdateEnrollmentStatus = mutation({
     prorateTuition: v.optional(v.boolean()),
   },
   handler: async (ctx, { enrollment, status, endDate, prorateTuition }) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
     const existing = await ctx.db.get(enrollment);
     if (!existing) {
       throw new Error("Enrollment not found.");
@@ -3022,6 +3110,24 @@ export const adminUpdateEnrollmentStatus = mutation({
           ? prorateTuition
           : existing.prorateTuition,
     });
+    if (
+      existing.status === "pending" &&
+      (status === "enrolled" || status === "waitlisted")
+    ) {
+      const [student, classItem] = await Promise.all([
+        ctx.db.get(existing.student),
+        ctx.db.get(existing.classId),
+      ]);
+      if (student && classItem) {
+        await notifyStudentManagersOfEnrollmentOutcome(ctx, {
+          enrollmentId: existing._id,
+          actorUserId: admin._id,
+          outcome: status,
+          student,
+          classItem,
+        });
+      }
+    }
   },
 });
 

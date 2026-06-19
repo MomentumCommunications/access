@@ -44,6 +44,10 @@ import {
 } from "../../../shared/class-enrollment-selection";
 import { resolvedClassEnrollmentMode } from "../../../shared/per-session-signup";
 import { resolveManagedStudentId } from "../../../shared/member-class-selection";
+import {
+  CLASS_WEEKDAYS,
+  CLASS_WEEKDAY_LABELS,
+} from "../../../shared/class-weekday-filter";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -86,6 +90,17 @@ export const Route = createFileRoute("/_app/classes/")({
     season: z.string().optional(),
     student: z.string().optional(),
     ageFilter: z.literal("off").optional(),
+    weekday: z
+      .enum([
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+      ])
+      .optional(),
   }),
   component: ClassesPage,
 });
@@ -102,6 +117,7 @@ function ClassesPage() {
     season: selectedSeason,
     student: selectedStudent,
     ageFilter,
+    weekday: selectedWeekday,
   } = Route.useSearch();
   const seasons = useConvexQuery(api.classes.listCurrentAndFutureSeasons, {});
   const students = useConvexQuery(
@@ -133,6 +149,7 @@ function ClassesPage() {
           seasonId: selectedSeasonId,
           studentId: selectedStudentId,
           filterByAge: filterByAge && Boolean(selectedStudentId),
+          weekday: selectedWeekday,
         },
   );
   const [draft, setDraft] = useState<EnrollmentSelectionDraft>(
@@ -324,6 +341,36 @@ function ClassesPage() {
                 {seasons?.map((season) => (
                   <SelectItem key={season._id} value={season._id}>
                     {season.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1 space-y-1.5">
+            <Label>Weekday</Label>
+            <Select
+              value={selectedWeekday || "any"}
+              onValueChange={(value) =>
+                navigate({
+                  to: "/classes",
+                  search: (previous) => ({
+                    ...previous,
+                    weekday:
+                      value === "any"
+                        ? undefined
+                        : (value as (typeof CLASS_WEEKDAYS)[number]),
+                  }),
+                })
+              }
+            >
+              <SelectTrigger className="w-full" aria-label="Weekday">
+                <SelectValue placeholder="Filter by weekday" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any weekday</SelectItem>
+                {CLASS_WEEKDAYS.map((weekday) => (
+                  <SelectItem key={weekday} value={weekday}>
+                    {CLASS_WEEKDAY_LABELS[weekday]}
                   </SelectItem>
                 ))}
               </SelectContent>

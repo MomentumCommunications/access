@@ -5,6 +5,7 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { resolvePaymentsAccess } from "../shared/payments-access";
+import { hasUserRole } from "./lib/roles";
 
 async function resolveCurrentUserPaymentsAccess(ctx: QueryCtx) {
   const userId = await getAuthUserId(ctx);
@@ -84,4 +85,28 @@ export const getCurrentAccess = query({
 export const getCurrentAccessInternal = internalQuery({
   args: {},
   handler: resolveCurrentUserPaymentsAccess,
+});
+
+export const getCurrentBillingAttentionAccess = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return { status: "ineligible" as const };
+    }
+
+    const user = await ctx.db.get(userId);
+    if (
+      !user ||
+      hasUserRole(user, "staff") ||
+      hasUserRole(user, "admin")
+    ) {
+      return { status: "ineligible" as const };
+    }
+
+    const access = await resolveCurrentUserPaymentsAccess(ctx);
+    return access.status === "ready"
+      ? access
+      : { status: "ineligible" as const };
+  },
 });

@@ -169,9 +169,7 @@ export function AppBreadcrumbs() {
   const { data: privateData } = useQuery(
     convexQuery(
       api.privates.getPrivate,
-      ids.privateId
-        ? { privateId: ids.privateId as Id<"privates"> }
-        : "skip",
+      ids.privateId ? { privateId: ids.privateId as Id<"privates"> } : "skip",
     ),
   );
   const { data: privateLessonData } = useQuery(
@@ -179,8 +177,7 @@ export function AppBreadcrumbs() {
       api.privates.getPrivateLesson,
       ids.privateLessonId
         ? {
-            privateLessonId:
-              ids.privateLessonId as Id<"privateLessons">,
+            privateLessonId: ids.privateLessonId as Id<"privateLessons">,
           }
         : "skip",
     ),
@@ -189,10 +186,9 @@ export function AppBreadcrumbs() {
   const dynamicLabels: Record<string, string | undefined> = {
     ...(ids.accountId
       ? {
-          [ids.accountId]:
-            accountData?.account
-              ? getAccountName(accountData.account)
-              : "Account",
+          [ids.accountId]: accountData?.account
+            ? getAccountName(accountData.account)
+            : "Account",
         }
       : {}),
     ...(ids.adminClassId
@@ -243,7 +239,7 @@ export function AppBreadcrumbs() {
   }
 
   return (
-    <Breadcrumb className="min-w-0 max-w-[80vw] overflow-hidden">
+    <Breadcrumb className="min-w-0 max-w-[70vw] overflow-hidden">
       <BreadcrumbList className="flex-nowrap overflow-hidden sm:hidden">
         {crumbs.length > 1 ? (
           <>

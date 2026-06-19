@@ -1,7 +1,4 @@
-import {
-  useConvexMutation,
-  useConvexQuery,
-} from "@convex-dev/react-query";
+import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
@@ -50,7 +47,7 @@ export function NotificationsBell() {
           <Bell />
           {(unreadCount || 0) > 0 ? (
             <span
-              className="absolute right-1.5 top-1.5 size-2 rounded-full bg-red-500 ring-2 ring-background"
+              className="absolute right-2 top-1.5 size-2 rounded-full bg-red-500 ring-2 ring-background"
               aria-label={`${unreadCount} unread notifications`}
             />
           ) : null}

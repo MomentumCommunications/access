@@ -58,3 +58,39 @@ export async function createAdminNotifications(
   );
   return await createNotifications(ctx, { recipientUserIds, event });
 }
+
+export async function studentManagerNotificationRecipients(
+  ctx: MutationCtx,
+  studentId: Id<"students">,
+  exceptUserId?: Id<"users">,
+) {
+  const contacts = await ctx.db
+    .query("studentContacts")
+    .withIndex("byStudent", (q) => q.eq("student", studentId))
+    .collect();
+
+  return contacts
+    .filter(
+      (
+        contact,
+      ): contact is typeof contact & { user: Id<"users"> } =>
+        contact.canManage &&
+        contact.user !== undefined &&
+        contact.user !== exceptUserId,
+    )
+    .map((contact) => contact.user);
+}
+
+export async function createStudentManagerNotifications(
+  ctx: MutationCtx,
+  studentId: Id<"students">,
+  event: NotificationEventInput,
+  exceptUserId?: Id<"users">,
+) {
+  const recipientUserIds = await studentManagerNotificationRecipients(
+    ctx,
+    studentId,
+    exceptUserId,
+  );
+  return await createNotifications(ctx, { recipientUserIds, event });
+}

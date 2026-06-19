@@ -58,6 +58,54 @@ export function pendingEnrollmentNotification({
   };
 }
 
+export type EnrollmentOutcome = "enrolled" | "waitlisted" | "rejected";
+
+export function enrollmentOutcomeNotification({
+  enrollmentId,
+  actorUserId,
+  outcome,
+  studentName,
+  className,
+  classId,
+  studentId,
+}: {
+  enrollmentId: string;
+  actorUserId?: string;
+  outcome: EnrollmentOutcome;
+  studentName: string;
+  className: string;
+  classId: string;
+  studentId: string;
+}): NotificationEventInput {
+  const content: Record<
+    EnrollmentOutcome,
+    { title: string; body: string }
+  > = {
+    enrolled: {
+      title: "Enrollment approved",
+      body: `${studentName} is now enrolled in ${className}.`,
+    },
+    waitlisted: {
+      title: "Enrollment waitlisted",
+      body: `${studentName} was added to the waitlist for ${className}.`,
+    },
+    rejected: {
+      title: "Enrollment request declined",
+      body: `${studentName}'s enrollment request for ${className} was not approved.`,
+    },
+  };
+
+  return {
+    type: `enrollment.${outcome}`,
+    ...content[outcome],
+    href: `/students/${studentId}`,
+    actorUserId,
+    entityType: "classEnrollment",
+    entityId: enrollmentId,
+    metadata: { classId, studentId, outcome },
+  };
+}
+
 export function notificationHasUnread(
   notifications: Array<{ readAt?: number }>,
 ) {

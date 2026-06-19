@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import { formatAge } from "~/lib/date-utils";
+import { formatAge, formatFullDate } from "~/lib/date-utils";
 
 export const Route = createFileRoute("/_app/students/$studentId")({
   component: StudentDetailPage,
@@ -106,12 +106,14 @@ function StudentDetailPage() {
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Birthday</dt>
                 <dd className="font-medium">
-                  {student.dateOfBirth || "Not set"}
+                  {formatFullDate(student.dateOfBirth) || "Not set"}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Age</dt>
-                <dd className="font-medium">{formatAge(student.dateOfBirth)}</dd>
+                <dd className="font-medium">
+                  {formatAge(student.dateOfBirth)}
+                </dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Relationship</dt>

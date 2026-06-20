@@ -1,5 +1,10 @@
 import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  useBlocker,
+  useNavigate,
+} from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
@@ -113,6 +118,9 @@ type SelectionEstimate = FunctionReturnType<
   typeof api.classes.estimateMyClassSelections
 >;
 
+const unsavedSelectionMessage =
+  "You have enrollment selections that have not been submitted. Leave this page and discard them?";
+
 function todayDateValue() {
   const today = new Date();
   return [
@@ -181,6 +189,16 @@ function ClassesPage() {
     () => normalizeEnrollmentSelectionRequest(draft),
     [draft],
   );
+  const hasUnsavedSelections =
+    normalizedRequest.recurringClassIds.length > 0 ||
+    normalizedRequest.sessionSelections.length > 0;
+  useBlocker({
+    shouldBlockFn: () =>
+      hasUnsavedSelections &&
+      !window.confirm(unsavedSelectionMessage),
+    enableBeforeUnload: hasUnsavedSelections,
+    disabled: !hasUnsavedSelections,
+  });
   const hasRecurringSelections =
     normalizedRequest.recurringClassIds.length > 0;
   const specificDateError = useMemo(() => {

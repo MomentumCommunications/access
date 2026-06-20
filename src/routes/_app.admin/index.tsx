@@ -1,5 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BookOpen, CalendarDays, GraduationCap, Users } from "lucide-react";
+import {
+  BookOpen,
+  CalendarDays,
+  GraduationCap,
+  ListChecks,
+  Users,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { RoleGate } from "~/components/role-gate";
 import { Button } from "~/components/ui/button";
@@ -26,6 +32,12 @@ function AdminHome() {
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
+          <AdminCard
+            title="Attendance"
+            description="Review attendance records."
+            to="/admin/attendance"
+            icon={<ListChecks />}
+          />
           <AdminCard
             title="Accounts"
             description="Review users and update access roles."
@@ -65,6 +77,7 @@ function AdminCard({
   title: string;
   description: string;
   to:
+    | "/admin/attendance"
     | "/admin/accounts"
     | "/admin/students"
     | "/admin/classes"

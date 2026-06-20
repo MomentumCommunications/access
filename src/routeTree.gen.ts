@@ -21,6 +21,7 @@ import { Route as RegisterReviewRouteImport } from './routes/register.review'
 import { Route as RegisterProfileRouteImport } from './routes/register.profile'
 import { Route as RegisterContractRouteImport } from './routes/register.contract'
 import { Route as RegisterCompleteRouteImport } from './routes/register.complete'
+import { Route as AppTuitionPlanRouteImport } from './routes/_app.tuition-plan'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppSearchRouteImport } from './routes/_app.search'
 import { Route as AppPaymentsRouteImport } from './routes/_app.payments'
@@ -134,6 +135,11 @@ const RegisterCompleteRoute = RegisterCompleteRouteImport.update({
   id: '/complete',
   path: '/complete',
   getParentRoute: () => RegisterRoute,
+} as any)
+const AppTuitionPlanRoute = AppTuitionPlanRouteImport.update({
+  id: '/tuition-plan',
+  path: '/tuition-plan',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
@@ -435,6 +441,7 @@ export interface FileRoutesByFullPath {
   '/payments': typeof AppPaymentsRoute
   '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
+  '/tuition-plan': typeof AppTuitionPlanRoute
   '/register/complete': typeof RegisterCompleteRoute
   '/register/contract': typeof RegisterContractRoute
   '/register/profile': typeof RegisterProfileRoute
@@ -501,6 +508,7 @@ export interface FileRoutesByTo {
   '/payments': typeof AppPaymentsRoute
   '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
+  '/tuition-plan': typeof AppTuitionPlanRoute
   '/register/complete': typeof RegisterCompleteRoute
   '/register/contract': typeof RegisterContractRoute
   '/register/profile': typeof RegisterProfileRoute
@@ -570,6 +578,7 @@ export interface FileRoutesById {
   '/_app/payments': typeof AppPaymentsRoute
   '/_app/search': typeof AppSearchRoute
   '/_app/settings': typeof AppSettingsRoute
+  '/_app/tuition-plan': typeof AppTuitionPlanRoute
   '/register/complete': typeof RegisterCompleteRoute
   '/register/contract': typeof RegisterContractRoute
   '/register/profile': typeof RegisterProfileRoute
@@ -639,6 +648,7 @@ export interface FileRouteTypes {
     | '/payments'
     | '/search'
     | '/settings'
+    | '/tuition-plan'
     | '/register/complete'
     | '/register/contract'
     | '/register/profile'
@@ -705,6 +715,7 @@ export interface FileRouteTypes {
     | '/payments'
     | '/search'
     | '/settings'
+    | '/tuition-plan'
     | '/register/complete'
     | '/register/contract'
     | '/register/profile'
@@ -773,6 +784,7 @@ export interface FileRouteTypes {
     | '/_app/payments'
     | '/_app/search'
     | '/_app/settings'
+    | '/_app/tuition-plan'
     | '/register/complete'
     | '/register/contract'
     | '/register/profile'
@@ -920,6 +932,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/register/complete'
       preLoaderRoute: typeof RegisterCompleteRouteImport
       parentRoute: typeof RegisterRoute
+    }
+    '/_app/tuition-plan': {
+      id: '/_app/tuition-plan'
+      path: '/tuition-plan'
+      fullPath: '/tuition-plan'
+      preLoaderRoute: typeof AppTuitionPlanRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/settings': {
       id: '/_app/settings'
@@ -1312,6 +1331,7 @@ interface AppRouteChildren {
   AppPaymentsRoute: typeof AppPaymentsRoute
   AppSearchRoute: typeof AppSearchRoute
   AppSettingsRoute: typeof AppSettingsRoute
+  AppTuitionPlanRoute: typeof AppTuitionPlanRoute
   AppBulletinIdEditRoute: typeof AppBulletinIdEditRoute
   AppAdminAccountsRoute: typeof AppAdminAccountsRoute
   AppAdminAttendanceRoute: typeof AppAdminAttendanceRoute
@@ -1369,6 +1389,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPaymentsRoute: AppPaymentsRoute,
   AppSearchRoute: AppSearchRoute,
   AppSettingsRoute: AppSettingsRoute,
+  AppTuitionPlanRoute: AppTuitionPlanRoute,
   AppBulletinIdEditRoute: AppBulletinIdEditRoute,
   AppAdminAccountsRoute: AppAdminAccountsRoute,
   AppAdminAttendanceRoute: AppAdminAttendanceRoute,

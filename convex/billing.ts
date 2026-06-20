@@ -16,7 +16,7 @@ import {
   type HouseholdLinkSource,
 } from "./lib/billing/householdTuition";
 import { hasUserRole } from "./lib/roles";
-import { getCurrentUserOrThrow } from "./users";
+import { getCurrentUser, getCurrentUserOrThrow } from "./users";
 import {
   nextPricingSchemaVersion,
   type SiblingDiscountConfig,
@@ -36,6 +36,7 @@ import {
 } from "../shared/private-pricing";
 import {
   privateRateName,
+  getActivePrivateRate,
   snapshotOpenPrivateChargesForRate,
 } from "./lib/billing/privatePricing";
 import {
@@ -60,6 +61,15 @@ import {
 } from "../shared/billing-runs";
 import { recordActivityEvent } from "./lib/activityLog";
 import { resolveBillingRunItemSourceComponents } from "./lib/billing/runSourceComponents";
+import { todayValue } from "./lib/scheduling";
+import {
+  availableTuitionMonths,
+  billingMonthPeriod,
+  isPrivateConnectedToHousehold,
+  resolveTuitionPlanMonth,
+  selectHouseholdTuitionBreakdown,
+  tuitionMonthNavigation,
+} from "../shared/tuition-plan";
 
 function accountName(account: {
   displayName?: string;
@@ -691,6 +701,212 @@ export const adminPeriodTuitionReview = query({
   handler: async (ctx, { periodStart, periodEnd }) => {
     await requireAdmin(ctx);
     return await getPeriodTuitionReview(ctx, periodStart, periodEnd);
+  },
+});
+
+export const currentHouseholdTuitionPlan = query({
+  args: {
+    month: v.optional(v.string()),
+  },
+  handler: async (ctx, { month }) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      return {
+        status: "unauthenticated" as const,
+        availableMonths: [],
+        connectedPrivates: [],
+      };
+    }
+    const membership = (
+      await ctx.db
+        .query("householdMembers")
+        .withIndex("byUser", (q) => q.eq("userId", user._id))
+        .collect()
+    ).sort(
+      (left, right) =>
+        left._creationTime - right._creationTime ||
+        left.householdId.localeCompare(right.householdId),
+    )[0];
+    if (!membership) {
+      return {
+        status: "missing_household" as const,
+        availableMonths: [],
+        connectedPrivates: [],
+      };
+    }
+    const household = await ctx.db.get(membership.householdId);
+    if (!household) {
+      return {
+        status: "missing_household" as const,
+        availableMonths: [],
+        connectedPrivates: [],
+      };
+    }
+
+    const householdData = await getHouseholdResolutionData(ctx);
+    const students = (await ctx.db.query("students").collect()).filter(
+      (student) =>
+        resolveStudentHousehold(student._id, householdData).householdId ===
+        household._id,
+    );
+    const studentIds = new Set(students.map((student) => student._id));
+    const tuitionInputs = (await getWeeklyClassHoursInputs(ctx)).filter(
+      (input) =>
+        studentIds.has(input.studentId as Id<"students">) &&
+        (input.enrollmentStatus === "enrolled" ||
+          input.enrollmentStatus === "dropped") &&
+        input.classEnrollmentMode === "standard",
+    );
+    const currentMonth = todayValue("America/New_York").slice(0, 7);
+    const availableMonths = availableTuitionMonths(
+      tuitionInputs.map((input) => ({
+        enrollmentStartDate: input.enrollmentStartDate,
+        enrollmentEndDate: input.enrollmentEndDate,
+        classStartDate: input.classStartDate,
+        classEndDate: input.classEndDate,
+      })),
+      currentMonth,
+    );
+    const selectedMonth = resolveTuitionPlanMonth({
+      availableMonths,
+      requestedMonth: month,
+      currentMonth,
+    });
+
+    const privateSeries = (await ctx.db.query("privates").collect())
+      .filter(
+        (series) =>
+          series.isActive &&
+          isPrivateConnectedToHousehold(
+            series.studentIds || [],
+            studentIds,
+          ),
+      )
+      .sort(
+        (left, right) =>
+          left.name.localeCompare(right.name) ||
+          left._id.localeCompare(right._id),
+      );
+    const connectedPrivates = await Promise.all(
+      privateSeries.map(async (series) => {
+        const connectedStudents = (series.studentIds || [])
+          .filter((studentId) => studentIds.has(studentId))
+          .map((studentId) =>
+            students.find((student) => student._id === studentId),
+          )
+          .filter((student) => student !== undefined);
+        const participantCount = (series.studentIds || []).length;
+        const rate =
+          participantCount >= 1 && participantCount <= 3
+            ? await getActivePrivateRate(ctx, participantCount)
+            : undefined;
+        const instructor = await ctx.db.get(series.instructorId);
+        return {
+          privateId: series._id,
+          name: series.name,
+          instructorName: instructor ? accountName(instructor) : "Not assigned",
+          studentNames: connectedStudents.map(
+            (student) => `${student.firstName} ${student.lastName}`,
+          ),
+          durationMinutes: series.defaultDurationMinutes,
+          typicalSessionCostCents: rate
+            ? calculatePrivateChargeCents(
+                rate.hourlyPriceCents,
+                series.defaultDurationMinutes,
+              )
+            : undefined,
+          pricingLabel:
+            participantCount >= 1 && participantCount <= 3
+              ? privateRateName(participantCount)
+              : undefined,
+        };
+      }),
+    );
+
+    if (!selectedMonth) {
+      return {
+        status: "ready" as const,
+        householdName: household.name,
+        availableMonths,
+        selectedMonth: undefined,
+        previousMonth: undefined,
+        nextMonth: undefined,
+        breakdown: undefined,
+        connectedPrivates,
+      };
+    }
+
+    const { periodStart, periodEnd } = billingMonthPeriod(selectedMonth);
+    const review = await getPeriodTuitionReview(
+      ctx,
+      periodStart,
+      periodEnd,
+    );
+    const householdTuition = selectHouseholdTuitionBreakdown(
+      review.households,
+      household._id,
+    );
+    const navigation = tuitionMonthNavigation(
+      availableMonths,
+      selectedMonth,
+    );
+
+    return {
+      status: "ready" as const,
+      householdName: household.name,
+      availableMonths,
+      selectedMonth,
+      ...navigation,
+      breakdown: householdTuition
+        ? {
+            periodStart,
+            periodEnd,
+            totalTuitionCents: householdTuition.totalTuitionCents,
+            subtotalBeforeSiblingDiscountsCents:
+              householdTuition.subtotalBaseTuitionCents,
+            totalBeforeManualAdjustmentsCents:
+              householdTuition.totalBeforeManualAdjustmentsCents,
+            hasIncompleteTuition: householdTuition.hasIncompleteTuition,
+            students: householdTuition.students.map((student) => ({
+              studentId: student.studentId,
+              studentName: student.studentName,
+              rawBaseTuitionCents: student.rawBaseTuitionCents,
+              adjustedTuitionCents: student.baseTuitionCents,
+              isProrated: student.isProrated,
+              segments: student.segments.map((segment) => ({
+                weeklyMinutes: segment.weeklyMinutes,
+                days: segment.days,
+                monthlyAmountCents: segment.monthlyAmountCents,
+              })),
+              adjustments: student.studentBillingAdjustments.map(
+                (adjustment) => ({
+                  id: adjustment.id,
+                  kind: adjustment.kind,
+                  calculationType: adjustment.calculationType,
+                  configuredAmount: adjustment.amount,
+                  amountCents: adjustment.amountCents,
+                  reasonCode: adjustment.reasonCode,
+                  note: adjustment.note,
+                  applicable: adjustment.applicable,
+                }),
+              ),
+            })),
+            siblingAdjustments: householdTuition.adjustments,
+            householdAdjustments: householdTuition.billingAdjustments.map(
+              (adjustment) => ({
+                id: adjustment._id,
+                kind: adjustment.kind,
+                calculationType: adjustment.calculationType,
+                configuredAmount: adjustment.amount,
+                amountCents: adjustment.appliedAmountCents || 0,
+                reasonCode: adjustment.reasonCode,
+                note: adjustment.note,
+              }),
+            ),
+          }
+        : undefined,
+      connectedPrivates,
+    };
   },
 });
 

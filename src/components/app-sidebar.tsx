@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   LogIn,
   CreditCard,
+  ReceiptText,
   Users,
   Group,
   SportShoe,
@@ -115,6 +116,18 @@ const AppSidebarComponent = memo(() => {
                       <Link to="/classes">
                         <BookOpenCheck />
                         <span>Enroll in Classes</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip="Tuition Plan"
+                      onClick={closeMobileSidebar}
+                    >
+                      <Link to="/tuition-plan">
+                        <ReceiptText />
+                        <span>Tuition Plan</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

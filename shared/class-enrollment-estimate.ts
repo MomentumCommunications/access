@@ -135,3 +135,48 @@ export function normalizeEnrollmentSelectionRequest({
       .sort((left, right) => left.classId.localeCompare(right.classId)),
   };
 }
+
+function isValidDateValue(value?: string): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return (
+    !Number.isNaN(date.getTime()) &&
+    date.toISOString().slice(0, 10) === value
+  );
+}
+
+export function validateSpecificEnrollmentDateRange({
+  startDate,
+  endDate,
+  today,
+  classStartDate,
+  classEndDate,
+  classTitle = "The selected class",
+}: {
+  startDate?: string;
+  endDate?: string;
+  today: string;
+  classStartDate?: string;
+  classEndDate?: string;
+  classTitle?: string;
+}) {
+  if (startDate === undefined && endDate === undefined) return;
+  if (!isValidDateValue(startDate)) {
+    throw new Error("Choose a valid enrollment start date.");
+  }
+  if (endDate !== undefined && !isValidDateValue(endDate)) {
+    throw new Error("Choose a valid enrollment end date.");
+  }
+  if (startDate < today) {
+    throw new Error("Enrollment start date cannot be before today.");
+  }
+  if (endDate !== undefined && endDate < startDate) {
+    throw new Error("Enrollment end date must be on or after the start date.");
+  }
+  if (classEndDate && startDate > classEndDate) {
+    throw new Error(`${classTitle} ends before the requested start date.`);
+  }
+  if (endDate && classStartDate && endDate < classStartDate) {
+    throw new Error(`${classTitle} begins after the requested end date.`);
+  }
+}

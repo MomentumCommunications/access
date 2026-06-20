@@ -33,6 +33,14 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "~/components/ui/combobox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
 import { Label } from "~/components/ui/label";
 import { Input } from "~/components/ui/input";
 import {
@@ -168,6 +176,7 @@ function AdminStudentDetailPage() {
   const [canManage, setCanManage] = useState(true);
   const [isPrimary, setIsPrimary] = useState(false);
   const [connectingAccount, setConnectingAccount] = useState(false);
+  const [connectDialogOpen, setConnectDialogOpen] = useState(false);
   const studentWeeklyMinutes =
     weeklyClassMinutes?.find((row) => row.studentId === studentId)
       ?.weeklyMinutes || 0;
@@ -235,6 +244,7 @@ function AdminStudentDetailPage() {
       setRelationship("");
       setCanManage(true);
       setIsPrimary(false);
+      setConnectDialogOpen(false);
       toast.success("Account connected to student.");
     } catch (error) {
       toast.error(
@@ -242,6 +252,17 @@ function AdminStudentDetailPage() {
       );
     } finally {
       setConnectingAccount(false);
+    }
+  }
+
+  function handleConnectDialogChange(open: boolean) {
+    if (connectingAccount) return;
+    setConnectDialogOpen(open);
+    if (!open) {
+      setSelectedAccount("");
+      setRelationship("");
+      setCanManage(true);
+      setIsPrimary(false);
     }
   }
 
@@ -482,11 +503,20 @@ function AdminStudentDetailPage() {
             ) : null}
           </section>
           <section className="space-y-4">
-            <div>
-              <h1 className="text-3xl font-bold">Contacts</h1>
-              <p className="text-muted-foreground">
-                Accounts and contact records connected to this student.
-              </p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold">Contacts</h1>
+                <p className="text-muted-foreground">
+                  Accounts and contact records connected to this student.
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={() => setConnectDialogOpen(true)}
+              >
+                <UserPlus />
+                Connect account
+              </Button>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               {studentData.contacts.map((contact) => (
@@ -553,30 +583,30 @@ function AdminStudentDetailPage() {
                   <CardHeader>
                     <CardTitle>No contacts</CardTitle>
                     <CardDescription>
-                      Connect an existing account below.
+                      Connect an existing account to add a guardian or contact.
                     </CardDescription>
                   </CardHeader>
                 </Card>
               ) : null}
             </div>
 
-            <Card className="rounded-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserPlus className="size-4" />
-                  Connect existing account
-                </CardTitle>
-                <CardDescription>
+            <Dialog
+              open={connectDialogOpen}
+              onOpenChange={handleConnectDialogChange}
+            >
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Connect existing account</DialogTitle>
+                  <DialogDescription>
                   Add another guardian or contact using an account already in
                   Access Momentum.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                  </DialogDescription>
+                </DialogHeader>
                 <form
-                  className="grid gap-4 md:grid-cols-2"
+                  className="grid gap-4 sm:grid-cols-2"
                   onSubmit={handleConnectAccount}
                 >
-                  <div className="space-y-1 md:col-span-2">
+                  <div className="space-y-1 sm:col-span-2">
                     <Label>Account</Label>
                     <Combobox
                       items={accountOptions.map((option) => option.value)}
@@ -663,7 +693,15 @@ function AdminStudentDetailPage() {
                       Set as primary contact
                     </label>
                   </div>
-                  <div className="md:col-span-2">
+                  <DialogFooter className="sm:col-span-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={connectingAccount}
+                      onClick={() => handleConnectDialogChange(false)}
+                    >
+                      Cancel
+                    </Button>
                     <Button
                       type="submit"
                       disabled={!selectedAccount || connectingAccount}
@@ -675,10 +713,10 @@ function AdminStudentDetailPage() {
                       )}
                       Connect account
                     </Button>
-                  </div>
+                  </DialogFooter>
                 </form>
-              </CardContent>
-            </Card>
+              </DialogContent>
+            </Dialog>
 
             <div>
               <h1 className="text-3xl font-bold">Enrollments</h1>

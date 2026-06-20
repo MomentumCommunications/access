@@ -187,10 +187,6 @@ export function AdminBulletin() {
         >
           Toggle past events
         </Button>
-        <Separator orientation="vertical" className="h-full" />
-        <Button variant="link" className="px-0 text-xs" asChild>
-          <a href="/directory">Directory</a>
-        </Button>
       </div>
       <div id="past-bulletins" className="hidden py-6">
         <h2 className="mb-4 text-2xl font-bold">Past Events</h2>

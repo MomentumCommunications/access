@@ -27,7 +27,6 @@ import { Route as AppSearchRouteImport } from './routes/_app.search'
 import { Route as AppPaymentsRouteImport } from './routes/_app.payments'
 import { Route as AppHomeRouteImport } from './routes/_app.home'
 import { Route as AppHelpRouteImport } from './routes/_app.help'
-import { Route as AppDirectoryRouteImport } from './routes/_app.directory'
 import { Route as AppCreateBulletinRouteImport } from './routes/_app.create-bulletin'
 import { Route as AppAccountRouteImport } from './routes/_app.account'
 import { Route as AppBulletinIdRouteImport } from './routes/_app.$bulletinId'
@@ -164,11 +163,6 @@ const AppHomeRoute = AppHomeRouteImport.update({
 const AppHelpRoute = AppHelpRouteImport.update({
   id: '/help',
   path: '/help',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDirectoryRoute = AppDirectoryRouteImport.update({
-  id: '/directory',
-  path: '/directory',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCreateBulletinRoute = AppCreateBulletinRouteImport.update({
@@ -435,7 +429,6 @@ export interface FileRoutesByFullPath {
   '/$bulletinId': typeof AppBulletinIdRoute
   '/account': typeof AppAccountRoute
   '/create-bulletin': typeof AppCreateBulletinRoute
-  '/directory': typeof AppDirectoryRoute
   '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
   '/payments': typeof AppPaymentsRoute
@@ -502,7 +495,6 @@ export interface FileRoutesByTo {
   '/$bulletinId': typeof AppBulletinIdRoute
   '/account': typeof AppAccountRoute
   '/create-bulletin': typeof AppCreateBulletinRoute
-  '/directory': typeof AppDirectoryRoute
   '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
   '/payments': typeof AppPaymentsRoute
@@ -572,7 +564,6 @@ export interface FileRoutesById {
   '/_app/$bulletinId': typeof AppBulletinIdRoute
   '/_app/account': typeof AppAccountRoute
   '/_app/create-bulletin': typeof AppCreateBulletinRoute
-  '/_app/directory': typeof AppDirectoryRoute
   '/_app/help': typeof AppHelpRoute
   '/_app/home': typeof AppHomeRoute
   '/_app/payments': typeof AppPaymentsRoute
@@ -642,7 +633,6 @@ export interface FileRouteTypes {
     | '/$bulletinId'
     | '/account'
     | '/create-bulletin'
-    | '/directory'
     | '/help'
     | '/home'
     | '/payments'
@@ -709,7 +699,6 @@ export interface FileRouteTypes {
     | '/$bulletinId'
     | '/account'
     | '/create-bulletin'
-    | '/directory'
     | '/help'
     | '/home'
     | '/payments'
@@ -778,7 +767,6 @@ export interface FileRouteTypes {
     | '/_app/$bulletinId'
     | '/_app/account'
     | '/_app/create-bulletin'
-    | '/_app/directory'
     | '/_app/help'
     | '/_app/home'
     | '/_app/payments'
@@ -973,13 +961,6 @@ declare module '@tanstack/react-router' {
       path: '/help'
       fullPath: '/help'
       preLoaderRoute: typeof AppHelpRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/directory': {
-      id: '/_app/directory'
-      path: '/directory'
-      fullPath: '/directory'
-      preLoaderRoute: typeof AppDirectoryRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/create-bulletin': {
@@ -1325,7 +1306,6 @@ interface AppRouteChildren {
   AppBulletinIdRoute: typeof AppBulletinIdRoute
   AppAccountRoute: typeof AppAccountRoute
   AppCreateBulletinRoute: typeof AppCreateBulletinRoute
-  AppDirectoryRoute: typeof AppDirectoryRoute
   AppHelpRoute: typeof AppHelpRoute
   AppHomeRoute: typeof AppHomeRoute
   AppPaymentsRoute: typeof AppPaymentsRoute
@@ -1383,7 +1363,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppBulletinIdRoute: AppBulletinIdRoute,
   AppAccountRoute: AppAccountRoute,
   AppCreateBulletinRoute: AppCreateBulletinRoute,
-  AppDirectoryRoute: AppDirectoryRoute,
   AppHelpRoute: AppHelpRoute,
   AppHomeRoute: AppHomeRoute,
   AppPaymentsRoute: AppPaymentsRoute,

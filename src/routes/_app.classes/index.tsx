@@ -28,6 +28,7 @@ import {
   enrollmentSaveErrorMessage,
   enrollmentSaveSuccessMessage,
   normalizeEnrollmentSelectionRequest,
+  validateSpecificEnrollmentDateRange,
 } from "../../../shared/class-enrollment-estimate";
 import {
   buildEnrollmentReview,
@@ -65,6 +66,7 @@ import {
   CollapsibleTrigger,
 } from "~/components/ui/collapsible";
 import { Label } from "~/components/ui/label";
+import { Input } from "~/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -111,6 +113,15 @@ type SelectionEstimate = FunctionReturnType<
   typeof api.classes.estimateMyClassSelections
 >;
 
+function todayDateValue() {
+  const today = new Date();
+  return [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
 function ClassesPage() {
   const navigate = useNavigate();
   const {
@@ -156,6 +167,11 @@ function ClassesPage() {
     emptyEnrollmentSelectionDraft,
   );
   const [saving, setSaving] = useState(false);
+  const [useSpecificDates, setUseSpecificDates] = useState(false);
+  const [enrollmentStartDate, setEnrollmentStartDate] = useState(
+    todayDateValue,
+  );
+  const [enrollmentEndDate, setEnrollmentEndDate] = useState("");
   const [saveFeedback, setSaveFeedback] = useState<{
     tone: "success" | "error";
     message: string;
@@ -165,6 +181,21 @@ function ClassesPage() {
     () => normalizeEnrollmentSelectionRequest(draft),
     [draft],
   );
+  const hasRecurringSelections =
+    normalizedRequest.recurringClassIds.length > 0;
+  const specificDateError = useMemo(() => {
+    if (!useSpecificDates) return null;
+    try {
+      validateSpecificEnrollmentDateRange({
+        startDate: enrollmentStartDate || undefined,
+        endDate: enrollmentEndDate || undefined,
+        today: todayDateValue(),
+      });
+      return null;
+    } catch (error) {
+      return error instanceof Error ? error.message : "Choose valid dates.";
+    }
+  }, [enrollmentEndDate, enrollmentStartDate, useSpecificDates]);
   const estimate = useConvexQuery(
     api.classes.estimateMyClassSelections,
     selectedStudentId && !selectedStudentIsManaged
@@ -178,6 +209,17 @@ function ClassesPage() {
               sessionIds: selection.sessionIds as Id<"sessions">[],
             }),
           ),
+          startDate:
+            hasRecurringSelections && useSpecificDates && !specificDateError
+              ? enrollmentStartDate
+              : undefined,
+          endDate:
+            hasRecurringSelections &&
+            useSpecificDates &&
+            !specificDateError &&
+            enrollmentEndDate
+              ? enrollmentEndDate
+              : undefined,
         }
       : "skip",
   );
@@ -212,7 +254,17 @@ function ClassesPage() {
   useEffect(() => {
     setDraft(emptyEnrollmentSelectionDraft());
     setSaveFeedback(null);
+    setUseSpecificDates(false);
+    setEnrollmentStartDate(todayDateValue());
+    setEnrollmentEndDate("");
   }, [selectedSeasonId, selectedStudentId]);
+
+  useEffect(() => {
+    if (hasRecurringSelections) return;
+    setUseSpecificDates(false);
+    setEnrollmentStartDate(todayDateValue());
+    setEnrollmentEndDate("");
+  }, [hasRecurringSelections]);
 
   const review = useMemo(
     () => buildEnrollmentReview(toReviewClasses(classes || []), draft),
@@ -229,6 +281,7 @@ function ClassesPage() {
       !selectedStudentId ||
       selectedStudentIsManaged ||
       review.changeCount === 0 ||
+      specificDateError ||
       saving
     ) {
       return;
@@ -246,9 +299,20 @@ function ClassesPage() {
             sessionIds: selection.sessionIds as Id<"sessions">[],
           }),
         ),
+        startDate:
+          hasRecurringSelections && useSpecificDates
+            ? enrollmentStartDate
+            : undefined,
+        endDate:
+          hasRecurringSelections && useSpecificDates && enrollmentEndDate
+            ? enrollmentEndDate
+            : undefined,
       });
       const message = enrollmentSaveSuccessMessage(result);
       setDraft(emptyEnrollmentSelectionDraft());
+      setUseSpecificDates(false);
+      setEnrollmentStartDate(todayDateValue());
+      setEnrollmentEndDate("");
       setSaveFeedback({ tone: "success", message });
       toast.success(message);
     } catch (error) {
@@ -470,6 +534,13 @@ function ClassesPage() {
               estimate={estimate}
               saving={saving}
               feedback={saveFeedback}
+              useSpecificDates={useSpecificDates}
+              enrollmentStartDate={enrollmentStartDate}
+              enrollmentEndDate={enrollmentEndDate}
+              specificDateError={specificDateError}
+              onUseSpecificDatesChange={setUseSpecificDates}
+              onEnrollmentStartDateChange={setEnrollmentStartDate}
+              onEnrollmentEndDateChange={setEnrollmentEndDate}
               onSave={handleSaveSelections}
             />
           </aside>
@@ -499,6 +570,13 @@ function ClassesPage() {
                   estimate={estimate}
                   saving={saving}
                   feedback={saveFeedback}
+                  useSpecificDates={useSpecificDates}
+                  enrollmentStartDate={enrollmentStartDate}
+                  enrollmentEndDate={enrollmentEndDate}
+                  specificDateError={specificDateError}
+                  onUseSpecificDatesChange={setUseSpecificDates}
+                  onEnrollmentStartDateChange={setEnrollmentStartDate}
+                  onEnrollmentEndDateChange={setEnrollmentEndDate}
                   onSave={handleSaveSelections}
                 />
               </ScrollArea>
@@ -814,6 +892,13 @@ function ReviewCard({
   estimate,
   saving,
   feedback,
+  useSpecificDates,
+  enrollmentStartDate,
+  enrollmentEndDate,
+  specificDateError,
+  onUseSpecificDatesChange,
+  onEnrollmentStartDateChange,
+  onEnrollmentEndDateChange,
   onSave,
 }: {
   review: EnrollmentReview;
@@ -821,6 +906,13 @@ function ReviewCard({
   estimate: SelectionEstimate | undefined;
   saving: boolean;
   feedback: { tone: "success" | "error"; message: string } | null;
+  useSpecificDates: boolean;
+  enrollmentStartDate: string;
+  enrollmentEndDate: string;
+  specificDateError: string | null;
+  onUseSpecificDatesChange: (checked: boolean) => void;
+  onEnrollmentStartDateChange: (value: string) => void;
+  onEnrollmentEndDateChange: (value: string) => void;
   onSave: () => void;
 }) {
   return (
@@ -837,6 +929,13 @@ function ReviewCard({
           estimate={estimate}
           saving={saving}
           feedback={feedback}
+          useSpecificDates={useSpecificDates}
+          enrollmentStartDate={enrollmentStartDate}
+          enrollmentEndDate={enrollmentEndDate}
+          specificDateError={specificDateError}
+          onUseSpecificDatesChange={onUseSpecificDatesChange}
+          onEnrollmentStartDateChange={onEnrollmentStartDateChange}
+          onEnrollmentEndDateChange={onEnrollmentEndDateChange}
           onSave={onSave}
         />
       </CardContent>
@@ -849,12 +948,26 @@ function ReviewContent({
   estimate,
   saving,
   feedback,
+  useSpecificDates,
+  enrollmentStartDate,
+  enrollmentEndDate,
+  specificDateError,
+  onUseSpecificDatesChange,
+  onEnrollmentStartDateChange,
+  onEnrollmentEndDateChange,
   onSave,
 }: {
   review: EnrollmentReview;
   estimate: SelectionEstimate | undefined;
   saving: boolean;
   feedback: { tone: "success" | "error"; message: string } | null;
+  useSpecificDates: boolean;
+  enrollmentStartDate: string;
+  enrollmentEndDate: string;
+  specificDateError: string | null;
+  onUseSpecificDatesChange: (checked: boolean) => void;
+  onEnrollmentStartDateChange: (value: string) => void;
+  onEnrollmentEndDateChange: (value: string) => void;
   onSave: () => void;
 }) {
   const hasCurrent =
@@ -897,9 +1010,66 @@ function ReviewContent({
         </section>
       ) : null}
       <EstimateSummary estimate={estimate} />
+      {review.selectedRecurring.length > 0 ? (
+        <section className="space-y-3 rounded-md border p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <Label htmlFor="specific-enrollment-dates">
+                Use specific enrollment dates
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Applies only to regular tuition classes.
+              </p>
+            </div>
+            <Switch
+              id="specific-enrollment-dates"
+              checked={useSpecificDates}
+              onCheckedChange={onUseSpecificDatesChange}
+            />
+          </div>
+          {useSpecificDates ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="enrollment-request-start">Start date</Label>
+                <Input
+                  id="enrollment-request-start"
+                  type="date"
+                  min={todayDateValue()}
+                  value={enrollmentStartDate}
+                  onChange={(event) =>
+                    onEnrollmentStartDateChange(event.target.value)
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="enrollment-request-end">
+                  End date <span className="font-normal">(optional)</span>
+                </Label>
+                <Input
+                  id="enrollment-request-end"
+                  type="date"
+                  min={enrollmentStartDate || todayDateValue()}
+                  value={enrollmentEndDate}
+                  onChange={(event) =>
+                    onEnrollmentEndDateChange(event.target.value)
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Leave blank for open-ended enrollment.
+                </p>
+              </div>
+              {specificDateError ? (
+                <p className="text-sm text-destructive sm:col-span-2">
+                  {specificDateError}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
       <Button
         className="w-full"
-        disabled={saveButton.disabled}
+        disabled={saveButton.disabled || Boolean(specificDateError)}
         onClick={onSave}
       >
         {saveButton.label}

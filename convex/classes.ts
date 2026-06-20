@@ -52,7 +52,10 @@ import {
 } from "../shared/class-enrollment-policy";
 import { resolvedClassEnrollmentOpen } from "../shared/class-enrollment-selection";
 import { buildEnrollmentDeletedEvent } from "../shared/enrollment-activity";
-import { calculateEnrollmentEstimate } from "../shared/class-enrollment-estimate";
+import {
+  calculateEnrollmentEstimate,
+  validateSpecificEnrollmentDateRange,
+} from "../shared/class-enrollment-estimate";
 import { matchTuitionTier } from "../shared/tuition-pricing";
 import { classWeeklyMinutes } from "./lib/billing/weeklyClassHours";
 import { recordActivityEvent } from "./lib/activityLog";
@@ -1027,8 +1030,13 @@ export const estimateMyClassSelections = query({
     student: v.id("students"),
     recurringClassIds: v.array(v.id("classes")),
     sessionSelections: v.array(classSessionSelectionValidator),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
   },
-  handler: async (ctx, { student, recurringClassIds, sessionSelections }) => {
+  handler: async (
+    ctx,
+    { student, recurringClassIds, sessionSelections, startDate, endDate },
+  ) => {
     const user = await getCurrentUserOrThrow(ctx);
     const studentDoc = await ctx.db.get(student);
     if (
@@ -1069,6 +1077,19 @@ export const estimateMyClassSelections = query({
     }, 0);
 
     const uniqueRecurringIds = [...new Set(recurringClassIds)];
+    if (
+      uniqueRecurringIds.length === 0 &&
+      (startDate !== undefined || endDate !== undefined)
+    ) {
+      throw new Error(
+        "A specific date range only applies to regular tuition classes.",
+      );
+    }
+    validateSpecificEnrollmentDateRange({
+      startDate,
+      endDate,
+      today,
+    });
     const recurringClasses = await Promise.all(
       uniqueRecurringIds.map((classId) => ctx.db.get(classId)),
     );
@@ -1091,6 +1112,14 @@ export const estimateMyClassSelections = query({
       if (!classMatchesAge(classItem, studentAge)) {
         throw new Error(`${classItem.title} does not match the student's age.`);
       }
+      validateSpecificEnrollmentDateRange({
+        startDate,
+        endDate,
+        today,
+        classStartDate: classItem.startDate,
+        classEndDate: classItem.endDate,
+        classTitle: classItem.title,
+      });
       const existing = currentEnrollments.find(
         (enrollment) => enrollment.classId === classItem._id,
       );
@@ -1830,8 +1859,13 @@ export const saveMyClassSelections = mutation({
     student: v.id("students"),
     recurringClassIds: v.array(v.id("classes")),
     sessionSelections: v.array(classSessionSelectionValidator),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
   },
-  handler: async (ctx, { student, recurringClassIds, sessionSelections }) => {
+  handler: async (
+    ctx,
+    { student, recurringClassIds, sessionSelections, startDate, endDate },
+  ) => {
     const user = await getCurrentUserOrThrow(ctx);
     const studentDoc = await ctx.db.get(student);
     if (
@@ -1844,6 +1878,20 @@ export const saveMyClassSelections = mutation({
     await assertStudentSelfServiceEnrollmentAllowed(ctx, studentDoc);
 
     const uniqueRecurringIds = [...new Set(recurringClassIds)];
+    const today = todayValue("America/New_York");
+    if (
+      uniqueRecurringIds.length === 0 &&
+      (startDate !== undefined || endDate !== undefined)
+    ) {
+      throw new Error(
+        "A specific date range only applies to regular tuition classes.",
+      );
+    }
+    validateSpecificEnrollmentDateRange({
+      startDate,
+      endDate,
+      today,
+    });
     const sessionIdsByClass = new Map<Id<"classes">, Set<Id<"sessions">>>();
     for (const selection of sessionSelections) {
       const ids = sessionIdsByClass.get(selection.classId) || new Set();
@@ -1879,6 +1927,14 @@ export const saveMyClassSelections = mutation({
       if (!classMatchesAge(classItem, studentAge)) {
         throw new Error(`${classItem.title} does not match the student's age.`);
       }
+      validateSpecificEnrollmentDateRange({
+        startDate,
+        endDate,
+        today,
+        classStartDate: classItem.startDate,
+        classEndDate: classItem.endDate,
+        classTitle: classItem.title,
+      });
       const existing = await ctx.db
         .query("classEnrollments")
         .withIndex("byClassStudent", (q) =>
@@ -1990,8 +2046,8 @@ export const saveMyClassSelections = mutation({
       const enrollment = {
         requestedBy: user._id,
         status: "pending" as const,
-        startDate: todayValue(classItem.timezone),
-        endDate: undefined,
+        startDate: startDate || todayValue(classItem.timezone),
+        endDate,
       };
       let enrollmentId: Id<"classEnrollments">;
       if (existing) {

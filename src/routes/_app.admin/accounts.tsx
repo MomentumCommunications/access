@@ -11,6 +11,7 @@ import { Spinner } from "~/components/ui/spinner";
 import { getAccountName } from "~/lib/account-name";
 import { RoleDropdown } from "~/components/role-controls";
 import { resolveUserRoles } from "~/lib/roles";
+import { UserGroups } from "~/components/user-groups";
 
 export const Route = createFileRoute("/_app/admin/accounts")({
   component: AdminAccountsPage,
@@ -57,6 +58,15 @@ function AdminAccountsPage() {
             }
           />
         );
+      },
+    },
+    {
+      accessorKey: "group",
+      header: "Group",
+      cell: ({ row }) => {
+        const groups = useConvexQuery(api.etcFunctions.getGroups, {});
+
+        return <UserGroups user={row.original} groups={groups} />;
       },
     },
   ];

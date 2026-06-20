@@ -7,6 +7,7 @@ import {
   enrollmentSaveButtonState,
   enrollmentSaveSuccessMessage,
   normalizeEnrollmentSelectionRequest,
+  validateSpecificEnrollmentDateRange,
 } from "../shared/class-enrollment-estimate.ts";
 
 const tiers = [
@@ -125,6 +126,45 @@ describe("class enrollment estimate", () => {
     assert.equal(
       enrollmentSaveErrorMessage(null),
       "Enrollment selections could not be saved.",
+    );
+  });
+
+  it("accepts open-ended specific enrollment dates", () => {
+    assert.doesNotThrow(() =>
+      validateSpecificEnrollmentDateRange({
+        startDate: "2026-07-01",
+        today: "2026-06-20",
+      }),
+    );
+  });
+
+  it("rejects past, reversed, and non-overlapping date ranges", () => {
+    assert.throws(
+      () =>
+        validateSpecificEnrollmentDateRange({
+          startDate: "2026-06-19",
+          today: "2026-06-20",
+        }),
+      /cannot be before today/,
+    );
+    assert.throws(
+      () =>
+        validateSpecificEnrollmentDateRange({
+          startDate: "2026-07-10",
+          endDate: "2026-07-01",
+          today: "2026-06-20",
+        }),
+      /on or after the start date/,
+    );
+    assert.throws(
+      () =>
+        validateSpecificEnrollmentDateRange({
+          startDate: "2026-09-01",
+          today: "2026-06-20",
+          classEndDate: "2026-08-31",
+          classTitle: "Ballet I",
+        }),
+      /ends before the requested start date/,
     );
   });
 });

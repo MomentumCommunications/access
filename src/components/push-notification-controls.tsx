@@ -155,6 +155,8 @@ export function PushNotificationSettings() {
     unsupported: "This browser does not support device notifications.",
     missing_config:
       "Device notifications are not available because the push key is missing from this deployment.",
+    service_worker_error:
+      "The notification service could not start on this device. Refresh Access after the latest deployment and try again.",
     requires_install:
       "Add Access to your iPhone or iPad Home Screen, then open the installed app to enable notifications.",
     denied:
@@ -176,6 +178,11 @@ export function PushNotificationSettings() {
       {state === "requires_install" ? (
         <Button variant="outline" asChild>
           <a href="/help#install-app">Installation instructions</a>
+        </Button>
+      ) : null}
+      {state === "service_worker_error" ? (
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Refresh Access
         </Button>
       ) : null}
       {canEnable ? (

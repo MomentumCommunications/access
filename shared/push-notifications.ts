@@ -41,6 +41,7 @@ export function shouldShowPushPrompt(
     | "loading"
     | "unsupported"
     | "missing_config"
+    | "service_worker_error"
     | "requires_install"
     | "denied"
     | "prompt"

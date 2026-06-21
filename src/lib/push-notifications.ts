@@ -4,6 +4,7 @@ export type PushDeviceState =
   | "loading"
   | "unsupported"
   | "missing_config"
+  | "service_worker_error"
   | "requires_install"
   | "denied"
   | "prompt"
@@ -84,9 +85,13 @@ export async function getPushDeviceState(
   if (!resolveWebPushPublicKey(publicKey)) return "missing_config";
   if (Notification.permission === "denied") return "denied";
 
-  const registration = await readyRegistration();
-  const subscription = await registration?.pushManager.getSubscription();
-  return subscription ? "enabled" : "prompt";
+  try {
+    const registration = await readyRegistration();
+    const subscription = await registration?.pushManager.getSubscription();
+    return subscription ? "enabled" : "prompt";
+  } catch {
+    return "service_worker_error";
+  }
 }
 
 function urlBase64ToUint8Array(value: string) {
@@ -110,6 +115,11 @@ export async function enableDevicePush(
   }
   if (state === "missing_config") {
     throw new Error("Device notifications are not configured yet.");
+  }
+  if (state === "service_worker_error") {
+    throw new Error(
+      "The notification service could not start. Refresh Access and try again.",
+    );
   }
   if (state === "denied") {
     throw new Error("Notifications are blocked in your device settings.");

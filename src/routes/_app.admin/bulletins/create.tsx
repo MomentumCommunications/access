@@ -32,7 +32,7 @@ import { Textarea } from "~/components/ui/textarea";
 import type { DateRange } from "react-day-picker";
 import React from "react";
 
-export const Route = createFileRoute("/_app/create-bulletin")({
+export const Route = createFileRoute("/_app/admin/bulletins/create")({
   component: RouteComponent,
 });
 
@@ -273,13 +273,16 @@ function RouteComponent() {
       }
     }
 
-    navigate({ to: "/home" });
+    await navigate({ to: "/admin/bulletins" });
   }
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-2 px-2 pb-12">
       <div className="flex w-full items-center justify-end">
-        <Button variant={"link"} onClick={() => navigate({ to: "/home" })}>
+        <Button
+          variant="link"
+          onClick={() => navigate({ to: "/admin/bulletins" })}
+        >
           <ArrowLeft className="h-4 w-4" />
           <span>Back</span>
         </Button>

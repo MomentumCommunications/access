@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   BookOpen,
   CalendarDays,
-  GraduationCap,
   ListChecks,
+  PersonStanding,
   Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -48,7 +48,7 @@ function AdminHome() {
             title="Students"
             description="Manage student profiles."
             to="/admin/students"
-            icon={<GraduationCap />}
+            icon={<PersonStanding />}
           />
           <AdminCard
             title="Classes"

@@ -1,19 +1,39 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
+import { getCurrentUserOrThrow } from "./users";
+
+function isAdmin(user: { role?: string; roles?: string[] }) {
+  return user.role === "admin" || user.roles?.includes("admin") === true;
+}
+
+async function requireAdmin(ctx: QueryCtx) {
+  const user = await getCurrentUserOrThrow(ctx);
+  if (!isAdmin(user)) {
+    throw new Error("Administrator access required");
+  }
+}
 
 export const getGroups = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const groups = await ctx.db.query("groups").collect();
     return groups;
   },
 });
 
-export const getGroupsArray = query({
-  args: { ids: v.array(v.id("groups")) },
-  handler: async (ctx, { ids }) => {
-    const groups = await Promise.all(ids.map((id) => ctx.db.get(id)));
-    return groups;
+export const getGroupLabels = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const groups = isAdmin(user)
+      ? await ctx.db.query("groups").collect()
+      : await Promise.all(
+          (user.group || []).map((groupId) => ctx.db.get(groupId)),
+        );
+    return groups.flatMap((group) =>
+      group ? [{ _id: group._id, name: group.name }] : [],
+    );
   },
 });
 
@@ -23,6 +43,7 @@ export const assignGroups = mutation({
     groups: v.array(v.id("groups")),
   },
   handler: async (ctx, { user, groups }) => {
+    await requireAdmin(ctx);
     await ctx.db.patch(user, { group: groups });
   },
 });
@@ -41,6 +62,7 @@ export const addGroup = mutation({
     ctx,
     { name, description, password, info, document, color, managedEnrollment },
   ) => {
+    await requireAdmin(ctx);
     await ctx.db.insert("groups", {
       name,
       description,
@@ -67,6 +89,7 @@ export const editGroup = mutation({
     ctx,
     { group, name, password, info, document, color, managedEnrollment },
   ) => {
+    await requireAdmin(ctx);
     await ctx.db.patch(group, {
       name,
       info,
@@ -81,6 +104,7 @@ export const editGroup = mutation({
 export const deleteGroup = mutation({
   args: { group: v.id("groups") },
   handler: async (ctx, { group }) => {
+    await requireAdmin(ctx);
     await ctx.db.delete(group);
   },
 });
@@ -93,23 +117,11 @@ export const getUrlForImage = query({
   },
 });
 
-export const getUrlForDocument = query({
-  args: { storageId: v.id("_storage") },
-  handler: async (ctx, { storageId }) => {
-    if (!storageId) {
-      return null;
-    }
-    const url = await ctx.storage.getUrl(storageId);
-    return url;
-  },
-});
-
-export const getGroupDocuments = query({
-  args: { groupIds: v.array(v.id("groups")) },
-  handler: async (ctx, { groupIds }) => {
-    if (!groupIds) {
-      return [];
-    }
+export const getMyGroupDocuments = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUserOrThrow(ctx);
+    const groupIds = user.group || [];
     const groups = await Promise.all(groupIds.map((id) => ctx.db.get(id)));
     const groupsWithDocuments = groups.filter((group) => group?.document);
 
@@ -126,16 +138,5 @@ export const getGroupDocuments = query({
     );
 
     return documentsWithUrls.filter((doc) => doc !== null);
-  },
-});
-
-export const getGroupByPassword = query({
-  args: { password: v.string() },
-  handler: async (ctx, { password }) => {
-    const group = await ctx.db
-      .query("groups")
-      .withIndex("byPassword", (q) => q.eq("password", password))
-      .unique();
-    return group;
   },
 });

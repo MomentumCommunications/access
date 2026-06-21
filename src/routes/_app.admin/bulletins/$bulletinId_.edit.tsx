@@ -39,7 +39,6 @@ import { Separator } from "~/components/ui/separator";
 import { Switch } from "~/components/ui/switch";
 import { Textarea } from "~/components/ui/textarea";
 import { parseBulletinDate } from "~/lib/bulletin-date";
-import { getGlobalClients } from "~/lib/query-client";
 
 type Bulletin = {
   _id: Id<"bulletin">;
@@ -55,16 +54,9 @@ type Bulletin = {
   hidden?: boolean;
 };
 
-export const Route = createFileRoute("/_app/$bulletinId_/edit")({
-  loader: async ({ params }) => {
-    const { convex } = getGlobalClients();
-    const bulletin = await convex.query(api.bulletins.getBulletin, {
-      id: params.bulletinId,
-    });
-    if (!bulletin) {
-      throw notFound();
-    }
-  },
+export const Route = createFileRoute(
+  "/_app/admin/bulletins/$bulletinId_/edit",
+)({
   component: RouteComponent,
 });
 
@@ -226,7 +218,10 @@ function RouteComponent() {
     return (
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 px-2 pb-2">
         <div className="flex w-full items-center justify-end">
-          <Button variant={"link"} onClick={() => navigate({ to: "/home" })}>
+          <Button
+            variant="link"
+            onClick={() => navigate({ to: "/admin/bulletins" })}
+          >
             <ArrowLeft className="h-4 w-4" />
             <span>Back</span>
           </Button>
@@ -239,7 +234,10 @@ function RouteComponent() {
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-2 px-2 pb-12">
       <div className="flex w-full items-center justify-end">
-        <Button variant={"link"} onClick={() => navigate({ to: "/home" })}>
+        <Button
+          variant="link"
+          onClick={() => navigate({ to: "/admin/bulletins" })}
+        >
           <ArrowLeft className="h-4 w-4" />
           <span>Back</span>
         </Button>
@@ -268,7 +266,7 @@ function EditBulletinForm({ bulletin }: { bulletin: Bulletin }) {
       ? { from: initialDate ?? initialEndDate, to: initialEndDate }
       : undefined,
   );
-  const groups = useQuery(api.etcFunctions.getGroups, {});
+  const groups = useConvexQuery(api.etcFunctions.getGroups, {});
   const mutationFn = useConvexMutation(api.bulletins.editBulletin);
 
   const navigate = useNavigate();
@@ -368,7 +366,7 @@ function EditBulletinForm({ bulletin }: { bulletin: Bulletin }) {
       endDate,
     });
 
-    navigate({ to: "/home" });
+    await navigate({ to: "/admin/bulletins" });
   }
 
   return (

@@ -7,7 +7,6 @@ import {
   CoffeeIcon,
   Cog,
   DollarSign,
-  GraduationCap,
   HelpCircle,
   Home,
   LayoutDashboard,
@@ -17,6 +16,10 @@ import {
   Users,
   Group,
   SportShoe,
+  PersonStanding,
+  BookOpen,
+  Calendar,
+  Newspaper,
 } from "lucide-react";
 import {
   Collapsible,
@@ -102,7 +105,7 @@ const AppSidebarComponent = memo(() => {
                       onClick={closeMobileSidebar}
                     >
                       <Link to="/students">
-                        <GraduationCap />
+                        <PersonStanding />
                         <span>My Students</span>
                       </Link>
                     </SidebarMenuButton>
@@ -171,7 +174,7 @@ const AppSidebarComponent = memo(() => {
                       onClick={closeMobileSidebar}
                     >
                       <Link to="/staff/classes">
-                        <GraduationCap />
+                        <BookOpen />
                         <span>My Classes</span>
                       </Link>
                     </SidebarMenuButton>
@@ -216,7 +219,7 @@ const AppSidebarComponent = memo(() => {
                       onClick={closeMobileSidebar}
                     >
                       <Link to="/admin/students">
-                        <GraduationCap />
+                        <PersonStanding />
                         <span>Students</span>
                       </Link>
                     </SidebarMenuButton>
@@ -230,6 +233,18 @@ const AppSidebarComponent = memo(() => {
                       <Link to="/admin/groups">
                         <Group />
                         <span>Groups</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip="Bulletins"
+                      onClick={closeMobileSidebar}
+                    >
+                      <Link to="/admin/bulletins">
+                        <Newspaper />
+                        <span>Bulletins</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -315,6 +330,18 @@ const AppSidebarComponent = memo(() => {
             <SidebarGroupLabel>Etc</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip="Calendar"
+                    onClick={closeMobileSidebar}
+                  >
+                    <Link to="/calendar">
+                      <Calendar />
+                      <span>Calendar</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild

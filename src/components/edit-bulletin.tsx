@@ -73,7 +73,7 @@ export function EditBulletin({ bulletin }: { bulletin: Bulletin }) {
         variant="ghost"
         onClick={() =>
           navigate({
-            to: "/$bulletinId/edit",
+            to: "/admin/bulletins/$bulletinId/edit",
             params: { bulletinId: bulletin._id },
           })
         }

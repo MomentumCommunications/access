@@ -8,19 +8,17 @@ import {
   AccordionTrigger,
 } from "~/components/ui/accordion";
 import { Markdown } from "./markdown-wrapper";
-import { Id } from "convex/_generated/dataModel";
 import { formatBulletinDate, getBulletinSortDate } from "~/lib/bulletin-date";
 
-export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
+export function BulletinFeed() {
   const {
     data: bulletins,
     isLoading,
     isError,
-  } = useQuery(convexQuery(api.bulletins.getBulletinsByGroups, { groups }));
+  } = useQuery(convexQuery(api.bulletins.getMyBulletins, {}));
 
-  // Fetch group documents with URLs in one query
   const { data: groupDocuments } = useQuery(
-    convexQuery(api.etcFunctions.getGroupDocuments, { groupIds: groups }),
+    convexQuery(api.etcFunctions.getMyGroupDocuments, {}),
   );
 
   const today = new Date();
@@ -32,15 +30,15 @@ export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
       (getBulletinSortDate(bulletin)?.getTime() || 0) > tomorrow.getTime(),
   );
 
-  // const { data: group } = useQuery(
-  //   convexQuery(api.etcFunctions.getGroupByPassword, { password }),
-  // );
-
   if (isLoading) return <p>Loading...</p>;
 
-  if (isError) return <p>Error</p>;
-
-  if (groups.length === 0) return <p>No bulletins</p>;
+  if (isError) {
+    return (
+      <p className="text-muted-foreground">
+        Events are temporarily unavailable.
+      </p>
+    );
+  }
 
   return (
     <>
@@ -69,9 +67,9 @@ export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
         type="single"
         collapsible
         className="w-full"
-        defaultValue={bulletins?.[0]?._id}
+        defaultValue={futureBulletins?.[0]?._id}
       >
-        {bulletins &&
+        {futureBulletins?.length ? (
           futureBulletins?.map((bulletin) => (
             <div
               key={bulletin._id}
@@ -93,6 +91,16 @@ export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
                   </p>
                 )}
                 <p className="text-xl font-bold">{bulletin.title}</p>
+                {bulletin.subtitle && (
+                  <p className="text-muted-foreground text-sm">
+                    {bulletin.subtitle}
+                  </p>
+                )}
+                {bulletin.venue && (
+                  <p className="text-muted-foreground text-sm">
+                    {bulletin.venue.name}
+                  </p>
+                )}
               </div>
               <AccordionItem value={bulletin._id}>
                 <AccordionTrigger className="text-sm">Details</AccordionTrigger>
@@ -101,7 +109,15 @@ export function BulletinFeed({ groups }: { groups: Id<"groups">[] }) {
                 </AccordionContent>
               </AccordionItem>
             </div>
-          ))}
+          ))
+        ) : (
+          <div className="rounded-lg border border-dashed p-8 text-center">
+            <p className="font-medium">No upcoming events</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              New events for your groups will appear here.
+            </p>
+          </div>
+        )}
       </Accordion>
     </>
   );

@@ -31,7 +31,6 @@ const STATIC_LABELS: Record<string, string> = {
   channel: "Channels",
   classes: "Classes",
   create: "Create",
-  "create-bulletin": "Create Bulletin",
   directory: "Directory",
   dm: "Messages",
   edit: "Edit",

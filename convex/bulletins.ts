@@ -1,7 +1,36 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
+import { isBulletinVisibleToAudience } from "../shared/bulletin-audience";
+import { getCurrentUserOrThrow } from "./users";
 
-// Create a new task with the given text
+async function getCurrentAudience(ctx: QueryCtx) {
+  const user = await getCurrentUserOrThrow(ctx);
+  const groupIds = user.group || [];
+  const groups = await Promise.all(
+    groupIds.map((groupId) => ctx.db.get(groupId)),
+  );
+  return {
+    user,
+    groupIds,
+    groupNames: groups.flatMap((group) => (group ? [group.name] : [])),
+  };
+}
+
+function canManageBulletins(user: {
+  role?: string;
+  roles?: string[];
+}) {
+  return user.role === "admin" || user.roles?.includes("admin") === true;
+}
+
+async function requireBulletinAdmin(ctx: QueryCtx) {
+  const user = await getCurrentUserOrThrow(ctx);
+  if (!canManageBulletins(user)) {
+    throw new Error("Administrator access required");
+  }
+  return user;
+}
+
 export const createBulletin = mutation({
   args: {
     title: v.string(),
@@ -13,6 +42,7 @@ export const createBulletin = mutation({
     groups: v.optional(v.array(v.id("groups"))),
   },
   handler: async (ctx, args) => {
+    await requireBulletinAdmin(ctx);
     const newBulletinId = await ctx.db.insert("bulletin", {
       title: args.title,
       body: args.body,
@@ -30,13 +60,60 @@ export const createBulletin = mutation({
 export const getBulletin = query({
   args: { id: v.string() },
   handler: async (ctx, args) => {
+    const audience = await getCurrentAudience(ctx);
     const bulletinId = ctx.db.normalizeId("bulletin", args.id);
-    return bulletinId ? await ctx.db.get(bulletinId) : null;
+    const bulletin = bulletinId ? await ctx.db.get(bulletinId) : null;
+    if (!bulletin || canManageBulletins(audience.user)) return bulletin;
+
+    return isBulletinVisibleToAudience(
+      bulletin,
+      audience.groupIds,
+      audience.groupNames,
+    )
+      ? bulletin
+      : null;
+  },
+});
+
+export const getMyBulletins = query({
+  args: {},
+  handler: async (ctx) => {
+    const { groupIds, groupNames } = await getCurrentAudience(ctx);
+    const bulletins = await ctx.db.query("bulletin").collect();
+
+    return bulletins
+      .filter((bulletin) =>
+        isBulletinVisibleToAudience(bulletin, groupIds, groupNames),
+      )
+      .sort((a, b) => {
+        const aDate = a.date
+          ? new Date(a.date).getTime()
+          : Number.MAX_SAFE_INTEGER;
+        const bDate = b.date
+          ? new Date(b.date).getTime()
+          : Number.MAX_SAFE_INTEGER;
+        return aDate - bDate || a._creationTime - b._creationTime;
+      })
+      .map((bulletin) => ({
+        _id: bulletin._id,
+        _creationTime: bulletin._creationTime,
+        title: bulletin.title,
+        subtitle: bulletin.subtitle,
+        venue: bulletin.venue,
+        body: bulletin.body,
+        pinned: bulletin.pinned,
+        group: bulletin.group,
+        groups: bulletin.groups,
+        date: bulletin.date,
+        endDate: bulletin.endDate,
+        image: bulletin.image,
+      }));
   },
 });
 
 export const getAllBulletins = query({
   handler: async (ctx) => {
+    await requireBulletinAdmin(ctx);
     const bulletins = await ctx.db.query("bulletin").collect();
 
     // sort by date
@@ -66,6 +143,7 @@ export const getAllBulletins = query({
 export const hideBulletin = mutation({
   args: { id: v.id("bulletin") },
   handler: async (ctx, args) => {
+    await requireBulletinAdmin(ctx);
     await ctx.db.patch(args.id, { hidden: true });
   },
 });
@@ -73,122 +151,15 @@ export const hideBulletin = mutation({
 export const unhideBulletin = mutation({
   args: { id: v.id("bulletin") },
   handler: async (ctx, args) => {
+    await requireBulletinAdmin(ctx);
     await ctx.db.patch(args.id, { hidden: false });
-  },
-});
-
-export const getBulletinsByPassword = query({
-  args: { password: v.string() },
-  handler: async (ctx, args) => {
-    const groups = await ctx.db.query("groups").collect();
-    const thisGroup = groups.find((g) => g.password === args.password);
-
-    if (!thisGroup) {
-      return [];
-    }
-
-    const bulletins = await ctx.db
-      .query("bulletin")
-      .filter((q) => q.not(q.eq(q.field("hidden"), true)))
-      .collect();
-
-    const filteredBulletins = bulletins.filter((b) =>
-      b.groups?.includes(thisGroup._id),
-    );
-
-    const sortedBulletins = filteredBulletins.sort((a, b) => {
-      const dateA = new Date(a.date || 0);
-      const dateB = new Date(b.date || 0);
-      return dateA.getTime() - dateB.getTime();
-    });
-
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() - 1);
-
-    const futureBulletins = sortedBulletins.filter(
-      (b) => new Date(b.date || 0) > tomorrow,
-    );
-
-    return futureBulletins.map((b) => {
-      return {
-        _id: b._id,
-        _creationTime: b._creationTime,
-        title: b.title,
-        body: b.body,
-        pinned: b.pinned,
-        group: b.group,
-        groups: b.groups,
-        date: b.date,
-        endDate: b.endDate,
-        image: b.image,
-        hidden: b.hidden,
-      };
-    });
-  },
-});
-
-export const getBulletinsByGroup = query({
-  args: { group: v.string() },
-  handler: async (ctx, args) => {
-    const bulletins = await ctx.db.query("bulletin").collect();
-
-    return bulletins.filter((b) => b.group?.includes(args.group));
-  },
-});
-
-export const getBulletinsByGroups = query({
-  args: { groups: v.array(v.id("groups")) },
-  handler: async (ctx, args) => {
-    const bulletins = await ctx.db.query("bulletin").collect();
-    const filteredBulletins = bulletins.filter((b) => {
-      // Check new groups field first, fallback to old group field if needed
-      if (b.groups) {
-        return args.groups.some((groupId) => b.groups?.includes(groupId));
-      }
-      // Legacy fallback - this won't work well but maintains compatibility
-      return args.groups.some((group) => b.group?.includes(group));
-    });
-    return filteredBulletins.map((b) => {
-      return {
-        _id: b._id,
-        _creationTime: b._creationTime,
-        title: b.title,
-        body: b.body,
-        pinned: b.pinned,
-        group: b.group,
-        groups: b.groups,
-        date: b.date,
-        endDate: b.endDate,
-        image: b.image,
-        hidden: b.hidden,
-      };
-    });
-  },
-});
-
-// TODO: make a query that can take a group argument for filtering
-// dynamically pulling groups from the database
-export const getMdpBulletins = query({
-  handler: async (ctx) => {
-    // Filter for bulletins containing group "MDP"
-    const bulletins = await ctx.db.query("bulletin").order("desc").collect();
-
-    return bulletins.filter((b) => b.group?.includes("mdp"));
-  },
-});
-
-export const getMdp2Bulletins = query({
-  handler: async (ctx) => {
-    const bulletins = await ctx.db.query("bulletin").collect();
-
-    return bulletins.filter((b) => b.group?.includes("mdp2"));
   },
 });
 
 export const deleteBulletin = mutation({
   args: { id: v.id("bulletin") },
   handler: async (ctx, args) => {
+    await requireBulletinAdmin(ctx);
     return await ctx.db.delete(args.id);
   },
 });
@@ -204,6 +175,7 @@ export const editBulletin = mutation({
     groups: v.optional(v.array(v.id("groups"))),
   },
   handler: async (ctx, args) => {
+    await requireBulletinAdmin(ctx);
     const updates = {
       title: args.title,
       body: args.body,
@@ -228,6 +200,7 @@ export const editBulletin = mutation({
 export const attachImage = mutation({
   args: { storageId: v.id("_storage"), bulletin: v.id("bulletin") },
   handler: async (ctx, args) => {
+    await requireBulletinAdmin(ctx);
     const url = await ctx.storage.getUrl(args.storageId);
     if (!url) {
       return;

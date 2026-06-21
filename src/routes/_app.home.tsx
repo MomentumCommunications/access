@@ -5,24 +5,37 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
-import { Authenticated, Unauthenticated } from "convex/react";
-import { CreditCard, Download, TriangleAlert, X } from "lucide-react";
+import {
+  BookOpenCheck,
+  CalendarDays,
+  CreditCard,
+  Download,
+  GraduationCap,
+  ReceiptText,
+  TriangleAlert,
+  X,
+} from "lucide-react";
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { BillingAttentionStatus } from "../../shared/billing-attention";
 import { billingAttentionPortalHref } from "../../shared/billing-attention";
-import { ProtectedContent } from "~/components/protected-content";
+import { findNextUpcomingBulletin } from "../../shared/bulletin-audience";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
 } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
-import { Card, CardDescription, CardTitle } from "~/components/ui/card";
-import { Input } from "~/components/ui/input";
-import { Separator } from "~/components/ui/separator";
-import { BulletinFeed } from "~/components/bulletin-feed";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { useActiveRole } from "~/contexts/ActiveRoleContext";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
+import { formatBulletinDate } from "~/lib/bulletin-date";
 import { hasUserRole, ROLE_HOME } from "~/lib/roles";
 
 export const Route = createFileRoute("/_app/home")({
@@ -139,8 +152,10 @@ function Home() {
 }
 
 function MemberHome() {
-  // TODO: change array indexed passkeys to be more dynamic
   const { data: userData, isLoading } = useCurrentUser();
+  const { data: bulletins, isLoading: bulletinsLoading } = useQuery(
+    convexQuery(api.bulletins.getMyBulletins, {}),
+  );
   const getBillingAttention = useConvexAction(
     api.payments.getCurrentUserBillingAttention,
   );
@@ -173,114 +188,154 @@ function MemberHome() {
       });
   }, [getBillingAttention, userData]);
 
-  const userGroups = userData?.group || [];
-
-  const { data: groups, isLoading: groupsLoading } = useQuery(
-    convexQuery(api.etcFunctions.getGroups, {}),
-  );
-
-  const passwords = groups?.map((group) => group.password);
-
-  const [groupPassword, setGroupPassword] = useState<string | null>(null);
-  const [inputPassword, setInputPassword] = useState("");
-  const [checkingStorage, setCheckingStorage] = useState(true);
-
-  // On mount, read stored password
-  useEffect(() => {
-    const stored = localStorage.getItem("groupPassword");
-    if (stored) setGroupPassword(stored);
-    setCheckingStorage(false);
-  }, []);
-
-  // Validate password (example)
-  const validatePassword = (password: string) => {
-    return passwords?.includes(password);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validatePassword(inputPassword)) {
-      localStorage.setItem("groupPassword", inputPassword);
-      setGroupPassword(inputPassword);
-    } else {
-      alert("Invalid password");
-    }
-  };
-
-  // Show loading spinner while checking localStorage or loading groups
-  if (checkingStorage || groupsLoading) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center gap-12">
-        <div className="animate-pulse text-center">loading...</div>
-      </div>
-    ); // Replace with your spinner component
-  }
-
   if (isLoading) {
     return null;
   }
 
-  if (!groupPassword) {
-    // Show password input form
-    return (
-      <div className="flex h-screen flex-col items-center justify-center gap-12">
-        <div className="fixed top-12 flex flex-col items-center gap-4 lg:top-32">
-          <img
-            src="/logo_transparent.png"
-            alt="Access Momentum Logo"
-            height={150}
-            width={150}
-            className="rounded-full"
-          />
-          <h1 className="text-center text-2xl font-bold lg:text-4xl">
-            ACCESS MOMENTUM
-          </h1>
-        </div>
-        <Card className="h-min p-4">
-          <CardTitle>Enter Password</CardTitle>
-          <CardDescription>
-            Please enter the access password to view this page.
-          </CardDescription>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <Input
-              type="password"
-              value={inputPassword}
-              onChange={(e) => setInputPassword(e.target.value)}
-              placeholder="Enter access password"
-            />
-            <Button type="submit">Submit</Button>
-          </form>
-        </Card>
-      </div>
-    );
-  }
+  const nextEvent = bulletins
+    ? findNextUpcomingBulletin(bulletins)
+    : undefined;
 
   return (
-    <div className="flex justify-center overscroll-contain">
-      <main className="w-full max-w-3xl p-4">
+    <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 lg:p-8">
+      <div>
+        <h1 className="text-3xl font-bold">Home</h1>
+        <p className="text-muted-foreground">
+          Your students, classes, billing, and upcoming events in one place.
+        </p>
+      </div>
+      <div>
         <PwaInstallBanner />
-        <Authenticated>
-          <BillingAttentionBanner status={billingAttention} />
-        </Authenticated>
-        <div className="flex flex-col justify-start gap-4 py-4">
-          <Unauthenticated>
-            <div className="py-4">
-              <h1 className="text-center text-4xl font-bold">
-                ACCESS MOMENTUM
-              </h1>
-            </div>
-            <ProtectedContent password={groupPassword} />
-          </Unauthenticated>
+        <BillingAttentionBanner status={billingAttention} />
+      </div>
+      <NextEventCard
+        event={nextEvent}
+        isLoading={bulletinsLoading}
+      />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MemberCard
+          title="My Students"
+          description="View and manage the students connected to your account."
+          to="/students"
+          icon={<GraduationCap />}
+        />
+        <MemberCard
+          title="Enroll in Classes"
+          description="Browse available classes and request enrollment."
+          to="/classes"
+          icon={<BookOpenCheck />}
+        />
+        <MemberCard
+          title="Tuition Plan"
+          description="Review your monthly household tuition breakdown."
+          to="/tuition-plan"
+          icon={<ReceiptText />}
+        />
+        <MemberCard
+          title="Payments"
+          description="Open billing tools and manage your payment settings."
+          to="/payments"
+          icon={<CreditCard />}
+        />
+      </div>
+    </main>
+  );
+}
+
+type MemberDestination =
+  | "/students"
+  | "/classes"
+  | "/tuition-plan"
+  | "/payments";
+
+function MemberCard({
+  title,
+  description,
+  to,
+  icon,
+}: {
+  title: string;
+  description: string;
+  to: MemberDestination;
+  icon: ReactNode;
+}) {
+  return (
+    <Card className="rounded-lg">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button asChild variant="outline">
+          <Link to={to}>
+            {icon}
+            Open
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function NextEventCard({
+  event,
+  isLoading,
+}: {
+  event:
+    | {
+        _id: string;
+        title: string;
+        subtitle?: string;
+        date?: string;
+        endDate?: string;
+        venue?: { name: string; url?: string };
+      }
+    | undefined;
+  isLoading: boolean;
+}) {
+  return (
+    <Card className="rounded-lg">
+      <CardHeader className="flex-row items-start justify-between gap-4">
+        <div className="space-y-1.5">
+          <CardTitle>Next Event</CardTitle>
+          <CardDescription>
+            The next upcoming event connected to your groups.
+          </CardDescription>
         </div>
-        <Authenticated>
-          <div className="flex justify-between align-middle">
-            <h1 className="text-4xl font-bold">Bulletin</h1>
-          </div>
-          <Separator className="my-4 w-full" />
-          <BulletinFeed groups={userGroups} />
-        </Authenticated>
-      </main>
-    </div>
+        <CalendarDays className="text-muted-foreground size-5 shrink-0" />
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          {isLoading ? (
+            <p className="text-muted-foreground text-sm">Loading event…</p>
+          ) : event ? (
+            <div className="space-y-1">
+              <p className="text-muted-foreground text-sm">
+                {formatBulletinDate(event)}
+              </p>
+              <p className="text-lg font-semibold">{event.title}</p>
+              {event.subtitle && (
+                <p className="text-muted-foreground text-sm">
+                  {event.subtitle}
+                </p>
+              )}
+              {event.venue && (
+                <p className="text-muted-foreground text-sm">
+                  {event.venue.name}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              There are no upcoming events for your groups.
+            </p>
+          )}
+        </div>
+        <Button asChild variant="outline" className="shrink-0">
+          <Link to="/calendar">See all events</Link>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

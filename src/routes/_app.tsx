@@ -23,7 +23,7 @@ function AppLayoutComponent() {
     user?.onboardingStatus === "pending" ? {} : "skip",
   );
 
-  if (user?.onboardingStatus === "pending" && onboarding === undefined) {
+  if (user === undefined) {
     return (
       <main className="flex min-h-svh items-center justify-center">
         <div className="size-5 animate-spin rounded-full border-2 border-muted border-t-foreground" />
@@ -31,7 +31,19 @@ function AppLayoutComponent() {
     );
   }
 
-  if (user?.onboardingStatus === "pending") {
+  if (user === null) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.onboardingStatus === "pending" && onboarding === undefined) {
+    return (
+      <main className="flex min-h-svh items-center justify-center">
+        <div className="size-5 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+      </main>
+    );
+  }
+
+  if (user.onboardingStatus === "pending") {
     const step = onboarding?.onboarding?.currentStep;
     const destination =
       step === "students"

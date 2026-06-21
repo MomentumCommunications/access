@@ -49,10 +49,7 @@ export default defineSchema({
     .index("byExternalId", ["externalId"]),
   accountSecurityChallenges: defineTable({
     userId: v.id("users"),
-    type: v.union(
-      v.literal("email_change"),
-      v.literal("password_reset"),
-    ),
+    type: v.union(v.literal("email_change"), v.literal("password_reset")),
     status: v.union(
       v.literal("pending"),
       v.literal("confirming"),
@@ -112,6 +109,10 @@ export default defineSchema({
   }).index("byGroup", ["group"]),
   bulletin: defineTable({
     title: v.string(),
+    subtitle: v.optional(v.string()),
+    venue: v.optional(
+      v.object({ name: v.string(), url: v.optional(v.string()) }),
+    ),
     body: v.string(),
     pinned: v.boolean(),
     image: v.optional(v.string()),
@@ -376,10 +377,7 @@ export default defineSchema({
     periodStart: v.string(),
     periodEnd: v.string(),
     kind: v.union(v.literal("discount"), v.literal("surcharge")),
-    calculationType: v.union(
-      v.literal("fixed_cents"),
-      v.literal("percent"),
-    ),
+    calculationType: v.union(v.literal("fixed_cents"), v.literal("percent")),
     amount: v.number(),
     reasonCode: v.union(
       v.literal("scholarship"),
@@ -519,10 +517,7 @@ export default defineSchema({
     stripeCustomerId: v.optional(v.string()),
     stripeInvoiceId: v.optional(v.string()),
     collectionMethod: v.optional(
-      v.union(
-        v.literal("charge_automatically"),
-        v.literal("send_invoice"),
-      ),
+      v.union(v.literal("charge_automatically"), v.literal("send_invoice")),
     ),
     autopayEnabledSnapshot: v.optional(v.boolean()),
     dispatchFailureReason: v.optional(v.string()),

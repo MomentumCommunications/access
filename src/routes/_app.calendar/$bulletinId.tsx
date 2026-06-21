@@ -13,7 +13,6 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import { formatBulletinDate } from "~/lib/bulletin-date";
-import { getGlobalClients } from "~/lib/query-client";
 import { cn } from "~/lib/utils";
 
 type Bulletin = {
@@ -35,16 +34,7 @@ type Group = {
   name: string;
 };
 
-export const Route = createFileRoute("/_app/$bulletinId")({
-  loader: async ({ params }) => {
-    const { convex } = getGlobalClients();
-    const bulletin = await convex.query(api.bulletins.getBulletin, {
-      id: params.bulletinId,
-    });
-    if (!bulletin) {
-      throw notFound();
-    }
-  },
+export const Route = createFileRoute("/_app/calendar/$bulletinId")({
   component: RouteComponent,
 });
 
@@ -53,7 +43,7 @@ function RouteComponent() {
   const bulletin = useConvexQuery(api.bulletins.getBulletin, {
     id: bulletinId,
   });
-  const groups = useConvexQuery(api.etcFunctions.getGroups, {});
+  const groups = useConvexQuery(api.etcFunctions.getGroupLabels, {});
   const navigate = useNavigate();
 
   if (bulletin === undefined) {
@@ -112,9 +102,9 @@ function RouteComponent() {
   function BackButton() {
     return (
       <div className="flex w-full items-center justify-end">
-        <Button variant={"link"} onClick={() => navigate({ to: "/home" })}>
+        <Button variant={"link"} onClick={() => navigate({ to: "/calendar" })}>
           <ArrowLeft className="h-4 w-4" />
-          <span>Back</span>
+          <span>Back to calendar</span>
         </Button>
       </div>
     );

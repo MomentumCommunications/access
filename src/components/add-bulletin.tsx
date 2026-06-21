@@ -49,7 +49,7 @@ export function AddBulletin() {
     return (
       <Button
         variant="outline"
-        onClick={() => navigate({ to: "/create-bulletin" })}
+        onClick={() => navigate({ to: "/admin/bulletins/create" })}
       >
         <PlusIcon className="h-4 w-4" />
       </Button>

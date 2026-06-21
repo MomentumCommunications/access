@@ -120,7 +120,8 @@ export function ContractStep() {
       <div className="mb-5">
         <h1 className="text-3xl font-bold">Client agreement</h1>
         <p className="mt-1 text-muted-foreground">
-          Review and sign the recreational client agreement.
+          Review and sign the recreational client agreement. A copy will be sent
+          to your email address.
         </p>
       </div>
 

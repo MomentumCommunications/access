@@ -1,7 +1,4 @@
-import {
-  convexQuery,
-  useConvexAction,
-} from "@convex-dev/react-query";
+import { convexQuery, useConvexAction } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
@@ -10,7 +7,7 @@ import {
   CalendarDays,
   CreditCard,
   Download,
-  GraduationCap,
+  PersonStanding,
   ReceiptText,
   TriangleAlert,
   X,
@@ -20,11 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import type { BillingAttentionStatus } from "../../shared/billing-attention";
 import { billingAttentionPortalHref } from "../../shared/billing-attention";
 import { findNextUpcomingBulletin } from "../../shared/bulletin-audience";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "~/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -96,15 +89,15 @@ function PwaInstallBanner() {
   }
 
   return (
-    <div className="rounded-lg border bg-card p-3 text-card-foreground shadow-sm">
+    <div className="bg-card text-card-foreground rounded-lg border p-3 shadow-sm">
       <div className="flex items-start gap-3">
-        <div className="rounded-md bg-primary p-2 text-primary-foreground">
+        <div className="bg-primary text-primary-foreground rounded-md p-2">
           <Download className="size-4" />
         </div>
         <div className="min-w-0 flex-1 space-y-2">
           <div>
             <h2 className="text-sm font-semibold">Install Access Momentum</h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Add the portal to your home screen for a faster app-like launch.
             </p>
           </div>
@@ -122,7 +115,7 @@ function PwaInstallBanner() {
         <Button
           variant="ghost"
           size="icon"
-          className="-m-2 size-8 shrink-0"
+          className="size-8 -m-2 shrink-0"
           onClick={() => setIsVisible(false)}
           aria-label="Dismiss install prompt"
         >
@@ -139,7 +132,7 @@ function Home() {
   if (!isReady) {
     return (
       <div className="flex min-h-[calc(100svh-54px)] items-center justify-center">
-        <div className="size-5 animate-spin rounded-full border-2 border-muted border-t-foreground" />
+        <div className="size-5 border-muted border-t-foreground animate-spin rounded-full border-2" />
       </div>
     );
   }
@@ -192,9 +185,7 @@ function MemberHome() {
     return null;
   }
 
-  const nextEvent = bulletins
-    ? findNextUpcomingBulletin(bulletins)
-    : undefined;
+  const nextEvent = bulletins ? findNextUpcomingBulletin(bulletins) : undefined;
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 lg:p-8">
@@ -208,16 +199,13 @@ function MemberHome() {
         <PwaInstallBanner />
         <BillingAttentionBanner status={billingAttention} />
       </div>
-      <NextEventCard
-        event={nextEvent}
-        isLoading={bulletinsLoading}
-      />
+      <NextEventCard event={nextEvent} isLoading={bulletinsLoading} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MemberCard
           title="My Students"
           description="View and manage the students connected to your account."
           to="/students"
-          icon={<GraduationCap />}
+          icon={<PersonStanding />}
         />
         <MemberCard
           title="Enroll in Classes"
@@ -260,7 +248,7 @@ function MemberCard({
   icon: ReactNode;
 }) {
   return (
-    <Card className="rounded-lg">
+    <Card className="flex flex-col justify-between rounded-lg">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
@@ -286,6 +274,7 @@ function NextEventCard({
         _id: string;
         title: string;
         subtitle?: string;
+        image?: string;
         date?: string;
         endDate?: string;
         venue?: { name: string; url?: string };
@@ -296,34 +285,40 @@ function NextEventCard({
   return (
     <Card className="rounded-lg">
       <CardHeader className="flex-row items-start justify-between gap-4">
-        <div className="space-y-1.5">
+        <div className="flex items-center gap-2">
+          <CalendarDays className="size-5 shrink-0" />
           <CardTitle>Next Event</CardTitle>
-          <CardDescription>
-            The next upcoming event connected to your groups.
-          </CardDescription>
         </div>
-        <CalendarDays className="text-muted-foreground size-5 shrink-0" />
       </CardHeader>
       <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
+        <div className="w-full">
           {isLoading ? (
             <p className="text-muted-foreground text-sm">Loading event…</p>
           ) : event ? (
-            <div className="space-y-1">
-              <p className="text-muted-foreground text-sm">
-                {formatBulletinDate(event)}
-              </p>
-              <p className="text-lg font-semibold">{event.title}</p>
-              {event.subtitle && (
-                <p className="text-muted-foreground text-sm">
-                  {event.subtitle}
-                </p>
+            <div className="border-muted flex w-full flex-col gap-4 rounded-lg border p-4 md:flex-row md:gap-6">
+              {event.image && (
+                <img
+                  src={event.image}
+                  alt={event.title}
+                  className="max-h-48 w-full rounded object-cover md:w-1/5"
+                />
               )}
-              {event.venue && (
+              <div className="space-y-1">
                 <p className="text-muted-foreground text-sm">
-                  {event.venue.name}
+                  {formatBulletinDate(event)}
                 </p>
-              )}
+                <p className="text-lg font-semibold">{event.title}</p>
+                {event.subtitle && (
+                  <p className="text-muted-foreground text-sm">
+                    {event.subtitle}
+                  </p>
+                )}
+                {event.venue && (
+                  <p className="text-muted-foreground text-sm">
+                    {event.venue.name}
+                  </p>
+                )}
+              </div>
             </div>
           ) : (
             <p className="text-muted-foreground text-sm">

@@ -35,6 +35,17 @@ export const unreadCount = query({
   },
 });
 
+export const getCurrentById = query({
+  args: { notificationId: v.id("notifications") },
+  handler: async (ctx, { notificationId }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    const notification = await ctx.db.get(notificationId);
+    if (!notification || notification.recipientUserId !== userId) return null;
+    return notification;
+  },
+});
+
 export const markRead = mutation({
   args: { notificationId: v.id("notifications") },
   handler: async (ctx, { notificationId }) => {
@@ -47,6 +58,13 @@ export const markRead = mutation({
     if (notification.readAt === undefined) {
       await ctx.db.patch(notificationId, { readAt: Date.now() });
     }
+    const notifications = await ctx.db
+      .query("notifications")
+      .withIndex("byRecipient", (q) => q.eq("recipientUserId", userId))
+      .collect();
+    return notifications.filter(
+      (row) => row._id !== notificationId && row.readAt === undefined,
+    ).length;
   },
 });
 

@@ -2,6 +2,13 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { hasUserRole } from "./roles";
 import type { NotificationEventInput } from "../../shared/notifications";
+import { shouldSendPush } from "../../shared/push-notifications";
+import { makeFunctionReference } from "convex/server";
+
+const deliverNotification = makeFunctionReference<
+  "action",
+  { notificationId: Id<"notifications"> }
+>("pushActions:deliverNotification");
 
 export async function adminNotificationRecipients(
   ctx: MutationCtx,
@@ -30,8 +37,8 @@ export async function createNotifications(
 ) {
   const recipients = [...new Set(recipientUserIds)];
   return await Promise.all(
-    recipients.map((recipientUserId) =>
-      ctx.db.insert("notifications", {
+    recipients.map(async (recipientUserId) => {
+      const notificationId = await ctx.db.insert("notifications", {
         recipientUserId,
         type: event.type,
         title: event.title,
@@ -42,8 +49,14 @@ export async function createNotifications(
         entityId: event.entityId,
         metadata: event.metadata,
         createdAt,
-      }),
-    ),
+      });
+      if (shouldSendPush(event.type)) {
+        await ctx.scheduler.runAfter(0, deliverNotification, {
+          notificationId,
+        });
+      }
+      return notificationId;
+    }),
   );
 }
 

@@ -10,7 +10,7 @@ import {
 import { ThemeProvider } from "~/components/theme-provider";
 import { getGlobalClients } from "~/lib/query-client";
 import { Toaster } from "sonner";
-// import { PWAHandler } from "~/components/pwa-handler"; // Disabled for Netlify compatibility
+import { registerPushServiceWorker } from "~/lib/push-notifications";
 
 const IOS_STARTUP_SCREENS = [
   { width: 320, height: 568, scale: 2 },
@@ -168,7 +168,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <RootDocument>
-          <LegacyServiceWorkerCleanup />
+          <PushServiceWorkerRegistration />
           <BootSplashDismiss />
           <Outlet />
         </RootDocument>
@@ -177,50 +177,9 @@ function RootComponent() {
   );
 }
 
-const LEGACY_CACHE_CLEANUP_KEY = "access:legacy-cache-cleanup:v1";
-
-function LegacyServiceWorkerCleanup() {
+function PushServiceWorkerRegistration() {
   useEffect(() => {
-    try {
-      if (window.localStorage.getItem(LEGACY_CACHE_CLEANUP_KEY)) {
-        return;
-      }
-    } catch {
-      // Continue without persistence when browser storage is unavailable.
-    }
-
-    async function cleanup() {
-      const tasks: Array<Promise<unknown>> = [];
-
-      if ("serviceWorker" in navigator) {
-        tasks.push(
-          navigator.serviceWorker
-            .getRegistrations()
-            .then((registrations) =>
-              Promise.all(
-                registrations.map((registration) => registration.unregister()),
-              ),
-            ),
-        );
-      }
-
-      if ("caches" in window) {
-        tasks.push(
-          caches
-            .keys()
-            .then((keys) => Promise.all(keys.map((key) => caches.delete(key)))),
-        );
-      }
-
-      await Promise.allSettled(tasks);
-      try {
-        window.localStorage.setItem(LEGACY_CACHE_CLEANUP_KEY, "complete");
-      } catch {
-        // Cleanup still succeeds when browser storage is unavailable.
-      }
-    }
-
-    void cleanup();
+    void registerPushServiceWorker();
   }, []);
 
   return null;

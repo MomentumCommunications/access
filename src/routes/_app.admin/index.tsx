@@ -16,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { PushNotificationPrompt } from "~/components/push-notification-controls";
 
 export const Route = createFileRoute("/_app/admin/")({
   component: AdminHome,
@@ -31,6 +32,7 @@ function AdminHome() {
             Manage accounts, students, classes, and enrollment workflows.
           </p>
         </div>
+        <PushNotificationPrompt />
         <div className="grid gap-4 md:grid-cols-3">
           <AdminCard
             title="Attendance"

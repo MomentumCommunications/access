@@ -1,13 +1,15 @@
 import { useConvexQuery } from "@convex-dev/react-query";
 import { Navigate, Outlet, createFileRoute } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
-import { memo, Suspense } from "react";
+import { memo, Suspense, useEffect, useRef } from "react";
 import { AppSidebar } from "~/components/app-sidebar";
 import { Header } from "~/components/header";
 import { SidebarSkeleton } from "~/components/SidebarSkeleton";
 import { SidebarDataProvider } from "~/contexts/SidebarDataContext";
 import { SidebarProvider } from "~/components/ui/sidebar";
 import { ActiveRoleProvider } from "~/contexts/ActiveRoleContext";
+import { setAppBadge } from "~/lib/push-notifications";
+import { useLocation } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayoutComponent,
@@ -18,6 +20,8 @@ const MemoizedHeader = memo(Header);
 
 function AppLayoutComponent() {
   const user = useConvexQuery(api.users.current, {});
+  const unreadCount = useConvexQuery(api.notifications.unreadCount, {});
+  const location = useLocation();
   const onboarding = useConvexQuery(
     api.onboarding.getState,
     user?.onboardingStatus === "pending" ? {} : "skip",
@@ -32,7 +36,16 @@ function AppLayoutComponent() {
   }
 
   if (user === null) {
-    return <Navigate to="/login" replace />;
+    if (location.pathname === "/login") {
+      return null;
+    }
+    return (
+      <Navigate
+        to="/login"
+        search={{ redirect: `${location.pathname}${location.searchStr}` }}
+        replace
+      />
+    );
   }
 
   if (user.onboardingStatus === "pending" && onboarding === undefined) {
@@ -62,6 +75,7 @@ function AppLayoutComponent() {
     <SidebarProvider>
       <ActiveRoleProvider>
         <SidebarDataProvider>
+          <NotificationStateSync unreadCount={unreadCount} />
           <Suspense fallback={<SidebarSkeleton />}>
             <MemoizedAppSidebar />
           </Suspense>
@@ -73,4 +87,32 @@ function AppLayoutComponent() {
       </ActiveRoleProvider>
     </SidebarProvider>
   );
+}
+
+function NotificationStateSync({
+  unreadCount,
+}: {
+  unreadCount: number | undefined;
+}) {
+  const baseTitleRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (unreadCount === undefined) return;
+
+    baseTitleRef.current ??= document.title.replace(/^\(\d+\)\s*/, "");
+    document.title =
+      unreadCount > 0
+        ? `(${unreadCount}) ${baseTitleRef.current}`
+        : baseTitleRef.current;
+    void setAppBadge(unreadCount);
+  }, [unreadCount]);
+
+  useEffect(
+    () => () => {
+      if (baseTitleRef.current) document.title = baseTitleRef.current;
+    },
+    [],
+  );
+
+  return null;
 }

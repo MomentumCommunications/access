@@ -1,6 +1,7 @@
 {
   "name": "Access Momentum",
   "short_name": "Access",
+  "id": "/",
   "description": "Client information portal - Connect, communicate, and stay informed with Access Momentum.",
   "theme_color": "#ce2128",
   "background_color": "#09090b",

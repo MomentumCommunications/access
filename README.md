@@ -118,6 +118,7 @@ This project depends on both client-side and server-side environment variables.
 These are read by the frontend:
 
 - `VITE_CONVEX_URL` — Convex deployment URL used by the React client
+- `VITE_WEB_PUSH_PUBLIC_KEY` — browser-facing VAPID public key
 - `DOCUSEAL_RECREATIONAL_URL` — DocuSeal embed URL for the recreational contract flow
 
 ### Server-side / Convex environment
@@ -127,6 +128,9 @@ These are used by Convex actions/functions:
 - `CONVEX_SITE_URL` — site URL used by auth configuration
 - `RESEND_API_KEY` — email delivery for verification and password reset flows
 - `STRIPE_SECRET_KEY` or `STRIPE_API_KEY` — Stripe server API access
+- `WEB_PUSH_PUBLIC_KEY` — VAPID public key used for push delivery
+- `WEB_PUSH_PRIVATE_KEY` — VAPID private key kept in Convex
+- `WEB_PUSH_SUBJECT` — VAPID contact URI, such as `mailto:admin@example.com`
 
 > Note: some older deployment comments/files in the repo still reference Clerk-era variables. The active auth stack in the codebase is **Convex Auth**, not Clerk.
 

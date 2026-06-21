@@ -94,6 +94,43 @@ export default defineSchema({
   })
     .index("byRecipient", ["recipientUserId"])
     .index("byRecipientAndCreatedAt", ["recipientUserId", "createdAt"]),
+  pushSubscriptions: defineTable({
+    recipientUserId: v.id("users"),
+    endpoint: v.string(),
+    p256dh: v.string(),
+    auth: v.string(),
+    userAgent: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    disabledAt: v.optional(v.number()),
+    failureCount: v.number(),
+    lastFailureAt: v.optional(v.number()),
+    lastSuccessAt: v.optional(v.number()),
+  })
+    .index("byRecipient", ["recipientUserId"])
+    .index("byEndpoint", ["endpoint"]),
+  pushDeliveries: defineTable({
+    notificationId: v.id("notifications"),
+    subscriptionId: v.id("pushSubscriptions"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("sent"),
+      v.literal("retrying"),
+      v.literal("failed"),
+      v.literal("expired"),
+    ),
+    attemptCount: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    sentAt: v.optional(v.number()),
+    nextAttemptAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+  })
+    .index("byNotification", ["notificationId"])
+    .index("byNotificationAndSubscription", [
+      "notificationId",
+      "subscriptionId",
+    ]),
   groups: defineTable({
     name: v.string(),
     description: v.string(),

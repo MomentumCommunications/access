@@ -28,6 +28,11 @@ import {
   FormLabel,
   FormMessage,
 } from "~/components/ui/form";
+import { PushNotificationSettings } from "~/components/push-notification-controls";
+import {
+  disableDevicePush,
+  disablePushSubscriptionRef,
+} from "~/lib/push-notifications";
 
 const formSchema = z.object({
   firstName: z
@@ -90,6 +95,9 @@ function RouteComponent() {
   });
 
   const updateProfile = useConvexMutation(api.users.updateProfile);
+  const disablePushSubscription = useConvexMutation(
+    disablePushSubscriptionRef,
+  );
   const requestEmailChange = useConvexAction(api.stripe.requestEmailChange);
   const confirmEmailChange = useConvexAction(api.stripe.confirmEmailChange);
   const requestAccountPasswordReset = useConvexAction(
@@ -201,6 +209,11 @@ function RouteComponent() {
   async function handleSignOut() {
     setIsSigningOut(true);
     try {
+      try {
+        await disableDevicePush(disablePushSubscription);
+      } catch {
+        // The local subscription is still removed in the cleanup path.
+      }
       await signOut();
       await navigate({ to: "/home" });
     } finally {
@@ -426,6 +439,19 @@ function RouteComponent() {
                 </Button>
               </form>
             </Form>
+          </div>
+          <Separator className="my-4" />
+          <div className="w-full space-y-6">
+            <div>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="size-5" />
+                <h2 className="text-2xl font-semibold">Notifications</h2>
+              </div>
+              <p className="mt-1 text-muted-foreground">
+                Choose whether this device receives important Access updates.
+              </p>
+            </div>
+            <PushNotificationSettings />
           </div>
           <Separator className="my-4" />
           <div className="w-full space-y-6">

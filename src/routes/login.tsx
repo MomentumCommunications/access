@@ -4,12 +4,22 @@ import { useState } from "react";
 import { EmailVerificationForm } from "~/components/email-verification-form";
 import { LoginForm } from "~/components/login-form";
 import { getAuthErrorMessage } from "~/lib/auth-errors";
+import { safeInternalPath } from "../../shared/push-notifications";
 
 export const Route = createFileRoute("/login")({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { redirect?: string } => {
+    const redirect = safeInternalPath(
+      typeof search.redirect === "string" ? search.redirect : undefined,
+    );
+    return redirect ? { redirect } : {};
+  },
   component: LoginRoute,
 });
 
 function LoginRoute() {
+  const { redirect } = Route.useSearch();
   const { signIn } = useAuthActions();
   const navigate = useNavigate();
   const [verificationEmail, setVerificationEmail] = useState<string | null>(
@@ -27,7 +37,7 @@ function LoginRoute() {
       const formData = new FormData(event.currentTarget);
       const result = await signIn("password", formData);
       if (result.signingIn) {
-        await navigate({ to: "/home" });
+        await navigate({ to: (redirect || "/home") as never });
         return;
       }
       setVerificationEmail(formData.get("email") as string);
@@ -47,7 +57,7 @@ function LoginRoute() {
 
     try {
       await signIn("password", new FormData(event.currentTarget));
-      await navigate({ to: "/home" });
+      await navigate({ to: (redirect || "/home") as never });
     } catch (err) {
       setError(getAuthErrorMessage(err, "Could not verify your email."));
     } finally {

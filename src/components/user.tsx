@@ -20,12 +20,20 @@ import {
   useSidebar,
 } from "./ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { useConvexMutation } from "@convex-dev/react-query";
+import {
+  disableDevicePush,
+  disablePushSubscriptionRef,
+} from "~/lib/push-notifications";
 
 export function NavUser({ user }: { user: Doc<"users"> }) {
   const { isMobile } = useSidebar();
   const { signOut } = useAuthActions();
   const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const disablePushSubscription = useConvexMutation(
+    disablePushSubscriptionRef,
+  );
 
   const name = user.firstName + " " + user.lastName || "User";
   const email = Array.isArray(user.email) ? user.email[0] : user.email;
@@ -40,6 +48,11 @@ export function NavUser({ user }: { user: Doc<"users"> }) {
   async function handleSignOut() {
     setIsSigningOut(true);
     try {
+      try {
+        await disableDevicePush(disablePushSubscription);
+      } catch {
+        // The browser subscription is removed even if server cleanup fails.
+      }
       await signOut();
       await navigate({ to: "/home" });
     } finally {

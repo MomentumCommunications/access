@@ -30,6 +30,7 @@ import { useActiveRole } from "~/contexts/ActiveRoleContext";
 import { useCurrentUser } from "~/hooks/useCurrentUser";
 import { formatBulletinDate } from "~/lib/bulletin-date";
 import { hasUserRole, ROLE_HOME } from "~/lib/roles";
+import { PushNotificationPrompt } from "~/components/push-notification-controls";
 
 export const Route = createFileRoute("/_app/home")({
   component: Home,
@@ -197,6 +198,7 @@ function MemberHome() {
       </div>
       <div>
         <PwaInstallBanner />
+        <PushNotificationPrompt />
         <BillingAttentionBanner status={billingAttention} />
       </div>
       <NextEventCard event={nextEvent} isLoading={bulletinsLoading} />

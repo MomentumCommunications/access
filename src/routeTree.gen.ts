@@ -38,6 +38,7 @@ import { Route as AppStudentsCreateRouteImport } from './routes/_app.students/cr
 import { Route as AppStudentsStudentIdRouteImport } from './routes/_app.students/$studentId'
 import { Route as AppStaffClassesRouteImport } from './routes/_app.staff/classes'
 import { Route as AppStaffAttendanceRouteImport } from './routes/_app.staff/attendance'
+import { Route as AppNotificationsNotificationIdRouteImport } from './routes/_app.notifications/$notificationId'
 import { Route as AppDmDmIdRouteImport } from './routes/_app.dm/$dmId'
 import { Route as AppClassesClassIdRouteImport } from './routes/_app.classes/$classId'
 import { Route as AppChannelChannelIdRouteImport } from './routes/_app.channel/$channelId'
@@ -222,6 +223,12 @@ const AppStaffAttendanceRoute = AppStaffAttendanceRouteImport.update({
   path: '/staff/attendance',
   getParentRoute: () => AppRoute,
 } as any)
+const AppNotificationsNotificationIdRoute =
+  AppNotificationsNotificationIdRouteImport.update({
+    id: '/notifications/$notificationId',
+    path: '/notifications/$notificationId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppDmDmIdRoute = AppDmDmIdRouteImport.update({
   id: '/dm/$dmId',
   path: '/dm/$dmId',
@@ -460,6 +467,7 @@ export interface FileRoutesByFullPath {
   '/channel/$channelId': typeof AppChannelChannelIdRoute
   '/classes/$classId': typeof AppClassesClassIdRoute
   '/dm/$dmId': typeof AppDmDmIdRoute
+  '/notifications/$notificationId': typeof AppNotificationsNotificationIdRoute
   '/staff/attendance': typeof AppStaffAttendanceRoute
   '/staff/classes': typeof AppStaffClassesRoute
   '/students/$studentId': typeof AppStudentsStudentIdRoute
@@ -528,6 +536,7 @@ export interface FileRoutesByTo {
   '/channel/$channelId': typeof AppChannelChannelIdRoute
   '/classes/$classId': typeof AppClassesClassIdRoute
   '/dm/$dmId': typeof AppDmDmIdRoute
+  '/notifications/$notificationId': typeof AppNotificationsNotificationIdRoute
   '/staff/attendance': typeof AppStaffAttendanceRoute
   '/staff/classes': typeof AppStaffClassesRoute
   '/students/$studentId': typeof AppStudentsStudentIdRoute
@@ -599,6 +608,7 @@ export interface FileRoutesById {
   '/_app/channel/$channelId': typeof AppChannelChannelIdRoute
   '/_app/classes/$classId': typeof AppClassesClassIdRoute
   '/_app/dm/$dmId': typeof AppDmDmIdRoute
+  '/_app/notifications/$notificationId': typeof AppNotificationsNotificationIdRoute
   '/_app/staff/attendance': typeof AppStaffAttendanceRoute
   '/_app/staff/classes': typeof AppStaffClassesRoute
   '/_app/students/$studentId': typeof AppStudentsStudentIdRoute
@@ -670,6 +680,7 @@ export interface FileRouteTypes {
     | '/channel/$channelId'
     | '/classes/$classId'
     | '/dm/$dmId'
+    | '/notifications/$notificationId'
     | '/staff/attendance'
     | '/staff/classes'
     | '/students/$studentId'
@@ -738,6 +749,7 @@ export interface FileRouteTypes {
     | '/channel/$channelId'
     | '/classes/$classId'
     | '/dm/$dmId'
+    | '/notifications/$notificationId'
     | '/staff/attendance'
     | '/staff/classes'
     | '/students/$studentId'
@@ -808,6 +820,7 @@ export interface FileRouteTypes {
     | '/_app/channel/$channelId'
     | '/_app/classes/$classId'
     | '/_app/dm/$dmId'
+    | '/_app/notifications/$notificationId'
     | '/_app/staff/attendance'
     | '/_app/staff/classes'
     | '/_app/students/$studentId'
@@ -1063,6 +1076,13 @@ declare module '@tanstack/react-router' {
       path: '/staff/attendance'
       fullPath: '/staff/attendance'
       preLoaderRoute: typeof AppStaffAttendanceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/notifications/$notificationId': {
+      id: '/_app/notifications/$notificationId'
+      path: '/notifications/$notificationId'
+      fullPath: '/notifications/$notificationId'
+      preLoaderRoute: typeof AppNotificationsNotificationIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/dm/$dmId': {
@@ -1357,6 +1377,7 @@ interface AppRouteChildren {
   AppChannelChannelIdRoute: typeof AppChannelChannelIdRoute
   AppClassesClassIdRoute: typeof AppClassesClassIdRoute
   AppDmDmIdRoute: typeof AppDmDmIdRoute
+  AppNotificationsNotificationIdRoute: typeof AppNotificationsNotificationIdRoute
   AppStaffAttendanceRoute: typeof AppStaffAttendanceRoute
   AppStaffClassesRoute: typeof AppStaffClassesRoute
   AppStudentsStudentIdRoute: typeof AppStudentsStudentIdRoute
@@ -1416,6 +1437,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppChannelChannelIdRoute: AppChannelChannelIdRoute,
   AppClassesClassIdRoute: AppClassesClassIdRoute,
   AppDmDmIdRoute: AppDmDmIdRoute,
+  AppNotificationsNotificationIdRoute: AppNotificationsNotificationIdRoute,
   AppStaffAttendanceRoute: AppStaffAttendanceRoute,
   AppStaffClassesRoute: AppStaffClassesRoute,
   AppStudentsStudentIdRoute: AppStudentsStudentIdRoute,

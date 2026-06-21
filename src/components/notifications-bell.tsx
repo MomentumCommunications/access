@@ -13,6 +13,11 @@ import {
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Separator } from "~/components/ui/separator";
 import { cn } from "~/lib/utils";
+import {
+  closeAllSystemNotifications,
+  closeSystemNotification,
+  setAppBadge,
+} from "~/lib/push-notifications";
 
 export function NotificationsBell() {
   const navigate = useNavigate();
@@ -30,8 +35,16 @@ export function NotificationsBell() {
     _id: Id<"notifications">;
     href: string;
   }) {
-    await markRead({ notificationId: notification._id });
+    const remaining = await markRead({ notificationId: notification._id });
+    closeSystemNotification(notification._id);
+    await setAppBadge(remaining);
     await navigate({ to: notification.href as never });
+  }
+
+  async function clearAll() {
+    await markAllRead({});
+    closeAllSystemNotifications();
+    await setAppBadge(0);
   }
 
   return (
@@ -69,7 +82,7 @@ export function NotificationsBell() {
             variant="ghost"
             size="sm"
             disabled={!unreadCount}
-            onClick={() => void markAllRead({})}
+            onClick={() => void clearAll()}
           >
             Clear all
           </Button>
@@ -135,11 +148,14 @@ export function NotificationsBell() {
                         className="size-8 shrink-0 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
                         aria-label={`Mark ${notification.title} as read`}
                         title="Mark as read"
-                        onClick={() =>
+                        onClick={() => {
                           void markRead({
                             notificationId: notification._id,
-                          })
-                        }
+                          }).then((remaining) => {
+                            closeSystemNotification(notification._id);
+                            return setAppBadge(remaining);
+                          });
+                        }}
                       >
                         <Check />
                       </Button>

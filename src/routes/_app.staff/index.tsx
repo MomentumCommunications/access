@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { PushNotificationPrompt } from "~/components/push-notification-controls";
 
 export const Route = createFileRoute("/_app/staff/")({
   component: StaffHome,
@@ -24,6 +25,7 @@ function StaffHome() {
             View your assigned classes and take attendance.
           </p>
         </div>
+        <PushNotificationPrompt />
         <div className="grid gap-4 md:grid-cols-2">
           <Card className="rounded-lg">
             <CardHeader>

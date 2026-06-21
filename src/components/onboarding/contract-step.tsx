@@ -153,7 +153,7 @@ export function ContractStep() {
           </CardContent>
         </Card>
       ) : (
-        <div className="min-h-[32rem] overflow-hidden rounded-md border bg-white lg:aspect-[16/10] lg:min-h-0">
+        <div className="min-h-[32rem] rounded-md border bg-white lg:min-h-0">
           <DocusealForm
             className="block min-h-[32rem] w-full lg:h-full lg:min-h-0"
             src={contractUrl}

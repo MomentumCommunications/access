@@ -1,4 +1,4 @@
-import { useConvexMutation } from "@convex-dev/react-query";
+import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
 import { BellRing, Download, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import {
   disablePushSubscriptionRef,
   enableDevicePush,
   getPushDeviceState,
+  pushConfigurationRef,
   registerPushSubscriptionRef,
   type PushDeviceState,
 } from "~/lib/push-notifications";
@@ -18,19 +19,21 @@ const SESSION_DISMISS_KEY = "access:push-prompt-dismissed";
 function usePushControls() {
   const register = useConvexMutation(registerPushSubscriptionRef);
   const disable = useConvexMutation(disablePushSubscriptionRef);
+  const configuration = useConvexQuery(pushConfigurationRef, {});
   const [state, setState] = useState<PushDeviceState>("loading");
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(() => {
-    void getPushDeviceState().then(setState);
-  }, []);
+    if (configuration === undefined) return;
+    void getPushDeviceState(configuration?.publicKey).then(setState);
+  }, [configuration]);
 
   useEffect(refresh, [refresh]);
 
   async function enablePush() {
     setBusy(true);
     try {
-      await enableDevicePush(register);
+      await enableDevicePush(register, configuration?.publicKey);
       setState("enabled");
       toast.success("Device notifications enabled");
     } catch (error) {
@@ -135,7 +138,8 @@ export function PushNotificationSettings() {
   const content: Record<PushDeviceState, string> = {
     loading: "Checking this device…",
     unsupported: "This browser does not support device notifications.",
-    missing_config: "Device notifications have not been configured yet.",
+    missing_config:
+      "Device notifications are not available because the push key is missing from this deployment.",
     requires_install:
       "Add Access to your iPhone or iPad Home Screen, then open the installed app to enable notifications.",
     denied:

@@ -6,6 +6,17 @@ import { canManagePushSubscription } from "../shared/push-notifications";
 const MAX_ENDPOINT_LENGTH = 4_096;
 const MAX_KEY_LENGTH = 1_024;
 
+export const configuration = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+    return {
+      publicKey: process.env.WEB_PUSH_PUBLIC_KEY?.trim() || null,
+    };
+  },
+});
+
 function validateSubscription(endpoint: string, p256dh: string, auth: string) {
   let url: URL;
   try {

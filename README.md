@@ -118,7 +118,7 @@ This project depends on both client-side and server-side environment variables.
 These are read by the frontend:
 
 - `VITE_CONVEX_URL` — Convex deployment URL used by the React client
-- `VITE_WEB_PUSH_PUBLIC_KEY` — browser-facing VAPID public key
+- `VITE_WEB_PUSH_PUBLIC_KEY` — optional build-time VAPID public-key fallback; authenticated clients normally read `WEB_PUSH_PUBLIC_KEY` from Convex
 - `DOCUSEAL_RECREATIONAL_URL` — DocuSeal embed URL for the recreational contract flow
 
 ### Server-side / Convex environment

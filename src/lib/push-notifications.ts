@@ -34,7 +34,13 @@ export const currentPushStatusRef = makeFunctionReference<
   { activeDeviceCount: number }
 >("pushSubscriptions:currentStatus");
 
-export const webPushPublicKey =
+export const pushConfigurationRef = makeFunctionReference<
+  "query",
+  Record<string, never>,
+  { publicKey: string | null } | null
+>("pushSubscriptions:configuration");
+
+const buildWebPushPublicKey =
   import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY?.trim() || "";
 
 function isIosDevice() {
@@ -59,7 +65,13 @@ async function readyRegistration() {
   return await navigator.serviceWorker.ready;
 }
 
-export async function getPushDeviceState(): Promise<PushDeviceState> {
+function resolveWebPushPublicKey(publicKey?: string | null) {
+  return publicKey?.trim() || buildWebPushPublicKey;
+}
+
+export async function getPushDeviceState(
+  publicKey?: string | null,
+): Promise<PushDeviceState> {
   if (typeof window === "undefined") return "loading";
   if (isIosDevice() && !isStandaloneApp()) return "requires_install";
   if (
@@ -69,7 +81,7 @@ export async function getPushDeviceState(): Promise<PushDeviceState> {
   ) {
     return "unsupported";
   }
-  if (!webPushPublicKey) return "missing_config";
+  if (!resolveWebPushPublicKey(publicKey)) return "missing_config";
   if (Notification.permission === "denied") return "denied";
 
   const registration = await readyRegistration();
@@ -86,8 +98,10 @@ function urlBase64ToUint8Array(value: string) {
 
 export async function enableDevicePush(
   register: (args: RegisterPushArgs) => Promise<unknown>,
+  publicKey?: string | null,
 ) {
-  const state = await getPushDeviceState();
+  const resolvedPublicKey = resolveWebPushPublicKey(publicKey);
+  const state = await getPushDeviceState(resolvedPublicKey);
   if (state === "requires_install") {
     throw new Error("Add Access to your Home Screen before enabling alerts.");
   }
@@ -116,7 +130,7 @@ export async function enableDevicePush(
     existing ||
     (await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(webPushPublicKey),
+      applicationServerKey: urlBase64ToUint8Array(resolvedPublicKey),
     }));
   const serialized = subscription.toJSON();
   if (!serialized.endpoint || !serialized.keys?.p256dh || !serialized.keys.auth) {

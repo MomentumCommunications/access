@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import {
+  buildWebPushPublicKey,
   disableDevicePush,
   disablePushSubscriptionRef,
   enableDevicePush,
@@ -19,21 +20,35 @@ const SESSION_DISMISS_KEY = "access:push-prompt-dismissed";
 function usePushControls() {
   const register = useConvexMutation(registerPushSubscriptionRef);
   const disable = useConvexMutation(disablePushSubscriptionRef);
-  const configuration = useConvexQuery(pushConfigurationRef, {});
+  const configuration = useConvexQuery(
+    pushConfigurationRef,
+    buildWebPushPublicKey ? "skip" : {},
+  );
   const [state, setState] = useState<PushDeviceState>("loading");
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(() => {
-    if (configuration === undefined) return;
-    void getPushDeviceState(configuration?.publicKey).then(setState);
+    if (!buildWebPushPublicKey && configuration === undefined) return;
+    void getPushDeviceState(
+      buildWebPushPublicKey || configuration?.publicKey,
+    ).then(setState);
   }, [configuration]);
 
   useEffect(refresh, [refresh]);
 
+  useEffect(() => {
+    if (buildWebPushPublicKey || configuration !== undefined) return;
+    const timeout = window.setTimeout(() => setState("missing_config"), 8_000);
+    return () => window.clearTimeout(timeout);
+  }, [configuration]);
+
   async function enablePush() {
     setBusy(true);
     try {
-      await enableDevicePush(register, configuration?.publicKey);
+      await enableDevicePush(
+        register,
+        buildWebPushPublicKey || configuration?.publicKey,
+      );
       setState("enabled");
       toast.success("Device notifications enabled");
     } catch (error) {

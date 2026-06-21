@@ -40,7 +40,7 @@ export const pushConfigurationRef = makeFunctionReference<
   { publicKey: string | null } | null
 >("pushSubscriptions:configuration");
 
-const buildWebPushPublicKey =
+export const buildWebPushPublicKey =
   import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY?.trim() || "";
 
 function isIosDevice() {

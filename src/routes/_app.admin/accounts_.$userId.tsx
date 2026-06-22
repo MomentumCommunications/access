@@ -1,8 +1,21 @@
-import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
+import {
+  useConvexAction,
+  useConvexMutation,
+  useConvexQuery,
+} from "@convex-dev/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
-import { ArrowLeft, Home, Unlink, UserPlus } from "lucide-react";
+import {
+  ArrowLeft,
+  Ban,
+  Copy,
+  Home,
+  Mail,
+  RefreshCw,
+  Unlink,
+  UserPlus,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { RoleGate } from "~/components/role-gate";
@@ -50,6 +63,15 @@ function AdminAccountDetailPage() {
     { userId: typedUserId },
   );
   const households = useConvexQuery(api.billing.adminListHouseholds, {});
+  const invitationStatus = useConvexQuery(
+    api.invitations.adminGetStatus,
+    { targetUserId: typedUserId },
+  );
+  const sendInvitation = useConvexAction(api.invitationActions.send);
+  const createInvitationLink = useConvexAction(
+    api.invitationActions.createLink,
+  );
+  const revokeInvitation = useConvexMutation(api.invitations.revoke);
   const setRoles = useConvexMutation(api.classes.adminSetUserRoles);
   const attachHousehold = useConvexMutation(
     api.billing.adminAttachAccountToHousehold,
@@ -66,6 +88,53 @@ function AdminAccountDetailPage() {
   const [selectedHouseholdId, setSelectedHouseholdId] = useState("");
   const [newHouseholdName, setNewHouseholdName] = useState("");
   const [savingHousehold, setSavingHousehold] = useState(false);
+  const [savingInvitation, setSavingInvitation] = useState(false);
+
+  async function handleInvitation(
+    operation: "send" | "copy",
+  ) {
+    setSavingInvitation(true);
+    try {
+      const invitation =
+        operation === "send"
+          ? await sendInvitation({ targetUserId: typedUserId })
+          : await createInvitationLink({ targetUserId: typedUserId });
+      if (operation === "copy" || "warning" in invitation) {
+        await navigator.clipboard.writeText(invitation.url);
+      }
+      if ("warning" in invitation && invitation.warning) {
+        toast.warning(`${invitation.warning} The link was copied.`);
+      } else {
+        toast.success(
+          operation === "send"
+            ? "Invitation sent."
+            : "A new invitation link was copied.",
+        );
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to create invitation.",
+      );
+    } finally {
+      setSavingInvitation(false);
+    }
+  }
+
+  async function handleRevokeInvitation() {
+    const invitation = invitationStatus?.latestInvitation;
+    if (!invitation) return;
+    setSavingInvitation(true);
+    try {
+      await revokeInvitation({ invitationId: invitation._id });
+      toast.success("Invitation revoked.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to revoke invitation.",
+      );
+    } finally {
+      setSavingInvitation(false);
+    }
+  }
 
   async function handleAttachHousehold() {
     if (!selectedHouseholdId) return;
@@ -173,6 +242,98 @@ function AdminAccountDetailPage() {
                     {accountData.account.phone || "Not set"}
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+            <Card className="rounded-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="size-4" />
+                  Account invitation
+                </CardTitle>
+                <CardDescription>
+                  Send a secure, email-bound account setup link.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {invitationStatus === undefined ? (
+                  <Spinner className="size-4" />
+                ) : invitationStatus?.hasLogin ? (
+                  <p className="text-sm text-muted-foreground">
+                    This account already has login credentials. Manage access
+                    with the role controls above.
+                  </p>
+                ) : (
+                  <>
+                    <div className="rounded-md border p-3 text-sm">
+                      <div className="text-muted-foreground">Status</div>
+                      <div className="font-medium capitalize">
+                        {invitationStatus?.latestInvitation?.effectiveStatus ||
+                          "Not invited"}
+                      </div>
+                      {invitationStatus?.latestInvitation ? (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Expires{" "}
+                          {new Date(
+                            invitationStatus.latestInvitation.expiresAt,
+                          ).toLocaleString()}
+                        </div>
+                      ) : null}
+                    </div>
+                    {resolveUserRoles(accountData.account).includes("member") &&
+                    !resolveUserRoles(accountData.account).some((role) =>
+                      role === "staff" || role === "admin"
+                    ) &&
+                    invitationStatus &&
+                    (invitationStatus.billing.householdMembershipCount === 0 ||
+                      invitationStatus.billing.payerCount === 0 ||
+                      !invitationStatus.billing.hasStripeCustomer) ? (
+                      <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                        This member account is missing some pre-provisioned
+                        billing setup. Activation will preserve the current
+                        records and will not guess or replace them.
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        disabled={savingInvitation}
+                        onClick={() => void handleInvitation("send")}
+                      >
+                        {invitationStatus?.latestInvitation?.effectiveStatus ===
+                        "pending" ? (
+                          <RefreshCw />
+                        ) : (
+                          <Mail />
+                        )}
+                        {invitationStatus?.latestInvitation?.effectiveStatus ===
+                        "pending"
+                          ? "Resend"
+                          : "Send invitation"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={savingInvitation}
+                        onClick={() => void handleInvitation("copy")}
+                      >
+                        <Copy />
+                        Copy new link
+                      </Button>
+                      {invitationStatus?.latestInvitation?.effectiveStatus ===
+                      "pending" ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={savingInvitation}
+                          onClick={() => void handleRevokeInvitation()}
+                        >
+                          <Ban />
+                          Revoke
+                        </Button>
+                      ) : null}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
             <Card className="rounded-lg">

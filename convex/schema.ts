@@ -79,6 +79,37 @@ export default defineSchema({
     passwordResetSendCount: v.optional(v.number()),
     passwordResetLastSentAt: v.optional(v.number()),
   }).index("byUser", ["userId"]),
+  accountInvitations: defineTable({
+    targetUserId: v.id("users"),
+    invitedEmail: v.string(),
+    tokenHash: v.string(),
+    inviterUserId: v.id("users"),
+    inviterContext: v.union(
+      v.literal("admin"),
+      v.literal("household_member"),
+    ),
+    purpose: v.union(
+      v.literal("account_claim"),
+      v.literal("household_join"),
+    ),
+    householdId: v.optional(v.id("households")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("consumed"),
+      v.literal("expired"),
+      v.literal("revoked"),
+      v.literal("superseded"),
+    ),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+    sentAt: v.optional(v.number()),
+    consumedAt: v.optional(v.number()),
+    revokedAt: v.optional(v.number()),
+    supersededAt: v.optional(v.number()),
+  })
+    .index("byTargetUser", ["targetUserId"])
+    .index("byTokenHash", ["tokenHash"])
+    .index("byHousehold", ["householdId"]),
   notifications: defineTable({
     recipientUserId: v.id("users"),
     type: v.string(),

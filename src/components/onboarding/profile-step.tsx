@@ -19,6 +19,7 @@ import {
   FieldLabel,
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
+import { canAccessAdmin, canAccessStaff } from "~/lib/roles";
 
 const profileSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required.").max(80),
@@ -47,12 +48,13 @@ export function ProfileStep() {
     },
     mode: "onTouched",
   });
+  const workforce = canAccessAdmin(state?.user) || canAccessStaff(state?.user);
 
   async function onSubmit(values: ProfileValues) {
     form.clearErrors("root");
     try {
-      await saveProfile(values);
-      await navigate({ to: "/register/students" });
+      const result = await saveProfile(values);
+      await navigate({ to: result.destination as never });
     } catch (error) {
       form.setError("root", {
         message:
@@ -68,7 +70,9 @@ export function ProfileStep() {
       <div className="mb-5">
         <h1 className="text-3xl font-bold">Your information</h1>
         <p className="mt-1 text-muted-foreground">
-          Confirm how the studio should identify and contact you.
+          {workforce
+            ? "Confirm how your Access Momentum account should identify and contact you."
+            : "Confirm how the studio should identify and contact you."}
         </p>
       </div>
 
@@ -80,7 +84,7 @@ export function ProfileStep() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Guardian or client</CardTitle>
+          <CardTitle>{workforce ? "Account profile" : "Guardian or client"}</CardTitle>
           <CardDescription>
             Your account email is {String(state?.user.email || "")}.
           </CardDescription>

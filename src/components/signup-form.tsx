@@ -19,12 +19,16 @@ import { PasswordInput } from "~/components/password-input";
 type SignupFormProps = Omit<React.ComponentProps<typeof Card>, "onSubmit"> & {
   error?: string | null;
   isSubmitting?: boolean;
+  email?: string;
+  lockEmail?: boolean;
   onSubmit: React.FormEventHandler<HTMLFormElement>;
 };
 
 export function SignupForm({
   error,
   isSubmitting,
+  email,
+  lockEmail,
   onSubmit,
   ...props
 }: SignupFormProps) {
@@ -47,6 +51,8 @@ export function SignupForm({
                 name="email"
                 type="email"
                 placeholder="m@example.com"
+                defaultValue={email}
+                readOnly={lockEmail}
                 required
               />
               <FieldDescription>

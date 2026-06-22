@@ -15,11 +15,13 @@ import {
 } from "~/components/ui/card";
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
 } from "~/components/ui/field";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { RoleCheckboxes } from "~/components/role-controls";
 import type { UserRole } from "~/lib/roles";
@@ -32,6 +34,7 @@ const accountSchema = z.object({
   roles: z
     .array(z.enum(["member", "staff", "admin"]))
     .min(1, "Select at least one role."),
+  sendInvitation: z.boolean(),
 });
 
 type AccountValues = z.infer<typeof accountSchema>;
@@ -39,6 +42,7 @@ type AccountValues = z.infer<typeof accountSchema>;
 export function AccountCreateForm() {
   const navigate = useNavigate();
   const createAccount = useConvexAction(api.stripe.adminCreateAccount);
+  const sendInvitation = useConvexAction(api.invitationActions.send);
   const form = useForm<AccountValues>({
     resolver: zodResolver(accountSchema),
     defaultValues: {
@@ -47,6 +51,7 @@ export function AccountCreateForm() {
       email: "",
       phone: "",
       roles: ["member"],
+      sendInvitation: true,
     },
     mode: "onTouched",
   });
@@ -61,10 +66,25 @@ export function AccountCreateForm() {
         phone: values.phone.trim() || undefined,
         roles: values.roles,
       });
+      if (values.sendInvitation) {
+        const invitation = await sendInvitation({
+          targetUserId: result.userId,
+        });
+        if (invitation.warning) {
+          await navigator.clipboard.writeText(invitation.url);
+          toast.warning(`${invitation.warning} The link was copied.`);
+        } else {
+          toast.success("Account created and invitation sent.");
+        }
+      }
       if (result.warning) {
         toast.warning(result.warning);
-      } else {
-        toast.success("Account, household, and Stripe customer created.");
+      } else if (!values.sendInvitation) {
+        toast.success(
+          result.billingProvisioned
+            ? "Account, household, and Stripe customer created."
+            : "Workforce account created.",
+        );
       }
       await navigate({
         to: "/admin/accounts/$userId",
@@ -173,6 +193,29 @@ export function AccountCreateForm() {
                     Selecting Admin initially enables all three roles.
                   </FieldDescription>
                   <FieldError errors={[fieldState.error]} />
+                </Field>
+              )}
+            />
+            <Controller
+              name="sendInvitation"
+              control={form.control}
+              render={({ field }) => (
+                <Field orientation="horizontal">
+                  <Checkbox
+                    id={field.name}
+                    checked={field.value}
+                    onCheckedChange={(checked) =>
+                      field.onChange(checked === true)
+                    }
+                  />
+                  <FieldContent>
+                    <FieldLabel htmlFor={field.name}>
+                      Send invitation email
+                    </FieldLabel>
+                    <FieldDescription>
+                      Sends a secure account setup link that expires in 7 days.
+                    </FieldDescription>
+                  </FieldContent>
                 </Field>
               )}
             />

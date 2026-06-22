@@ -10,6 +10,11 @@ import {
 import { getCurrentUserOrThrow } from "./users";
 import { highestUserRole, resolveUserRoles } from "./lib/roles";
 import { ensureDefaultHouseholdBilling } from "./lib/householdBilling";
+import {
+  isWorkforceAccount,
+  nextOnboardingDestination,
+  shouldProvisionCustomerBilling,
+} from "../shared/account-invitations";
 
 const onboardingStepValidator = v.union(
   v.literal("profile"),
@@ -112,10 +117,21 @@ export const saveProfile = mutation({
     phone: v.string(),
   },
   handler: async (ctx, args) => {
-    const { user } = await getOnboarding(ctx);
+    const { user, onboarding } = await getOnboarding(ctx);
     const firstName = args.firstName.trim();
     const lastName = args.lastName.trim();
     const roles = resolveUserRoles(user);
+    const students = await getConnectedStudents(ctx, user._id);
+    const workforce = isWorkforceAccount(roles);
+    const destination = nextOnboardingDestination({
+      roles,
+      connectedStudentCount: students.length,
+    });
+    const provisionCustomerBilling = shouldProvisionCustomerBilling({
+      onboardingSource: user.onboardingSource,
+      roles,
+    });
+    const now = Date.now();
 
     if (!firstName || firstName.length > 80) {
       throw new Error("First name must be between 1 and 80 characters.");
@@ -129,14 +145,31 @@ export const saveProfile = mutation({
       phone: args.phone.trim() || undefined,
       role: highestUserRole(roles),
       roles,
-      onboardingStatus: "pending",
+      onboardingStatus: workforce ? "complete" : "pending",
+      ...(workforce ? { onboardingCompletedAt: now } : {}),
     });
-    await ensureDefaultHouseholdBilling(ctx, {
+    if (provisionCustomerBilling) {
+      await ensureDefaultHouseholdBilling(ctx, {
+        userId: user._id,
+        firstName,
+        lastName,
+      });
+    }
+    if (onboarding) {
+      await ctx.db.patch(onboarding._id, {
+        currentStep: workforce
+          ? "complete"
+          : destination === "/register/review"
+            ? "review"
+            : "students",
+        ...(workforce ? { completedAt: now } : {}),
+      });
+    }
+    return {
       userId: user._id,
-      firstName,
-      lastName,
-    });
-    return user._id;
+      destination,
+      provisionCustomerBilling,
+    };
   },
 });
 
@@ -292,20 +325,22 @@ export const complete = mutation({
     const { user, onboarding } = await getOnboarding(ctx);
     if (!onboarding) throw new Error("Onboarding has not been started.");
 
+    const roles = resolveUserRoles(user);
+    const workforce = isWorkforceAccount(roles);
     const students = await getConnectedStudents(ctx, user._id);
-    if (students.length === 0) {
+    if (!workforce && students.length === 0) {
       throw new Error("Add at least one student before completing onboarding.");
     }
     if (
-      !user.contractTypeSigned ||
-      !user.contractVersionSigned ||
-      !user.contractSignedAt
+      !workforce &&
+      (!user.contractTypeSigned ||
+        !user.contractVersionSigned ||
+        !user.contractSignedAt)
     ) {
       throw new Error("Complete the client agreement before finishing.");
     }
 
     const completedAt = Date.now();
-    const roles = resolveUserRoles(user);
     await ctx.db.patch(user._id, {
       role: highestUserRole(roles),
       roles,

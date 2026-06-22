@@ -19,6 +19,8 @@ import type * as classes from "../classes.js";
 import type * as etcFunctions from "../etcFunctions.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
+import type * as invitationActions from "../invitationActions.js";
+import type * as invitations from "../invitations.js";
 import type * as lib_activityLog from "../lib/activityLog.js";
 import type * as lib_age from "../lib/age.js";
 import type * as lib_billing_householdTuition from "../lib/billing/householdTuition.js";
@@ -67,6 +69,8 @@ declare const fullApi: ApiFromModules<{
   etcFunctions: typeof etcFunctions;
   files: typeof files;
   http: typeof http;
+  invitationActions: typeof invitationActions;
+  invitations: typeof invitations;
   "lib/activityLog": typeof lib_activityLog;
   "lib/age": typeof lib_age;
   "lib/billing/householdTuition": typeof lib_billing_householdTuition;

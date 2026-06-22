@@ -21,6 +21,7 @@ import { Route as RegisterReviewRouteImport } from './routes/register.review'
 import { Route as RegisterProfileRouteImport } from './routes/register.profile'
 import { Route as RegisterContractRouteImport } from './routes/register.contract'
 import { Route as RegisterCompleteRouteImport } from './routes/register.complete'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as AppTuitionPlanRouteImport } from './routes/_app.tuition-plan'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppSearchRouteImport } from './routes/_app.search'
@@ -137,6 +138,11 @@ const RegisterCompleteRoute = RegisterCompleteRouteImport.update({
   id: '/complete',
   path: '/complete',
   getParentRoute: () => RegisterRoute,
+} as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppTuitionPlanRoute = AppTuitionPlanRouteImport.update({
   id: '/tuition-plan',
@@ -453,6 +459,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
   '/tuition-plan': typeof AppTuitionPlanRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/register/complete': typeof RegisterCompleteRoute
   '/register/contract': typeof RegisterContractRoute
   '/register/profile': typeof RegisterProfileRoute
@@ -522,6 +529,7 @@ export interface FileRoutesByTo {
   '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
   '/tuition-plan': typeof AppTuitionPlanRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/register/complete': typeof RegisterCompleteRoute
   '/register/contract': typeof RegisterContractRoute
   '/register/profile': typeof RegisterProfileRoute
@@ -594,6 +602,7 @@ export interface FileRoutesById {
   '/_app/search': typeof AppSearchRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/tuition-plan': typeof AppTuitionPlanRoute
+  '/invite/$token': typeof InviteTokenRoute
   '/register/complete': typeof RegisterCompleteRoute
   '/register/contract': typeof RegisterContractRoute
   '/register/profile': typeof RegisterProfileRoute
@@ -666,6 +675,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/tuition-plan'
+    | '/invite/$token'
     | '/register/complete'
     | '/register/contract'
     | '/register/profile'
@@ -735,6 +745,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/settings'
     | '/tuition-plan'
+    | '/invite/$token'
     | '/register/complete'
     | '/register/contract'
     | '/register/profile'
@@ -806,6 +817,7 @@ export interface FileRouteTypes {
     | '/_app/search'
     | '/_app/settings'
     | '/_app/tuition-plan'
+    | '/invite/$token'
     | '/register/complete'
     | '/register/contract'
     | '/register/profile'
@@ -871,6 +883,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  InviteTokenRoute: typeof InviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -958,6 +971,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/register/complete'
       preLoaderRoute: typeof RegisterCompleteRouteImport
       parentRoute: typeof RegisterRoute
+    }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/tuition-plan': {
       id: '/_app/tuition-plan'
@@ -1514,6 +1534,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  InviteTokenRoute: InviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

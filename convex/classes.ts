@@ -60,6 +60,7 @@ import { matchTuitionTier } from "../shared/tuition-pricing";
 import { classWeeklyMinutes } from "./lib/billing/weeklyClassHours";
 import { recordActivityEvent } from "./lib/activityLog";
 import { ensureDefaultHouseholdBilling } from "./lib/householdBilling";
+import { isWorkforceAccount } from "../shared/account-invitations";
 import {
   createAdminNotifications,
   createStudentManagerNotifications,
@@ -2287,12 +2288,15 @@ export const adminCreateAccountRecord = internalMutation({
       role: highestUserRole(roles),
       onboardingSource: "imported",
     });
-    await ensureDefaultHouseholdBilling(ctx, {
-      userId,
-      firstName,
-      lastName,
-    });
-    return userId;
+    const billingProvisioned = !isWorkforceAccount(roles);
+    if (billingProvisioned) {
+      await ensureDefaultHouseholdBilling(ctx, {
+        userId,
+        firstName,
+        lastName,
+      });
+    }
+    return { userId, billingProvisioned };
   },
 });
 

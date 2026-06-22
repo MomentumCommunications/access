@@ -10,22 +10,34 @@ import {
 import { createHash, randomInt } from "node:crypto";
 import { Resend } from "resend";
 import { v } from "convex/values";
+import { makeFunctionReference } from "convex/server";
 import { api, internal } from "./_generated/api";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { action, type ActionCtx } from "./_generated/server";
 import { getStripeClient } from "./lib/stripe";
 import { getResendApiKey, resendFromAddress } from "./resendConfig";
 import { normalizeAccountEmail } from "../shared/account-security";
-import {
-  completeStripeBackedProfileSetup,
-  ensureStripeCustomerForUser,
-} from "../shared/stripe-customer";
+import { ensureStripeCustomerForUser } from "../shared/stripe-customer";
 
 const roleValidator = v.union(
   v.literal("admin"),
   v.literal("staff"),
   v.literal("member"),
 );
+
+const saveOnboardingProfileRef = makeFunctionReference<
+  "mutation",
+  { firstName: string; lastName: string; phone: string },
+  {
+    userId: Id<"users">;
+    destination:
+      | "/admin"
+      | "/staff"
+      | "/register/review"
+      | "/register/students";
+    provisionCustomerBilling: boolean;
+  }
+>("onboarding:saveProfile");
 
 function securityCode() {
   return randomInt(0, 100_000_000).toString().padStart(8, "0");
@@ -395,29 +407,22 @@ export const saveOnboardingProfile = action({
     phone: v.string(),
   },
   handler: async (ctx, args) => {
-    return await completeStripeBackedProfileSetup({
-      saveProfile: async () =>
-        await ctx.runMutation(api.onboarding.saveProfile, args),
-      ensureStripeCustomer: async () => {
-        try {
-          const { user } = await ctx.runQuery(
-            internal.stripeData.getCurrentPrimaryPayer,
-            {},
-          );
-          return await ensureStripeCustomer(ctx, user);
-        } catch (error) {
-          console.error("Stripe customer setup failed", error);
-          throw new Error(
-            "Your profile and household were saved, but billing setup could not be completed. Please try again.",
-          );
-        }
-      },
-      completeProfileStep: async (userId) => {
-        await ctx.runMutation(internal.onboarding.completeProfileStep, {
-          userId,
-        });
-      },
-    });
+    const profile = await ctx.runMutation(saveOnboardingProfileRef, args);
+    if (profile.provisionCustomerBilling) {
+      try {
+        const { user } = await ctx.runQuery(
+          internal.stripeData.getCurrentPrimaryPayer,
+          {},
+        );
+        await ensureStripeCustomer(ctx, user);
+      } catch (error) {
+        console.error("Stripe customer setup failed", error);
+        throw new Error(
+          "Your profile and household were saved, but billing setup could not be completed. Please try again.",
+        );
+      }
+    }
+    return profile;
   },
 });
 
@@ -430,22 +435,30 @@ export const adminCreateAccount = action({
     roles: v.array(roleValidator),
   },
   handler: async (ctx, args) => {
-    const userId = await ctx.runMutation(
+    const creation = await ctx.runMutation(
       internal.classes.adminCreateAccountRecord,
       args,
     );
     const accountData = await ctx.runQuery(api.classes.adminGetAccount, {
-      user: userId,
+      user: creation.userId,
     });
     if (!accountData) {
       throw new Error("The account was created but could not be loaded.");
     }
 
+    if (!creation.billingProvisioned) {
+      return {
+        userId: creation.userId,
+        stripeCustomerReady: false,
+        billingProvisioned: false,
+      };
+    }
     try {
       await ensureStripeCustomer(ctx, accountData.account);
       return {
-        userId,
+        userId: creation.userId,
         stripeCustomerReady: true,
+        billingProvisioned: true,
       };
     } catch (error) {
       console.error(
@@ -453,8 +466,9 @@ export const adminCreateAccount = action({
         error,
       );
       return {
-        userId,
+        userId: creation.userId,
         stripeCustomerReady: false,
+        billingProvisioned: true,
         warning:
           "The account and household were created, but its Stripe customer could not be created. Stripe setup will be retried when the client completes onboarding.",
       };

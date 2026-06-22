@@ -131,6 +131,7 @@ These are used by Convex actions/functions:
 - `WEB_PUSH_PUBLIC_KEY` — VAPID public key used for push delivery
 - `WEB_PUSH_PRIVATE_KEY` — VAPID private key kept in Convex
 - `WEB_PUSH_SUBJECT` — VAPID contact URI, such as `mailto:admin@example.com`
+- `ACCESS_APP_URL` — public Access origin used for invitation links, such as `https://access.example.com`
 
 > Note: some older deployment comments/files in the repo still reference Clerk-era variables. The active auth stack in the codebase is **Convex Auth**, not Clerk.
 

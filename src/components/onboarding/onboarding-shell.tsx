@@ -1,6 +1,9 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
+import { useConvexQuery } from "@convex-dev/react-query";
+import { api } from "convex/_generated/api";
 import { Check } from "lucide-react";
 import { cn } from "~/lib/utils";
+import { canAccessAdmin, canAccessStaff } from "~/lib/roles";
 
 const steps = [
   { label: "Profile", href: "/register/profile" },
@@ -10,9 +13,12 @@ const steps = [
 ] as const;
 
 export function OnboardingShell() {
+  const user = useConvexQuery(api.users.current, {});
   const pathname = useLocation({ select: (location) => location.pathname });
   const activeIndex = steps.findIndex((step) => pathname === step.href);
-  const showProgress = activeIndex >= 0 || pathname === "/register/complete";
+  const workforce = canAccessAdmin(user) || canAccessStaff(user);
+  const showProgress =
+    !workforce && (activeIndex >= 0 || pathname === "/register/complete");
   const completed = pathname === "/register/complete";
 
   return (

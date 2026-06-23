@@ -2318,6 +2318,144 @@ export const adminSetUserRoles = mutation({
   },
 });
 
+export const adminUpdateAccountRecord = internalMutation({
+  args: {
+    user: v.id("users"),
+    firstName: v.string(),
+    lastName: v.string(),
+    phone: v.optional(v.string()),
+    email: v.string(),
+    roles: rolesValidator,
+    groups: v.array(v.id("groups")),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireAdmin(ctx);
+    const account = await ctx.db.get(args.user);
+    if (!account) throw new Error("Account not found.");
+
+    const firstName = args.firstName.trim();
+    const lastName = args.lastName.trim();
+    const phone = args.phone?.trim() || undefined;
+    const email = args.email.trim().toLowerCase();
+    const roles = normalizeUserRoles(args.roles as UserRole[]);
+    if (!firstName || firstName.length > 80) {
+      throw new Error("First name must be between 1 and 80 characters.");
+    }
+    if (!lastName || lastName.length > 80) {
+      throw new Error("Last name must be between 1 and 80 characters.");
+    }
+    if (phone && phone.length > 30) {
+      throw new Error("Phone number must be 30 characters or fewer.");
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new Error("Enter a valid email address.");
+    }
+    if (roles.length === 0) {
+      throw new Error("Select at least one role.");
+    }
+
+    const [users, passwordAccount, selectedGroups] = await Promise.all([
+      ctx.db.query("users").collect(),
+      ctx.db
+        .query("authAccounts")
+        .withIndex("userIdAndProvider", (q) =>
+          q.eq("userId", args.user).eq("provider", "password"),
+        )
+        .unique(),
+      Promise.all(args.groups.map((groupId) => ctx.db.get(groupId))),
+    ]);
+    if (selectedGroups.some((group) => !group)) {
+      throw new Error("One or more selected groups no longer exist.");
+    }
+    const duplicateUser = users.some((user) => {
+      if (user._id === args.user || !user.email) return false;
+      const emails = Array.isArray(user.email) ? user.email : [user.email];
+      return emails.some(
+        (candidate) => candidate.trim().toLowerCase() === email,
+      );
+    });
+    if (duplicateUser) {
+      throw new Error("An account with this email already exists.");
+    }
+    const duplicateAuthAccount = await ctx.db
+      .query("authAccounts")
+      .withIndex("providerAndAccountId", (q) =>
+        q.eq("provider", "password").eq("providerAccountId", email),
+      )
+      .unique();
+    if (
+      duplicateAuthAccount &&
+      duplicateAuthAccount._id !== passwordAccount?._id
+    ) {
+      throw new Error("An account with this login email already exists.");
+    }
+
+    const previousEmail = Array.isArray(account.email)
+      ? account.email[0]
+      : account.email;
+    const emailChanged =
+      previousEmail?.trim().toLowerCase() !== email;
+    if (passwordAccount && emailChanged) {
+      await ctx.db.patch(passwordAccount._id, {
+        providerAccountId: email,
+        emailVerified: email,
+      });
+      const verificationCode = await ctx.db
+        .query("authVerificationCodes")
+        .withIndex("accountId", (q) => q.eq("accountId", passwordAccount._id))
+        .unique();
+      if (verificationCode) await ctx.db.delete(verificationCode._id);
+    }
+
+    await ctx.db.patch(args.user, {
+      firstName,
+      lastName,
+      phone,
+      email,
+      ...(emailChanged ? { emailVerificationTime: Date.now() } : {}),
+      roles,
+      role: highestUserRole(roles),
+      group: args.groups,
+    });
+
+    if (emailChanged) {
+      const pendingInvitations = await ctx.db
+        .query("accountInvitations")
+        .withIndex("byTargetUser", (q) => q.eq("targetUserId", args.user))
+        .collect();
+      const now = Date.now();
+      for (const invitation of pendingInvitations) {
+        if (invitation.status === "pending") {
+          await ctx.db.patch(invitation._id, {
+            status: "superseded",
+            supersededAt: now,
+          });
+        }
+      }
+    }
+
+    await recordActivityEvent(ctx, {
+      entityType: "user",
+      entityId: args.user,
+      actorId: actor._id,
+      eventType: "account_updated",
+      summary: `Updated ${firstName} ${lastName}'s account details.`,
+      metadata: {
+        emailChanged,
+        roles,
+        groupIds: args.groups,
+      },
+    });
+    return {
+      previousEmail: previousEmail?.trim().toLowerCase(),
+      email,
+      emailChanged,
+      stripeCustomerId: account.stripeCustomerId,
+      hasPasswordAccount: Boolean(passwordAccount),
+    };
+  },
+});
+
 export const adminListStudents = query({
   args: {},
   handler: async (ctx) => {

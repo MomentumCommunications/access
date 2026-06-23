@@ -416,11 +416,10 @@ function BillingRunsAdminPage() {
               onChange={(event) =>
                 setSourceMode(event.target.value as SourceMode)
               }
-              className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm lg:max-w-64"
+              className="border-input bg-background lg:max-w-64 h-9 w-full rounded-md border px-3 text-sm"
             >
               <option value="tuition">Tuitions</option>
               <option value="charges">Charges</option>
-              <option value="both">Tuitions and charges</option>
             </select>
           </div>
           <Button
@@ -436,7 +435,7 @@ function BillingRunsAdminPage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Household bundles</h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {validPeriod
               ? formatPeriod(startDate, endDate)
               : "Choose a valid period"}
@@ -453,12 +452,12 @@ function BillingRunsAdminPage() {
       </div>
 
       {runs === undefined ? (
-        <div className="flex min-h-40 items-center justify-center">
+        <div className="min-h-40 flex items-center justify-center">
           <Spinner />
         </div>
       ) : runs.length === 0 ? (
         <Card className="rounded-lg">
-          <CardContent className="flex min-h-36 items-center justify-center text-center text-muted-foreground">
+          <CardContent className="min-h-36 text-muted-foreground flex items-center justify-center text-center">
             No {includeDispatched ? "" : "pending "}billing bundles for this
             period.
           </CardContent>
@@ -579,7 +578,7 @@ function BillingRunsAdminPage() {
                           </Badge>
                         ) : null}
                       </div>
-                      <p className="mt-2 text-xs text-muted-foreground">
+                      <p className="text-muted-foreground mt-2 text-xs">
                         {item.sourceSummary.tuitionStudentCount} tuition
                         students · {item.sourceSummary.privateChargeCount}{" "}
                         private · {item.sourceSummary.perSessionChargeCount}{" "}
@@ -592,22 +591,22 @@ function BillingRunsAdminPage() {
                         </p>
                       ) : null}
                       {item.requiresAdminReview ? (
-                        <p className="mt-1 text-xs text-destructive">
+                        <p className="text-destructive mt-1 text-xs">
                           {item.adminReviewReason}
                         </p>
                       ) : null}
                       {item.dispatchFailureReason ? (
-                        <p className="mt-2 text-xs text-destructive">
+                        <p className="text-destructive mt-2 text-xs">
                           {item.dispatchFailureReason}
                         </p>
                       ) : null}
                       {item.stripeInvoiceId ? (
-                        <p className="mt-2 font-mono text-xs text-muted-foreground">
+                        <p className="text-muted-foreground mt-2 font-mono text-xs">
                           {item.stripeInvoiceId}
                         </p>
                       ) : null}
                       {item.collectionMethod ? (
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="text-muted-foreground mt-1 text-xs">
                           {item.collectionMethod === "charge_automatically"
                             ? "Automatic collection"
                             : "Invoice by email"}
@@ -654,7 +653,7 @@ function BillingRunsAdminPage() {
                         ) : null}
                       </div>
                       {item.adjustments.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-muted-foreground text-sm">
                           No run-stage adjustments.
                         </p>
                       ) : (

@@ -475,3 +475,71 @@ export const adminCreateAccount = action({
     }
   },
 });
+
+export const adminUpdateAccount = action({
+  args: {
+    user: v.id("users"),
+    firstName: v.string(),
+    lastName: v.string(),
+    phone: v.optional(v.string()),
+    email: v.string(),
+    roles: v.array(roleValidator),
+    groups: v.array(v.id("groups")),
+  },
+  handler: async (ctx, args) => {
+    const accountData = await ctx.runQuery(api.classes.adminGetAccount, {
+      user: args.user,
+    });
+    if (!accountData) throw new Error("Account not found.");
+
+    const nextEmail = normalizeAccountEmail(args.email);
+    const previousEmail = normalizeAccountEmail(
+      String(
+        Array.isArray(accountData.account.email)
+          ? accountData.account.email[0]
+          : accountData.account.email || "",
+      ),
+    );
+    let stripeUpdated = false;
+    if (
+      accountData.account.stripeCustomerId &&
+      previousEmail !== nextEmail
+    ) {
+      await getStripeClient().customers.update(
+        accountData.account.stripeCustomerId,
+        { email: nextEmail },
+      );
+      stripeUpdated = true;
+    }
+
+    try {
+      const result = await ctx.runMutation(
+        internal.classes.adminUpdateAccountRecord,
+        {
+          ...args,
+          email: nextEmail,
+        },
+      );
+      if (result.hasPasswordAccount && result.emailChanged) {
+        await invalidateSessions(ctx, { userId: args.user });
+      }
+      return result;
+    } catch (error) {
+      if (
+        stripeUpdated &&
+        accountData.account.stripeCustomerId &&
+        previousEmail
+      ) {
+        try {
+          await getStripeClient().customers.update(
+            accountData.account.stripeCustomerId,
+            { email: previousEmail },
+          );
+        } catch (rollbackError) {
+          console.error("Could not roll back Stripe account email", rollbackError);
+        }
+      }
+      throw error;
+    }
+  },
+});

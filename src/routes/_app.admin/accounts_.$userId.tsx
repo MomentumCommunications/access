@@ -12,6 +12,7 @@ import {
   Copy,
   Home,
   Mail,
+  Pencil,
   RefreshCw,
   Unlink,
   UserPlus,
@@ -38,7 +39,7 @@ import {
 } from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
-import { formatAge } from "~/lib/date-utils";
+import { formatAge, formatFullDate } from "~/lib/date-utils";
 import { getAccountName } from "~/lib/account-name";
 import { RoleDropdown } from "~/components/role-controls";
 import { resolveUserRoles } from "~/lib/roles";
@@ -58,15 +59,13 @@ function AdminAccountDetailPage() {
   const accountData = useConvexQuery(api.classes.adminGetAccount, {
     user: typedUserId,
   });
-  const householdData = useConvexQuery(
-    api.billing.adminGetAccountHousehold,
-    { userId: typedUserId },
-  );
+  const householdData = useConvexQuery(api.billing.adminGetAccountHousehold, {
+    userId: typedUserId,
+  });
   const households = useConvexQuery(api.billing.adminListHouseholds, {});
-  const invitationStatus = useConvexQuery(
-    api.invitations.adminGetStatus,
-    { targetUserId: typedUserId },
-  );
+  const invitationStatus = useConvexQuery(api.invitations.adminGetStatus, {
+    targetUserId: typedUserId,
+  });
   const sendInvitation = useConvexAction(api.invitationActions.send);
   const createInvitationLink = useConvexAction(
     api.invitationActions.createLink,
@@ -90,9 +89,7 @@ function AdminAccountDetailPage() {
   const [savingHousehold, setSavingHousehold] = useState(false);
   const [savingInvitation, setSavingInvitation] = useState(false);
 
-  async function handleInvitation(
-    operation: "send" | "copy",
-  ) {
+  async function handleInvitation(operation: "send" | "copy") {
     setSavingInvitation(true);
     try {
       const invitation =
@@ -215,7 +212,17 @@ function AdminAccountDetailPage() {
             </div>
             <Card className="rounded-lg">
               <CardHeader>
-                <CardTitle>{getAccountName(accountData.account)}</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>{getAccountName(accountData.account)}</CardTitle>
+                  <Button asChild>
+                    <Link
+                      to="/admin/accounts/$userId/edit"
+                      params={{ userId: accountData.account._id }}
+                    >
+                      <Pencil />
+                    </Link>
+                  </Button>
+                </div>
                 <CardDescription>
                   Manage account details and assigned roles.
                 </CardDescription>
@@ -258,7 +265,7 @@ function AdminAccountDetailPage() {
                 {invitationStatus === undefined ? (
                   <Spinner className="size-4" />
                 ) : invitationStatus?.hasLogin ? (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     This account already has login credentials. Manage access
                     with the role controls above.
                   </p>
@@ -271,7 +278,7 @@ function AdminAccountDetailPage() {
                           "Not invited"}
                       </div>
                       {invitationStatus?.latestInvitation ? (
-                        <div className="mt-1 text-xs text-muted-foreground">
+                        <div className="text-muted-foreground mt-1 text-xs">
                           Expires{" "}
                           {new Date(
                             invitationStatus.latestInvitation.expiresAt,
@@ -280,8 +287,8 @@ function AdminAccountDetailPage() {
                       ) : null}
                     </div>
                     {resolveUserRoles(accountData.account).includes("member") &&
-                    !resolveUserRoles(accountData.account).some((role) =>
-                      role === "staff" || role === "admin"
+                    !resolveUserRoles(accountData.account).some(
+                      (role) => role === "staff" || role === "admin",
                     ) &&
                     invitationStatus &&
                     (invitationStatus.billing.householdMembershipCount === 0 ||
@@ -360,7 +367,7 @@ function AdminAccountDetailPage() {
                         {householdData?.household.name || "Not assigned"}
                       </div>
                       {!householdData ? (
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="text-muted-foreground mt-1 text-xs">
                           Until linked, billing falls back to the connected
                           account or a standalone student group.
                         </p>
@@ -373,7 +380,7 @@ function AdminAccountDetailPage() {
                                 <Label htmlFor="account-autopay">
                                   Automatic payment
                                 </Label>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-muted-foreground text-xs">
                                   Auto-charge draft invoices only when Stripe
                                   has a default payment method.
                                 </p>
@@ -385,8 +392,7 @@ function AdminAccountDetailPage() {
                                 }
                                 onCheckedChange={(enabled) => {
                                   void setPayerAutopay({
-                                    householdPayerId:
-                                      householdData.payer!._id,
+                                    householdPayerId: householdData.payer!._id,
                                     enabled,
                                   }).catch((error) =>
                                     toast.error(
@@ -403,7 +409,7 @@ function AdminAccountDetailPage() {
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="-ml-2 mt-2 text-destructive"
+                            className="text-destructive -ml-2 mt-2"
                             disabled={savingHousehold}
                             onClick={() => void handleRemoveHousehold()}
                           >
@@ -480,9 +486,7 @@ function AdminAccountDetailPage() {
                         <Button
                           type="submit"
                           variant="secondary"
-                          disabled={
-                            !newHouseholdName.trim() || savingHousehold
-                          }
+                          disabled={!newHouseholdName.trim() || savingHousehold}
                         >
                           Create
                         </Button>
@@ -548,7 +552,7 @@ function AdminAccountDetailPage() {
                       <div className="rounded-md border p-3">
                         <div className="text-muted-foreground">Birthday</div>
                         <div className="font-medium">
-                          {student?.dateOfBirth || "Not set"}
+                          {formatFullDate(student?.dateOfBirth) || "Not set"}
                         </div>
                       </div>
                       <div className="rounded-md border p-3">

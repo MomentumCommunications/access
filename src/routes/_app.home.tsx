@@ -292,7 +292,7 @@ function NextEventCard({
           <CardTitle>Next Event</CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <CardContent className="flex flex-col gap-4">
         <div className="w-full">
           {isLoading ? (
             <p className="text-muted-foreground text-sm">Loading event…</p>
@@ -328,7 +328,7 @@ function NextEventCard({
             </p>
           )}
         </div>
-        <Button asChild variant="outline" className="shrink-0">
+        <Button asChild variant="link" className="shrink-0">
           <Link to="/calendar">See all events</Link>
         </Button>
       </CardContent>

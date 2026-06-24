@@ -1,12 +1,23 @@
-import { useConvexAction } from "@convex-dev/react-query";
+import { useConvexAction, useConvexQuery } from "@convex-dev/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Doc, Id } from "convex/_generated/dataModel";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { RoleCheckboxes } from "~/components/role-controls";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -25,6 +36,19 @@ import {
   FieldLabel,
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import {
+  accountStatusChanged,
+  accountStatusConfirmationCopy,
+  resolveAccountStatus,
+} from "../../shared/account-status";
+import { getAccountName } from "~/lib/account-name";
 import { resolveUserRoles, type UserRole } from "~/lib/roles";
 
 const accountEditSchema = z.object({
@@ -36,6 +60,7 @@ const accountEditSchema = z.object({
     .array(z.enum(["member", "staff", "admin"]))
     .min(1, "Select at least one role."),
   groups: z.array(z.string()),
+  status: z.enum(["active", "inactive"]),
 });
 
 type AccountEditValues = z.infer<typeof accountEditSchema>;
@@ -53,6 +78,8 @@ export function AccountEditForm({
 }) {
   const navigate = useNavigate();
   const updateAccount = useConvexAction(api.stripe.adminUpdateAccount);
+  const [pendingValues, setPendingValues] =
+    useState<AccountEditValues | null>(null);
   const form = useForm<AccountEditValues>({
     resolver: zodResolver(accountEditSchema),
     defaultValues: {
@@ -62,27 +89,40 @@ export function AccountEditForm({
       email: accountEmail(account.email),
       roles: resolveUserRoles(account),
       groups: account.group || [],
+      status: resolveAccountStatus(account.status),
     },
     mode: "onTouched",
   });
+  const selectedStatus = form.watch("status");
+  const statusImpact = useConvexQuery(api.classes.adminGetAccountStatusImpact, {
+    user: account._id,
+    status: selectedStatus,
+  });
 
-  async function onSubmit(values: AccountEditValues) {
+  async function saveAccount(values: AccountEditValues) {
     form.clearErrors("root");
     try {
-      await updateAccount({
+      const result = await updateAccount({
         user: account._id,
         firstName: values.firstName.trim(),
         lastName: values.lastName.trim(),
         phone: values.phone.trim() || undefined,
         email: values.email.trim().toLowerCase(),
+        status: values.status,
         roles: values.roles,
         groups: values.groups as Id<"groups">[],
       });
-      toast.success("Account updated.");
+      const skipped =
+        result.statusResult?.skippedSharedStudentCount &&
+        result.statusResult.skippedSharedStudentCount > 0
+          ? ` ${result.statusResult.skippedSharedStudentCount} shared student${result.statusResult.skippedSharedStudentCount === 1 ? " was" : "s were"} kept active.`
+          : "";
+      toast.success(`Account updated.${skipped}`);
       await navigate({
         to: "/admin/accounts/$userId",
         params: { userId: account._id },
       });
+      return true;
     } catch (error) {
       form.setError("root", {
         message:
@@ -90,11 +130,41 @@ export function AccountEditForm({
             ? error.message
             : "The account could not be updated.",
       });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "The account could not be updated.",
+      );
+      return false;
     }
   }
 
+  async function onSubmit(values: AccountEditValues) {
+    if (accountStatusChanged(account.status, values.status)) {
+      setPendingValues(values);
+      return;
+    }
+    await saveAccount(values);
+  }
+
+  async function confirmSave() {
+    if (!pendingValues) return;
+    if (await saveAccount(pendingValues)) {
+      setPendingValues(null);
+    }
+  }
+
+  function cancelStatusChange() {
+    setPendingValues(null);
+    form.setValue("status", resolveAccountStatus(account.status), {
+      shouldDirty: false,
+      shouldValidate: true,
+    });
+  }
+
   return (
-    <Card>
+    <>
+      <Card>
       <CardHeader>
         <CardTitle>Account details</CardTitle>
         <CardDescription>
@@ -168,6 +238,33 @@ export function AccountEditForm({
                   <FieldDescription>
                     Updating an activated account changes its login email and
                     signs it out on other devices.
+                  </FieldDescription>
+                  <FieldError errors={[fieldState.error]} />
+                </Field>
+              )}
+            />
+
+            <Controller
+              name="status"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor={field.name}>Status</FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger
+                      id={field.name}
+                      aria-invalid={fieldState.invalid}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FieldDescription>
+                    Status changes apply to the account household and eligible
+                    connected students.
                   </FieldDescription>
                   <FieldError errors={[fieldState.error]} />
                 </Field>
@@ -256,7 +353,61 @@ export function AccountEditForm({
           </div>
         </form>
       </CardContent>
-    </Card>
+      </Card>
+      <AlertDialog
+        open={pendingValues !== null}
+        onOpenChange={(open) => {
+          if (!open) cancelStatusChange();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingValues
+                ? accountStatusConfirmationCopy({
+                    status: pendingValues.status,
+                    householdName: statusImpact?.householdName,
+                    accountName: getAccountName(account),
+                  })
+                : "Change account status?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingValues?.status === "inactive"
+                ? "This will drop current enrollments, remove pending or waitlisted requests, and cancel active per-session selections for affected students."
+                : "Accounts and students will be reactivated, but prior enrollments and session selections will not be restored."}
+              {statusImpact ? (
+                <>
+                  {" "}
+                  {statusImpact.affectedAccountCount} account
+                  {statusImpact.affectedAccountCount === 1 ? "" : "s"} and{" "}
+                  {statusImpact.studentCount} student
+                  {statusImpact.studentCount === 1 ? "" : "s"} will change.
+                  {statusImpact.skippedSharedStudentCount > 0
+                    ? ` ${statusImpact.skippedSharedStudentCount} shared student${statusImpact.skippedSharedStudentCount === 1 ? " has" : "s have"} another active account and will remain active.`
+                    : ""}
+                </>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={form.formState.isSubmitting}
+              onClick={cancelStatusChange}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={form.formState.isSubmitting || !statusImpact}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmSave();
+              }}
+            >
+              {form.formState.isSubmitting ? "Saving..." : "Confirm changes"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
-

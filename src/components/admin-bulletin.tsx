@@ -35,7 +35,6 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Markdown } from "./markdown-wrapper";
-import { Separator } from "./ui/separator";
 import { formatBulletinDate, getBulletinSortDate } from "~/lib/bulletin-date";
 
 type Bulletin = {

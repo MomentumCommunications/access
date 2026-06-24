@@ -30,9 +30,6 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Spinner } from "~/components/ui/spinner";
-import { AdminBulletin } from "~/components/admin-bulletin";
-import { AddBulletin } from "~/components/add-bulletin";
-import { Separator } from "~/components/ui/separator";
 
 export const Route = createFileRoute("/_app/admin/scheduling")({
   component: AdminSchedulingPage,
@@ -74,12 +71,6 @@ function AdminSchedulingPage() {
         </div>
         <SeasonManager />
         <HolidayManager />
-        <div className="flex pt-12 justify-between align-middle">
-          <h1 className="text-4xl font-bold">Bulletin</h1>
-          <AddBulletin />
-        </div>
-        <Separator className="my-4 w-full" />
-        <AdminBulletin />
       </main>
     </RoleGate>
   );
@@ -254,7 +245,7 @@ function SeasonManager() {
             {form.formState.errors.root?.message ? (
               <div
                 role="alert"
-                className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
+                className="border-destructive/50 bg-destructive/10 text-destructive rounded-md border p-3 text-sm"
               >
                 {form.formState.errors.root.message}
               </div>
@@ -286,7 +277,7 @@ function SeasonManager() {
       <div className="min-w-0 space-y-4">
         <div>
           <h2 className="text-xl font-semibold">Seasons</h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Class creation uses these date ranges as organizational periods.
           </p>
         </div>
@@ -472,7 +463,7 @@ function HolidayManager() {
       <div className="min-w-0 space-y-4">
         <div>
           <h2 className="text-xl font-semibold">Holidays</h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Holidays are skipped when generated class sessions are created.
           </p>
         </div>
@@ -493,7 +484,7 @@ function HolidayManager() {
 
 function LoadingTable() {
   return (
-    <div className="flex min-h-40 items-center justify-center">
+    <div className="min-h-40 flex items-center justify-center">
       <Spinner className="size-5" />
     </div>
   );

@@ -18,6 +18,7 @@ export default defineSchema({
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
+    status: v.optional(v.union(v.literal("active"), v.literal("inactive"))),
     role: v.optional(
       v.union(v.literal("admin"), v.literal("staff"), v.literal("member")),
     ),

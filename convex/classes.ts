@@ -75,6 +75,11 @@ import {
   classMatchesWeekday,
   type ClassWeekday,
 } from "../shared/class-weekday-filter";
+import {
+  resolveAccountStatus,
+  shouldSkipSharedStudentOnInactivation,
+  type AccountStatus,
+} from "../shared/account-status";
 
 const roleValidator = v.union(
   v.literal("admin"),
@@ -83,6 +88,11 @@ const roleValidator = v.union(
 );
 
 const rolesValidator = v.array(roleValidator);
+
+const accountStatusValidator = v.union(
+  v.literal("active"),
+  v.literal("inactive"),
+);
 
 const classStatusValidator = v.union(
   v.literal("draft"),
@@ -195,6 +205,209 @@ async function notifyStudentManagersOfEnrollmentOutcome(
     }),
     actorUserId,
   );
+}
+
+async function cleanupStudentForInactiveStatus(
+  ctx: MutationCtx,
+  {
+    actorUserId,
+    student,
+  }: {
+    actorUserId: Id<"users">;
+    student: Doc<"students">;
+  },
+) {
+  const today = todayValue();
+  const enrollments = await ctx.db
+    .query("classEnrollments")
+    .withIndex("byStudent", (q) => q.eq("student", student._id))
+    .collect();
+  for (const enrollment of enrollments) {
+    const cleanup = studentEnrollmentCleanup(enrollment, today);
+    if (cleanup.action === "delete") {
+      const classItem = await ctx.db.get(enrollment.classId);
+      if (enrollment.status === "pending" && classItem) {
+        await notifyStudentManagersOfEnrollmentOutcome(ctx, {
+          enrollmentId: enrollment._id,
+          actorUserId,
+          outcome: "rejected",
+          student,
+          classItem,
+        });
+      }
+      await ctx.db.delete(enrollment._id);
+    } else if (cleanup.action === "drop") {
+      await ctx.db.patch(enrollment._id, {
+        status: "dropped",
+        startDate: cleanup.startDate,
+        endDate: cleanup.endDate,
+      });
+    }
+  }
+
+  const sessionSignups = await ctx.db
+    .query("classSessionSignups")
+    .withIndex("byStudent", (q) => q.eq("student", student._id))
+    .collect();
+  await Promise.all(
+    sessionSignups
+      .filter((signup) => signup.status !== "cancelled")
+      .map((signup) =>
+        ctx.db.patch(signup._id, {
+          status: "cancelled",
+          updatedAt: Date.now(),
+        }),
+      ),
+  );
+}
+
+async function resolveAccountStatusCascade(
+  ctx: DbCtx,
+  userId: Id<"users">,
+  status: AccountStatus,
+) {
+  const account = await ctx.db.get(userId);
+  if (!account) throw new Error("Account not found.");
+
+  const membership = await ctx.db
+    .query("householdMembers")
+    .withIndex("byUser", (q) => q.eq("userId", userId))
+    .first();
+  const household = membership
+    ? await ctx.db.get(membership.householdId)
+    : null;
+  const householdMemberships = membership
+    ? await ctx.db
+        .query("householdMembers")
+        .withIndex("byHousehold", (q) =>
+          q.eq("householdId", membership.householdId),
+        )
+        .collect()
+    : [];
+  const targetAccountIds = new Set<Id<"users">>(
+    membership
+      ? householdMemberships.map((item) => item.userId)
+      : [userId],
+  );
+  const targetAccounts = (
+    await Promise.all([...targetAccountIds].map((id) => ctx.db.get(id)))
+  ).filter((item): item is Doc<"users"> => Boolean(item));
+
+  const targetContacts = (
+    await Promise.all(
+      [...targetAccountIds].map((id) =>
+        ctx.db
+          .query("studentContacts")
+          .withIndex("byUser", (q) => q.eq("user", id))
+          .collect(),
+      ),
+    )
+  ).flat();
+  const studentIds = [...new Set(targetContacts.map((item) => item.student))];
+  const students = (
+    await Promise.all(studentIds.map((id) => ctx.db.get(id)))
+  ).filter((item): item is Doc<"students"> => Boolean(item));
+
+  const skippedSharedStudentIds: Id<"students">[] = [];
+  const affectedStudents: Doc<"students">[] = [];
+  for (const student of students) {
+    if (status === "active") {
+      if (student.status !== "active") affectedStudents.push(student);
+      continue;
+    }
+    if (student.status === "inactive") continue;
+
+    const contacts = await ctx.db
+      .query("studentContacts")
+      .withIndex("byStudent", (q) => q.eq("student", student._id))
+      .collect();
+    const connectedAccountIds = contacts
+      .map((contact) => contact.user)
+      .filter((id): id is Id<"users"> => Boolean(id));
+    const connectedAccounts = (
+      await Promise.all(connectedAccountIds.map((id) => ctx.db.get(id)))
+    ).filter((item): item is Doc<"users"> => Boolean(item));
+    const statuses = new Map(
+      connectedAccounts.map((item) => [item._id, item.status] as const),
+    );
+    if (
+      shouldSkipSharedStudentOnInactivation({
+        targetAccountIds,
+        connectedAccountIds,
+        accountStatuses: statuses,
+      })
+    ) {
+      skippedSharedStudentIds.push(student._id);
+    } else {
+      affectedStudents.push(student);
+    }
+  }
+
+  return {
+    account,
+    household,
+    targetAccounts,
+    affectedAccountIds: targetAccounts
+      .filter((item) => resolveAccountStatus(item.status) !== status)
+      .map((item) => item._id),
+    affectedStudents,
+    skippedSharedStudentIds,
+  };
+}
+
+async function applyAccountStatusCascade(
+  ctx: MutationCtx,
+  {
+    actor,
+    userId,
+    status,
+  }: {
+    actor: Doc<"users">;
+    userId: Id<"users">;
+    status: AccountStatus;
+  },
+) {
+  const impact = await resolveAccountStatusCascade(ctx, userId, status);
+
+  await Promise.all(
+    impact.affectedAccountIds.map((id) => ctx.db.patch(id, { status })),
+  );
+  for (const student of impact.affectedStudents) {
+    if (status === "inactive") {
+      await cleanupStudentForInactiveStatus(ctx, {
+        actorUserId: actor._id,
+        student,
+      });
+    }
+    await ctx.db.patch(student._id, { status });
+  }
+
+  const targetId = impact.household?._id ?? userId;
+  await recordActivityEvent(ctx, {
+    entityType: impact.household ? "household" : "user",
+    entityId: targetId,
+    actorId: actor._id,
+    eventType: "account_status_cascade",
+    summary: `Marked ${impact.household?.name || "an account and its connected students"} ${status}.`,
+    metadata: {
+      status,
+      householdId: impact.household?._id,
+      accountId: userId,
+      affectedAccountIds: impact.affectedAccountIds,
+      affectedStudentIds: impact.affectedStudents.map((student) => student._id),
+      skippedSharedStudentIds: impact.skippedSharedStudentIds,
+    },
+  });
+
+  return {
+    status,
+    householdId: impact.household?._id,
+    householdName: impact.household?.name,
+    affectedAccountIds: impact.affectedAccountIds,
+    affectedStudentIds: impact.affectedStudents.map((student) => student._id),
+    skippedSharedStudentIds: impact.skippedSharedStudentIds,
+    skippedSharedStudentCount: impact.skippedSharedStudentIds.length,
+  };
 }
 
 const weekdayValidator = v.union(
@@ -2244,6 +2457,41 @@ export const adminGetAccount = query({
   },
 });
 
+export const adminGetAccountStatusImpact = query({
+  args: {
+    user: v.id("users"),
+    status: accountStatusValidator,
+  },
+  handler: async (ctx, { user, status }) => {
+    await requireAdmin(ctx);
+    const impact = await resolveAccountStatusCascade(ctx, user, status);
+    return {
+      status,
+      householdId: impact.household?._id,
+      householdName: impact.household?.name,
+      accountCount: impact.targetAccounts.length,
+      affectedAccountCount: impact.affectedAccountIds.length,
+      studentCount: impact.affectedStudents.length,
+      skippedSharedStudentCount: impact.skippedSharedStudentIds.length,
+    };
+  },
+});
+
+export const adminSetAccountStatus = mutation({
+  args: {
+    user: v.id("users"),
+    status: accountStatusValidator,
+  },
+  handler: async (ctx, { user, status }) => {
+    const actor = await requireAdmin(ctx);
+    return await applyAccountStatusCascade(ctx, {
+      actor,
+      userId: user,
+      status,
+    });
+  },
+});
+
 export const adminCreateAccountRecord = internalMutation({
   args: {
     firstName: v.string(),
@@ -2284,6 +2532,7 @@ export const adminCreateAccountRecord = internalMutation({
       lastName,
       email,
       phone: args.phone?.trim() || undefined,
+      status: "active",
       roles,
       role: highestUserRole(roles),
       onboardingSource: "imported",
@@ -2325,6 +2574,7 @@ export const adminUpdateAccountRecord = internalMutation({
     lastName: v.string(),
     phone: v.optional(v.string()),
     email: v.string(),
+    status: accountStatusValidator,
     roles: rolesValidator,
     groups: v.array(v.id("groups")),
   },
@@ -2418,6 +2668,15 @@ export const adminUpdateAccountRecord = internalMutation({
       group: args.groups,
     });
 
+    const statusResult =
+      resolveAccountStatus(account.status) === args.status
+        ? null
+        : await applyAccountStatusCascade(ctx, {
+            actor,
+            userId: args.user,
+            status: args.status,
+          });
+
     if (emailChanged) {
       const pendingInvitations = await ctx.db
         .query("accountInvitations")
@@ -2442,6 +2701,7 @@ export const adminUpdateAccountRecord = internalMutation({
       summary: `Updated ${firstName} ${lastName}'s account details.`,
       metadata: {
         emailChanged,
+        status: args.status,
         roles,
         groupIds: args.groups,
       },
@@ -2452,6 +2712,7 @@ export const adminUpdateAccountRecord = internalMutation({
       emailChanged,
       stripeCustomerId: account.stripeCustomerId,
       hasPasswordAccount: Boolean(passwordAccount),
+      statusResult,
     };
   },
 });
@@ -2730,47 +2991,10 @@ export const adminUpdateStudent = mutation({
       throw new Error("The selected group no longer exists.");
     }
     if (requiresStudentStatusConfirmation(existing.status, updates.status)) {
-      const today = todayValue();
-      const enrollments = await ctx.db
-        .query("classEnrollments")
-        .withIndex("byStudent", (q) => q.eq("student", student))
-        .collect();
-      for (const enrollment of enrollments) {
-        const cleanup = studentEnrollmentCleanup(enrollment, today);
-        if (cleanup.action === "delete") {
-          const classItem = await ctx.db.get(enrollment.classId);
-          if (enrollment.status === "pending" && classItem) {
-            await notifyStudentManagersOfEnrollmentOutcome(ctx, {
-              enrollmentId: enrollment._id,
-              actorUserId: admin._id,
-              outcome: "rejected",
-              student: existing,
-              classItem,
-            });
-          }
-          await ctx.db.delete(enrollment._id);
-        } else if (cleanup.action === "drop") {
-          await ctx.db.patch(enrollment._id, {
-            status: "dropped",
-            startDate: cleanup.startDate,
-            endDate: cleanup.endDate,
-          });
-        }
-      }
-      const sessionSignups = await ctx.db
-        .query("classSessionSignups")
-        .withIndex("byStudent", (q) => q.eq("student", student))
-        .collect();
-      await Promise.all(
-        sessionSignups
-          .filter((signup) => signup.status !== "cancelled")
-          .map((signup) =>
-            ctx.db.patch(signup._id, {
-              status: "cancelled",
-              updatedAt: Date.now(),
-            }),
-          ),
-      );
+      await cleanupStudentForInactiveStatus(ctx, {
+        actorUserId: admin._id,
+        student: existing,
+      });
     }
     await ctx.db.patch(student, {
       ...updates,

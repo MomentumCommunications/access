@@ -51,7 +51,7 @@ function StaffHome() {
                 Review the classes currently connected to your account.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex h-full items-end">
               <Button asChild variant="outline">
                 <Link to="/staff/classes">
                   <ClipboardList />

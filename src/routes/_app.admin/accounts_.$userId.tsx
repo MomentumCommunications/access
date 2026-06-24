@@ -43,6 +43,21 @@ import { formatAge, formatFullDate } from "~/lib/date-utils";
 import { getAccountName } from "~/lib/account-name";
 import { RoleDropdown } from "~/components/role-controls";
 import { resolveUserRoles } from "~/lib/roles";
+import {
+  accountStatusConfirmationCopy,
+  resolveAccountStatus,
+  type AccountStatus,
+} from "../../../shared/account-status";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/admin/accounts_/$userId")({
   component: AdminAccountDetailPage,
@@ -72,6 +87,9 @@ function AdminAccountDetailPage() {
   );
   const revokeInvitation = useConvexMutation(api.invitations.revoke);
   const setRoles = useConvexMutation(api.classes.adminSetUserRoles);
+  const setAccountStatus = useConvexMutation(
+    api.classes.adminSetAccountStatus,
+  );
   const attachHousehold = useConvexMutation(
     api.billing.adminAttachAccountToHousehold,
   );
@@ -88,6 +106,42 @@ function AdminAccountDetailPage() {
   const [newHouseholdName, setNewHouseholdName] = useState("");
   const [savingHousehold, setSavingHousehold] = useState(false);
   const [savingInvitation, setSavingInvitation] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<AccountStatus | null>(
+    null,
+  );
+  const [savingStatus, setSavingStatus] = useState(false);
+  const statusImpact = useConvexQuery(
+    api.classes.adminGetAccountStatusImpact,
+    {
+      user: typedUserId,
+      status: pendingStatus ?? resolveAccountStatus(accountData?.account.status),
+    },
+  );
+
+  async function confirmStatusChange() {
+    if (!pendingStatus) return;
+    setSavingStatus(true);
+    try {
+      const result = await setAccountStatus({
+        user: typedUserId,
+        status: pendingStatus,
+      });
+      const skipped =
+        result.skippedSharedStudentCount > 0
+          ? ` ${result.skippedSharedStudentCount} shared student${result.skippedSharedStudentCount === 1 ? " was" : "s were"} kept active.`
+          : "";
+      toast.success(`Account status updated.${skipped}`);
+      setPendingStatus(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to update account status.",
+      );
+    } finally {
+      setSavingStatus(false);
+    }
+  }
 
   async function handleInvitation(operation: "send" | "copy") {
     setSavingInvitation(true);
@@ -228,6 +282,29 @@ function AdminAccountDetailPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
+                <div className="space-y-1">
+                  <div className="text-muted-foreground">Status</div>
+                  <Select
+                    value={resolveAccountStatus(accountData.account.status)}
+                    onValueChange={(value) => {
+                      const status = value as AccountStatus;
+                      if (
+                        status !==
+                        resolveAccountStatus(accountData.account.status)
+                      ) {
+                        setPendingStatus(status);
+                      }
+                    }}
+                  >
+                    <SelectTrigger aria-label="Account status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-1">
                   <div className="text-muted-foreground">Roles</div>
                   <RoleDropdown
@@ -569,6 +646,57 @@ function AdminAccountDetailPage() {
           </section>
         </main>
       )}
+      <AlertDialog
+        open={pendingStatus !== null}
+        onOpenChange={(open) => {
+          if (!open && !savingStatus) setPendingStatus(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingStatus && accountData
+                ? accountStatusConfirmationCopy({
+                    status: pendingStatus,
+                    householdName: statusImpact?.householdName,
+                    accountName: getAccountName(accountData.account),
+                  })
+                : "Change account status?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingStatus === "inactive"
+                ? "Affected students will become inactive. Current enrollments will be dropped, requests removed, and active per-session selections cancelled."
+                : "Accounts and students will become active again. Previous enrollments and session selections will not be restored."}
+              {statusImpact ? (
+                <>
+                  {" "}
+                  {statusImpact.affectedAccountCount} account
+                  {statusImpact.affectedAccountCount === 1 ? "" : "s"} and{" "}
+                  {statusImpact.studentCount} student
+                  {statusImpact.studentCount === 1 ? "" : "s"} will change.
+                  {statusImpact.skippedSharedStudentCount > 0
+                    ? ` ${statusImpact.skippedSharedStudentCount} shared student${statusImpact.skippedSharedStudentCount === 1 ? " has" : "s have"} another active account and will remain active.`
+                    : ""}
+                </>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={savingStatus}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={savingStatus || !statusImpact}
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmStatusChange();
+              }}
+            >
+              {savingStatus ? "Updating..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </RoleGate>
   );
 }

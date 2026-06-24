@@ -66,6 +66,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         ? importedUser._id
         : await ctx.db.insert("users", {
             ...profileUpdates,
+            status: "active",
             role: "member",
             roles: ["member"],
           });
@@ -102,6 +103,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
 
       await ctx.db.patch(userId, {
         ...profileUpdates,
+        status: importedUser?.status ?? "active",
         role: highestUserRole([...assignedRoles]),
         roles: [...assignedRoles],
         onboardingStatus: onboardingIsComplete ? "complete" : "pending",

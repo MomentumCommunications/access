@@ -483,6 +483,7 @@ export const adminUpdateAccount = action({
     lastName: v.string(),
     phone: v.optional(v.string()),
     email: v.string(),
+    status: v.union(v.literal("active"), v.literal("inactive")),
     roles: v.array(roleValidator),
     groups: v.array(v.id("groups")),
   },

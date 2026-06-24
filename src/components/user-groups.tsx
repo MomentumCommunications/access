@@ -26,6 +26,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import React from "react";
 import { cn } from "~/lib/utils";
+import { Doc } from "@convex-dev/auth/server";
 
 const formSchema = z.object({
   groups: z.array(z.string()).min(1),
@@ -35,31 +36,8 @@ export function UserGroups({
   groups,
   user,
 }: {
-  groups:
-    | {
-        _id: Id<"groups">;
-        _creationTime: number;
-        info?: string | undefined;
-        document?: string | undefined;
-        name: string;
-        description: string;
-        password: string;
-      }[]
-    | undefined;
-  user:
-    | {
-        _id: Id<"users">;
-        name: string;
-        displayName?: string | undefined;
-        description?: string | undefined;
-        email?: string[] | undefined;
-        role?: "admin" | "staff" | "member" | undefined;
-        group?: string[];
-        image?: string | undefined;
-        externalId: string;
-      }
-    | null
-    | undefined;
+  groups: Doc<"groups">[] | undefined;
+  user: Doc<"users"> | undefined;
 }) {
   const [open, setOpen] = React.useState(false);
 
@@ -93,21 +71,21 @@ export function UserGroups({
           key={group._id}
           variant="secondary"
           className={cn(
-            "px-2 h-8 saturate-75",
+            "saturate-75 h-8 px-2",
             group.name === "mdp" && "bg-rose-800",
             group.name === "mdp2" && "bg-teal-800",
             group.name === "club" && "bg-indigo-800",
           )}
         >
-          <span className="uppercase select-none font-semibold">
+          <span className="select-none font-semibold uppercase">
             {group.name}
           </span>
         </Badge>
       ))}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger>
-          <Button size="sm" variant="ghost" className="w-10 h-8">
-            <span className="text-sm text-muted-foreground">+/-</span>
+          <Button size="sm" variant="ghost" className="h-8 w-10">
+            <span className="text-muted-foreground text-sm">+/-</span>
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">

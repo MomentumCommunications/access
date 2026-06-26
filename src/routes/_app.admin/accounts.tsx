@@ -4,22 +4,47 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Doc } from "convex/_generated/dataModel";
 import { Plus } from "lucide-react";
+import { useMemo, useState } from "react";
 import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
 import { getAccountName } from "~/lib/account-name";
 import { RoleDropdown } from "~/components/role-controls";
 import { resolveUserRoles } from "~/lib/roles";
 import { UserGroups } from "~/components/user-groups";
+import {
+  resolveAccountStatus,
+  type AccountStatus,
+} from "../../../shared/account-status";
 
 export const Route = createFileRoute("/_app/admin/accounts")({
   component: AdminAccountsPage,
 });
 
+type AccountStatusFilter = AccountStatus | "all";
+
 function AdminAccountsPage() {
   const accounts = useConvexQuery(api.classes.adminListAccounts, {});
   const setRoles = useConvexMutation(api.classes.adminSetUserRoles);
+  const [statusFilter, setStatusFilter] =
+    useState<AccountStatusFilter>("active");
+
+  const filteredAccounts = useMemo(() => {
+    if (!accounts) return accounts;
+    if (statusFilter === "all") return accounts;
+    return accounts.filter(
+      (account) => resolveAccountStatus(account.status) === statusFilter,
+    );
+  }, [accounts, statusFilter]);
 
   const columns: ColumnDef<Doc<"users">>[] = [
     {
@@ -44,6 +69,19 @@ function AdminAccountsPage() {
         Array.isArray(row.original.email)
           ? row.original.email.join(", ")
           : row.original.email || "Not set",
+    },
+    {
+      accessorFn: (account) => resolveAccountStatus(account.status),
+      id: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = resolveAccountStatus(row.original.status);
+        return (
+          <Badge variant={status === "active" ? "secondary" : "outline"}>
+            {status === "active" ? "Active" : "Inactive"}
+          </Badge>
+        );
+      },
     },
     {
       accessorKey: "role",
@@ -95,9 +133,29 @@ function AdminAccountsPage() {
         ) : (
           <DataTable
             columns={columns}
-            data={accounts}
+            data={filteredAccounts ?? []}
             filterColumn="name"
             filterPlaceholder="Filter accounts..."
+            toolbar={
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(value) =>
+                    setStatusFilter(value as AccountStatusFilter)
+                  }
+                >
+                  <SelectTrigger className="h-9 w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="all">All statuses</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            }
           />
         )}
       </main>

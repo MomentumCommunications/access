@@ -70,3 +70,12 @@ export function formatTimeRange(startTime?: string, endTime?: string) {
 
   return `${start.time} ${start.period} - ${end.time} ${end.period}`;
 }
+
+export function isBirthday(date?: string) {
+  const today = new Date();
+  const birthDate = new Date(`${date}T12:00:00`);
+  return (
+    today.getMonth() === birthDate.getMonth() &&
+    today.getDate() === birthDate.getDate()
+  );
+}

@@ -23,7 +23,7 @@ import {
   ComboboxList,
 } from "~/components/ui/combobox";
 import { Spinner } from "~/components/ui/spinner";
-import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
+import { formatMDYYYY, formatTimeRange, isBirthday } from "~/lib/date-utils";
 import { cn } from "~/lib/utils";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
@@ -301,6 +301,14 @@ function AttendanceSession({ sessionId }: { sessionId: Id<"sessions"> }) {
                       <div className="min-w-0">
                         <div className="truncate font-medium">
                           {studentName}
+                          {isBirthday(student.dateOfBirth) && (
+                            <span
+                              title="Happy Birthday!"
+                              className="ml-1 text-muted-foreground"
+                            >
+                              {" 🎉"}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

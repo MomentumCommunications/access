@@ -4,9 +4,18 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Doc } from "convex/_generated/dataModel";
 import { Plus } from "lucide-react";
+import { useMemo, useState } from "react";
 import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
 import { formatAge, formatMDYYYY } from "~/lib/date-utils";
 
@@ -18,6 +27,13 @@ type StudentRow = {
   student: Doc<"students">;
   contacts: Doc<"studentContacts">[];
 };
+
+type StudentStatus = Doc<"students">["status"];
+type StudentStatusFilter = StudentStatus | "all";
+
+function formatStudentStatus(status: StudentStatus) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
 
 const columns: ColumnDef<StudentRow>[] = [
   {
@@ -38,12 +54,19 @@ const columns: ColumnDef<StudentRow>[] = [
   {
     accessorKey: "student.preferredName",
     header: "Preferred",
-    cell: ({ row }) => row.original.student.preferredName || "Not set",
+    cell: ({ row }) => row.original.student.preferredName || "-",
   },
   {
     accessorKey: "student.status",
     header: "Status",
-    cell: ({ row }) => row.original.student.status,
+    cell: ({ row }) => {
+      const status = row.original.student.status;
+      return (
+        <Badge variant={status === "active" ? "secondary" : "outline"}>
+          {formatStudentStatus(status)}
+        </Badge>
+      );
+    },
   },
   {
     id: "age",
@@ -65,10 +88,18 @@ const columns: ColumnDef<StudentRow>[] = [
 
 function AdminStudentsPage() {
   const students = useConvexQuery(api.classes.adminListStudents, {});
+  const [statusFilter, setStatusFilter] =
+    useState<StudentStatusFilter>("active");
+
+  const filteredStudents = useMemo(() => {
+    if (!students) return students;
+    if (statusFilter === "all") return students;
+    return students.filter(({ student }) => student.status === statusFilter);
+  }, [students, statusFilter]);
 
   return (
     <RoleGate allow="admin">
-      <main className="mx-auto flex w-full max-w-6xl min-w-0 flex-col gap-4 p-4 lg:p-8">
+      <main className="flex w-full min-w-0 flex-col gap-4 p-4 lg:p-8">
         <div className="flex gap-3 flex-row justify-between">
           <div>
             <h1 className="text-3xl font-bold">Students</h1>
@@ -86,9 +117,30 @@ function AdminStudentsPage() {
         ) : (
           <DataTable
             columns={columns}
-            data={students}
+            data={filteredStudents ?? []}
             filterColumn="name"
             filterPlaceholder="Filter students..."
+            toolbar={
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <Select
+                  value={statusFilter}
+                  onValueChange={(value) =>
+                    setStatusFilter(value as StudentStatusFilter)
+                  }
+                >
+                  <SelectTrigger className="h-9 w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                    <SelectItem value="all">All statuses</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            }
           />
         )}
       </main>

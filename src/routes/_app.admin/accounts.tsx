@@ -111,7 +111,7 @@ function AdminAccountsPage() {
 
   return (
     <RoleGate allow="admin">
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 lg:p-8">
+      <main className="flex w-full flex-col gap-4 p-4 lg:p-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold">Accounts</h1>

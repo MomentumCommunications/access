@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { Eye, EyeOff, Link, MoreHorizontal, Trash2 } from "lucide-react";
+import { Eye, EyeOff, LinkIcon, MoreHorizontal, Trash2 } from "lucide-react";
 import { Id } from "convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { cn } from "~/lib/utils";
@@ -36,6 +36,7 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Markdown } from "./markdown-wrapper";
 import { formatBulletinDate, getBulletinSortDate } from "~/lib/bulletin-date";
+import { Link } from "@tanstack/react-router";
 
 type Bulletin = {
   _id: Id<"bulletin">;
@@ -346,10 +347,13 @@ export function AdminBulletin() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <a href={`/${bulletin._id}`}>
-                              <Link className="text-foreground" />
-                              Open page
-                            </a>
+                            <Link
+                              to="/calendar/$bulletinId"
+                              params={{ bulletinId: bulletin._id }}
+                            >
+                              <LinkIcon />
+                              <span>View</span>
+                            </Link>
                           </DropdownMenuItem>
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem asChild>

@@ -11,10 +11,12 @@ import {
   Ban,
   Copy,
   Home,
+  HousePlus,
   Mail,
   Pencil,
   RefreshCw,
   Unlink,
+  User,
   UserPlus,
 } from "lucide-react";
 import { useState } from "react";
@@ -49,6 +51,16 @@ import {
   type AccountStatus,
 } from "../../../shared/account-status";
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/components/ui/dialog";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -58,6 +70,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
+import { Separator } from "~/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { PatternFormat } from "react-number-format";
 
 export const Route = createFileRoute("/_app/admin/accounts_/$userId")({
   component: AdminAccountDetailPage,
@@ -74,49 +89,16 @@ function AdminAccountDetailPage() {
   const accountData = useConvexQuery(api.classes.adminGetAccount, {
     user: typedUserId,
   });
-  const householdData = useConvexQuery(api.billing.adminGetAccountHousehold, {
-    userId: typedUserId,
-  });
-  const households = useConvexQuery(api.billing.adminListHouseholds, {});
-  const invitationStatus = useConvexQuery(api.invitations.adminGetStatus, {
-    targetUserId: typedUserId,
-  });
-  const sendInvitation = useConvexAction(api.invitationActions.send);
-  const createInvitationLink = useConvexAction(
-    api.invitationActions.createLink,
-  );
-  const revokeInvitation = useConvexMutation(api.invitations.revoke);
   const setRoles = useConvexMutation(api.classes.adminSetUserRoles);
-  const setAccountStatus = useConvexMutation(
-    api.classes.adminSetAccountStatus,
-  );
-  const attachHousehold = useConvexMutation(
-    api.billing.adminAttachAccountToHousehold,
-  );
-  const createHousehold = useConvexMutation(
-    api.billing.adminCreateHouseholdForAccount,
-  );
-  const removeHousehold = useConvexMutation(
-    api.billing.adminRemoveAccountFromHousehold,
-  );
-  const setPayerAutopay = useConvexMutation(
-    api.billing.adminSetHouseholdPayerAutopay,
-  );
-  const [selectedHouseholdId, setSelectedHouseholdId] = useState("");
-  const [newHouseholdName, setNewHouseholdName] = useState("");
-  const [savingHousehold, setSavingHousehold] = useState(false);
-  const [savingInvitation, setSavingInvitation] = useState(false);
+  const setAccountStatus = useConvexMutation(api.classes.adminSetAccountStatus);
   const [pendingStatus, setPendingStatus] = useState<AccountStatus | null>(
     null,
   );
   const [savingStatus, setSavingStatus] = useState(false);
-  const statusImpact = useConvexQuery(
-    api.classes.adminGetAccountStatusImpact,
-    {
-      user: typedUserId,
-      status: pendingStatus ?? resolveAccountStatus(accountData?.account.status),
-    },
-  );
+  const statusImpact = useConvexQuery(api.classes.adminGetAccountStatusImpact, {
+    user: typedUserId,
+    status: pendingStatus ?? resolveAccountStatus(accountData?.account.status),
+  });
 
   async function confirmStatusChange() {
     if (!pendingStatus) return;
@@ -143,102 +125,6 @@ function AdminAccountDetailPage() {
     }
   }
 
-  async function handleInvitation(operation: "send" | "copy") {
-    setSavingInvitation(true);
-    try {
-      const invitation =
-        operation === "send"
-          ? await sendInvitation({ targetUserId: typedUserId })
-          : await createInvitationLink({ targetUserId: typedUserId });
-      if (operation === "copy" || "warning" in invitation) {
-        await navigator.clipboard.writeText(invitation.url);
-      }
-      if ("warning" in invitation && invitation.warning) {
-        toast.warning(`${invitation.warning} The link was copied.`);
-      } else {
-        toast.success(
-          operation === "send"
-            ? "Invitation sent."
-            : "A new invitation link was copied.",
-        );
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to create invitation.",
-      );
-    } finally {
-      setSavingInvitation(false);
-    }
-  }
-
-  async function handleRevokeInvitation() {
-    const invitation = invitationStatus?.latestInvitation;
-    if (!invitation) return;
-    setSavingInvitation(true);
-    try {
-      await revokeInvitation({ invitationId: invitation._id });
-      toast.success("Invitation revoked.");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to revoke invitation.",
-      );
-    } finally {
-      setSavingInvitation(false);
-    }
-  }
-
-  async function handleAttachHousehold() {
-    if (!selectedHouseholdId) return;
-    setSavingHousehold(true);
-    try {
-      await attachHousehold({
-        userId: typedUserId,
-        householdId: selectedHouseholdId as Id<"households">,
-      });
-      setSelectedHouseholdId("");
-      toast.success("Account attached to household.");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to attach household.",
-      );
-    } finally {
-      setSavingHousehold(false);
-    }
-  }
-
-  async function handleCreateHousehold() {
-    if (!newHouseholdName.trim()) return;
-    setSavingHousehold(true);
-    try {
-      await createHousehold({
-        userId: typedUserId,
-        name: newHouseholdName,
-      });
-      setNewHouseholdName("");
-      toast.success("Household created and attached.");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to create household.",
-      );
-    } finally {
-      setSavingHousehold(false);
-    }
-  }
-
-  async function handleRemoveHousehold() {
-    setSavingHousehold(true);
-    try {
-      await removeHousehold({ userId: typedUserId });
-      toast.success("Account removed from household.");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to remove household.",
-      );
-    } finally {
-      setSavingHousehold(false);
-    }
-  }
-
   return (
     <RoleGate allow="admin">
       {accountData === undefined ? (
@@ -254,7 +140,7 @@ function AdminAccountDetailPage() {
           </Card>
         </main>
       ) : (
-        <main className="mx-auto grid w-full max-w-6xl gap-4 p-4 lg:grid-cols-[22rem_1fr] lg:p-8">
+        <main className="mx-auto w-full max-w-6xl gap-4 p-4 lg:p-8">
           <section className="space-y-4">
             <div className="space-y-2">
               <Button asChild variant="ghost" className="-ml-3">
@@ -264,24 +150,33 @@ function AdminAccountDetailPage() {
                 </Link>
               </Button>
             </div>
-            <Card className="rounded-lg">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>{getAccountName(accountData.account)}</CardTitle>
-                  <Button asChild>
-                    <Link
-                      to="/admin/accounts/$userId/edit"
-                      params={{ userId: accountData.account._id }}
-                    >
-                      <Pencil />
-                    </Link>
-                  </Button>
+            <div className="space-y-4 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16 rounded-full">
+                    <AvatarImage
+                      src={accountData.account.image}
+                      alt={accountData.account.name || ""}
+                      className="h-full object-cover"
+                    />
+                    <AvatarFallback className="rounded-lg">
+                      <User className="size-8" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <p className="text-3xl font-bold">
+                    {getAccountName(accountData.account)}
+                  </p>
                 </div>
-                <CardDescription>
-                  Manage account details and assigned roles.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+                <Button asChild>
+                  <Link
+                    to="/admin/accounts/$userId/edit"
+                    params={{ userId: accountData.account._id }}
+                  >
+                    <Pencil />
+                  </Link>
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <div className="text-muted-foreground">Status</div>
                   <Select
@@ -323,256 +218,25 @@ function AdminAccountDetailPage() {
                 <div>
                   <div className="text-muted-foreground">Phone</div>
                   <div className="font-medium">
-                    {accountData.account.phone || "Not set"}
+                    {accountData.account.phone ? (
+                      <PatternFormat
+                        value={accountData.account.phone}
+                        format="+1 (###) ###-####"
+                        mask="_"
+                        disabled
+                      />
+                    ) : (
+                      "Not set"
+                    )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            <Card className="rounded-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="size-4" />
-                  Account invitation
-                </CardTitle>
-                <CardDescription>
-                  Send a secure, email-bound account setup link.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {invitationStatus === undefined ? (
-                  <Spinner className="size-4" />
-                ) : invitationStatus?.hasLogin ? (
-                  <p className="text-muted-foreground text-sm">
-                    This account already has login credentials. Manage access
-                    with the role controls above.
-                  </p>
-                ) : (
-                  <>
-                    <div className="rounded-md border p-3 text-sm">
-                      <div className="text-muted-foreground">Status</div>
-                      <div className="font-medium capitalize">
-                        {invitationStatus?.latestInvitation?.effectiveStatus ||
-                          "Not invited"}
-                      </div>
-                      {invitationStatus?.latestInvitation ? (
-                        <div className="text-muted-foreground mt-1 text-xs">
-                          Expires{" "}
-                          {new Date(
-                            invitationStatus.latestInvitation.expiresAt,
-                          ).toLocaleString()}
-                        </div>
-                      ) : null}
-                    </div>
-                    {resolveUserRoles(accountData.account).includes("member") &&
-                    !resolveUserRoles(accountData.account).some(
-                      (role) => role === "staff" || role === "admin",
-                    ) &&
-                    invitationStatus &&
-                    (invitationStatus.billing.householdMembershipCount === 0 ||
-                      invitationStatus.billing.payerCount === 0 ||
-                      !invitationStatus.billing.hasStripeCustomer) ? (
-                      <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-                        This member account is missing some pre-provisioned
-                        billing setup. Activation will preserve the current
-                        records and will not guess or replace them.
-                      </p>
-                    ) : null}
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        disabled={savingInvitation}
-                        onClick={() => void handleInvitation("send")}
-                      >
-                        {invitationStatus?.latestInvitation?.effectiveStatus ===
-                        "pending" ? (
-                          <RefreshCw />
-                        ) : (
-                          <Mail />
-                        )}
-                        {invitationStatus?.latestInvitation?.effectiveStatus ===
-                        "pending"
-                          ? "Resend"
-                          : "Send invitation"}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={savingInvitation}
-                        onClick={() => void handleInvitation("copy")}
-                      >
-                        <Copy />
-                        Copy new link
-                      </Button>
-                      {invitationStatus?.latestInvitation?.effectiveStatus ===
-                      "pending" ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          disabled={savingInvitation}
-                          onClick={() => void handleRevokeInvitation()}
-                        >
-                          <Ban />
-                          Revoke
-                        </Button>
-                      ) : null}
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-            <Card className="rounded-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Home className="size-4" />
-                  Household
-                </CardTitle>
-                <CardDescription>
-                  Household membership groups regular tuition for billing
-                  review.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {householdData === undefined || households === undefined ? (
-                  <Spinner className="size-4" />
-                ) : (
-                  <>
-                    <div className="rounded-md border p-3 text-sm">
-                      <div className="text-muted-foreground">
-                        Current household
-                      </div>
-                      <div className="font-medium">
-                        {householdData?.household.name || "Not assigned"}
-                      </div>
-                      {!householdData ? (
-                        <p className="text-muted-foreground mt-1 text-xs">
-                          Until linked, billing falls back to the connected
-                          account or a standalone student group.
-                        </p>
-                      ) : (
-                        <>
-                          {householdData.payer?.active &&
-                          householdData.payer.isPrimary ? (
-                            <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
-                              <div>
-                                <Label htmlFor="account-autopay">
-                                  Automatic payment
-                                </Label>
-                                <p className="text-muted-foreground text-xs">
-                                  Auto-charge draft invoices only when Stripe
-                                  has a default payment method.
-                                </p>
-                              </div>
-                              <Switch
-                                id="account-autopay"
-                                checked={
-                                  householdData.payer.autopayEnabled === true
-                                }
-                                onCheckedChange={(enabled) => {
-                                  void setPayerAutopay({
-                                    householdPayerId: householdData.payer!._id,
-                                    enabled,
-                                  }).catch((error) =>
-                                    toast.error(
-                                      error instanceof Error
-                                        ? error.message
-                                        : "Unable to update autopay.",
-                                    ),
-                                  );
-                                }}
-                              />
-                            </div>
-                          ) : null}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive -ml-2 mt-2"
-                            disabled={savingHousehold}
-                            onClick={() => void handleRemoveHousehold()}
-                          >
-                            <Unlink />
-                            Remove link
-                          </Button>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="existing-household">
-                        Attach existing household
-                      </Label>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <Select
-                          value={selectedHouseholdId}
-                          onValueChange={setSelectedHouseholdId}
-                          disabled={households.length === 0}
-                        >
-                          <SelectTrigger
-                            id="existing-household"
-                            className="min-w-0 flex-1"
-                          >
-                            <SelectValue
-                              placeholder={
-                                households.length === 0
-                                  ? "No households yet"
-                                  : "Select household"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {households.map(({ household, memberCount }) => (
-                              <SelectItem
-                                key={household._id}
-                                value={household._id}
-                              >
-                                {household.name} ({memberCount})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          type="button"
-                          disabled={!selectedHouseholdId || savingHousehold}
-                          onClick={() => void handleAttachHousehold()}
-                        >
-                          Attach
-                        </Button>
-                      </div>
-                    </div>
-
-                    <form
-                      className="space-y-2"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        void handleCreateHousehold();
-                      }}
-                    >
-                      <Label htmlFor="new-household-name">
-                        Create a household
-                      </Label>
-                      <div className="flex flex-col gap-2 sm:flex-row">
-                        <Input
-                          id="new-household-name"
-                          value={newHouseholdName}
-                          onChange={(event) =>
-                            setNewHouseholdName(event.target.value)
-                          }
-                          placeholder="Household name"
-                          maxLength={100}
-                        />
-                        <Button
-                          type="submit"
-                          variant="secondary"
-                          disabled={!newHouseholdName.trim() || savingHousehold}
-                        >
-                          Create
-                        </Button>
-                      </div>
-                    </form>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 space-y-4">
+              <HouseholdDialog userId={userId} />
+              <InviteDialog userId={userId} />
+            </div>
+            <Separator className="my-4 w-full" />
           </section>
           <section className="space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -603,44 +267,62 @@ function AdminAccountDetailPage() {
               </Card>
             ) : (
               <div className="grid gap-3 md:grid-cols-2">
-                {accountData.students.map(({ contact, student }) => (
-                  <Card key={contact._id} className="rounded-lg">
-                    <CardHeader>
-                      <CardTitle>
-                        {student ? (
-                          <Button asChild variant="link" className="h-auto p-0">
-                            <Link
-                              to="/admin/students/$studentId"
-                              params={{ studentId: student._id }}
+                {accountData.students.map(
+                  ({ contact, student, studentPic }) => (
+                    <Card key={contact._id} className="rounded-lg">
+                      <CardHeader>
+                        <CardTitle>
+                          {student ? (
+                            <Button
+                              asChild
+                              variant="link"
+                              className="h-auto p-0"
                             >
-                              {student.preferredName ||
-                                `${student.firstName} ${student.lastName}`}
-                            </Link>
-                          </Button>
-                        ) : (
-                          "Missing student"
-                        )}
-                      </CardTitle>
-                      <CardDescription>
-                        {contact.relationship || "Relationship not set"}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="rounded-md border p-3">
-                        <div className="text-muted-foreground">Birthday</div>
-                        <div className="font-medium">
-                          {formatFullDate(student?.dateOfBirth) || "Not set"}
+                              <Link
+                                to="/admin/students/$studentId"
+                                params={{ studentId: student._id }}
+                              >
+                                <Avatar className="h-12 w-12 rounded-full">
+                                  <AvatarImage
+                                    src={studentPic || undefined}
+                                    alt={`${student.firstName} ${student.lastName}`}
+                                    className="h-full object-cover"
+                                  />
+                                  <AvatarFallback className="rounded-lg">
+                                    <User className="size-8" />
+                                  </AvatarFallback>
+                                </Avatar>
+                                <p className="text-lg font-bold">
+                                  {student.preferredName ||
+                                    `${student.firstName} ${student.lastName}`}
+                                </p>
+                              </Link>
+                            </Button>
+                          ) : (
+                            "Missing student"
+                          )}
+                        </CardTitle>
+                        <CardDescription>
+                          {contact.relationship || ""}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="rounded-md border p-3">
+                          <div className="text-muted-foreground">Birthday</div>
+                          <div className="font-medium">
+                            {formatFullDate(student?.dateOfBirth) || "Not set"}
+                          </div>
                         </div>
-                      </div>
-                      <div className="rounded-md border p-3">
-                        <div className="text-muted-foreground">Age</div>
-                        <div className="font-medium">
-                          {formatAge(student?.dateOfBirth)}
+                        <div className="rounded-md border p-3">
+                          <div className="text-muted-foreground">Age</div>
+                          <div className="font-medium">
+                            {formatAge(student?.dateOfBirth)}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ),
+                )}
               </div>
             )}
           </section>
@@ -698,5 +380,433 @@ function AdminAccountDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
     </RoleGate>
+  );
+}
+
+function HouseholdDialog({ userId }: { userId: string }) {
+  const typedUserId = userId as Id<"users">;
+  const householdData = useConvexQuery(api.billing.adminGetAccountHousehold, {
+    userId: typedUserId,
+  });
+  const households = useConvexQuery(api.billing.adminListHouseholds, {});
+
+  const attachHousehold = useConvexMutation(
+    api.billing.adminAttachAccountToHousehold,
+  );
+  const createHousehold = useConvexMutation(
+    api.billing.adminCreateHouseholdForAccount,
+  );
+  const removeHousehold = useConvexMutation(
+    api.billing.adminRemoveAccountFromHousehold,
+  );
+  const setPayerAutopay = useConvexMutation(
+    api.billing.adminSetHouseholdPayerAutopay,
+  );
+  const [selectedHouseholdId, setSelectedHouseholdId] = useState("");
+  const [newHouseholdName, setNewHouseholdName] = useState("");
+  const [savingHousehold, setSavingHousehold] = useState(false);
+
+  async function handleAttachHousehold() {
+    if (!selectedHouseholdId) return;
+    setSavingHousehold(true);
+    try {
+      await attachHousehold({
+        userId: typedUserId,
+        householdId: selectedHouseholdId as Id<"households">,
+      });
+      setSelectedHouseholdId("");
+      toast.success("Account attached to household.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to attach household.",
+      );
+    } finally {
+      setSavingHousehold(false);
+    }
+  }
+
+  async function handleCreateHousehold() {
+    if (!newHouseholdName.trim()) return;
+    setSavingHousehold(true);
+    try {
+      await createHousehold({
+        userId: typedUserId,
+        name: newHouseholdName,
+      });
+      setNewHouseholdName("");
+      toast.success("Household created and attached.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to create household.",
+      );
+    } finally {
+      setSavingHousehold(false);
+    }
+  }
+
+  async function handleRemoveHousehold() {
+    setSavingHousehold(true);
+    try {
+      await removeHousehold({ userId: typedUserId });
+      toast.success("Account removed from household.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to remove household.",
+      );
+    } finally {
+      setSavingHousehold(false);
+    }
+  }
+
+  return (
+    <Dialog>
+      <form>
+        <DialogTrigger asChild>
+          <Button variant="outline">
+            <HousePlus className="size-4" />
+            {householdData === undefined || households === undefined ? (
+              <Spinner className="size-4" />
+            ) : (
+              <span>{householdData?.household.name || "Not assigned"}</span>
+            )}
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Manage Household</DialogTitle>
+            <DialogDescription>
+              Assign this account to a household to manage tuition billing.
+            </DialogDescription>
+          </DialogHeader>
+          <Card className="rounded-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Home className="size-4" />
+                Household
+              </CardTitle>
+              <CardDescription>
+                Household membership groups regular tuition for billing review.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {householdData === undefined || households === undefined ? (
+                <Spinner className="size-4" />
+              ) : (
+                <>
+                  <div className="rounded-md border p-3 text-sm">
+                    <div className="text-muted-foreground">
+                      Current household
+                    </div>
+                    <div className="font-medium">
+                      {householdData?.household.name || "Not assigned"}
+                    </div>
+                    {!householdData ? (
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        Until linked, billing falls back to the connected
+                        account or a standalone student group.
+                      </p>
+                    ) : (
+                      <>
+                        {householdData.payer?.active &&
+                        householdData.payer.isPrimary ? (
+                          <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
+                            <div>
+                              <Label htmlFor="account-autopay">
+                                Automatic payment
+                              </Label>
+                              <p className="text-muted-foreground text-xs">
+                                Auto-charge draft invoices only when Stripe has
+                                a default payment method.
+                              </p>
+                            </div>
+                            <Switch
+                              id="account-autopay"
+                              checked={
+                                householdData.payer.autopayEnabled === true
+                              }
+                              onCheckedChange={(enabled) => {
+                                void setPayerAutopay({
+                                  householdPayerId: householdData.payer!._id,
+                                  enabled,
+                                }).catch((error) =>
+                                  toast.error(
+                                    error instanceof Error
+                                      ? error.message
+                                      : "Unable to update autopay.",
+                                  ),
+                                );
+                              }}
+                            />
+                          </div>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive -ml-2 mt-2"
+                          disabled={savingHousehold}
+                          onClick={() => void handleRemoveHousehold()}
+                        >
+                          <Unlink />
+                          Remove link
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="existing-household">
+                      Attach existing household
+                    </Label>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Select
+                        value={selectedHouseholdId}
+                        onValueChange={setSelectedHouseholdId}
+                        disabled={households.length === 0}
+                      >
+                        <SelectTrigger
+                          id="existing-household"
+                          className="min-w-0 flex-1"
+                        >
+                          <SelectValue
+                            placeholder={
+                              households.length === 0
+                                ? "No households yet"
+                                : "Select household"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {households.map(({ household, memberCount }) => (
+                            <SelectItem
+                              key={household._id}
+                              value={household._id}
+                            >
+                              {household.name} ({memberCount})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        disabled={!selectedHouseholdId || savingHousehold}
+                        onClick={() => void handleAttachHousehold()}
+                      >
+                        Attach
+                      </Button>
+                    </div>
+                  </div>
+
+                  <form
+                    className="space-y-2"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void handleCreateHousehold();
+                    }}
+                  >
+                    <Label htmlFor="new-household-name">
+                      Create a household
+                    </Label>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Input
+                        id="new-household-name"
+                        value={newHouseholdName}
+                        onChange={(event) =>
+                          setNewHouseholdName(event.target.value)
+                        }
+                        placeholder="Household name"
+                        maxLength={100}
+                      />
+                      <Button
+                        type="submit"
+                        variant="secondary"
+                        disabled={!newHouseholdName.trim() || savingHousehold}
+                      >
+                        Create
+                      </Button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button type="submit">Save changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </form>
+    </Dialog>
+  );
+}
+
+function InviteDialog({ userId }: { userId: string }) {
+  const typedUserId = userId as Id<"users">;
+  const accountData = useConvexQuery(api.classes.adminGetAccount, {
+    user: typedUserId,
+  });
+
+  const invitationStatus = useConvexQuery(api.invitations.adminGetStatus, {
+    targetUserId: typedUserId,
+  });
+  const sendInvitation = useConvexAction(api.invitationActions.send);
+  const createInvitationLink = useConvexAction(
+    api.invitationActions.createLink,
+  );
+  const revokeInvitation = useConvexMutation(api.invitations.revoke);
+  const [savingInvitation, setSavingInvitation] = useState(false);
+
+  async function handleInvitation(operation: "send" | "copy") {
+    setSavingInvitation(true);
+    try {
+      const invitation =
+        operation === "send"
+          ? await sendInvitation({ targetUserId: typedUserId })
+          : await createInvitationLink({ targetUserId: typedUserId });
+      if (operation === "copy" || "warning" in invitation) {
+        await navigator.clipboard.writeText(invitation.url);
+      }
+      if ("warning" in invitation && invitation.warning) {
+        toast.warning(`${invitation.warning} The link was copied.`);
+      } else {
+        toast.success(
+          operation === "send"
+            ? "Invitation sent."
+            : "A new invitation link was copied.",
+        );
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to create invitation.",
+      );
+    } finally {
+      setSavingInvitation(false);
+    }
+  }
+
+  async function handleRevokeInvitation() {
+    const invitation = invitationStatus?.latestInvitation;
+    if (!invitation) return;
+    setSavingInvitation(true);
+    try {
+      await revokeInvitation({ invitationId: invitation._id });
+      toast.success("Invitation revoked.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to revoke invitation.",
+      );
+    } finally {
+      setSavingInvitation(false);
+    }
+  }
+
+  if (!accountData) return null;
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">
+          <Mail className="size-4" />
+          Invite
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <Card className="rounded-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="size-4" />
+              Account invitation
+            </CardTitle>
+            <CardDescription>
+              Send a secure, email-bound account setup link.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {invitationStatus === undefined ? (
+              <Spinner className="size-4" />
+            ) : invitationStatus?.hasLogin ? (
+              <p className="text-muted-foreground text-sm">
+                This account already has login credentials. Manage access with
+                the role controls above.
+              </p>
+            ) : (
+              <>
+                <div className="rounded-md border p-3 text-sm">
+                  <div className="text-muted-foreground">Status</div>
+                  <div className="font-medium capitalize">
+                    {invitationStatus?.latestInvitation?.effectiveStatus ||
+                      "Not invited"}
+                  </div>
+                  {invitationStatus?.latestInvitation ? (
+                    <div className="text-muted-foreground mt-1 text-xs">
+                      Expires{" "}
+                      {new Date(
+                        invitationStatus.latestInvitation.expiresAt,
+                      ).toLocaleString()}
+                    </div>
+                  ) : null}
+                </div>
+                {resolveUserRoles(accountData.account).includes("member") &&
+                !resolveUserRoles(accountData.account).some(
+                  (role) => role === "staff" || role === "admin",
+                ) &&
+                invitationStatus &&
+                (invitationStatus.billing.householdMembershipCount === 0 ||
+                  invitationStatus.billing.payerCount === 0 ||
+                  !invitationStatus.billing.hasStripeCustomer) ? (
+                  <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                    This member account is missing some pre-provisioned billing
+                    setup. Activation will preserve the current records and will
+                    not guess or replace them.
+                  </p>
+                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    disabled={savingInvitation}
+                    onClick={() => void handleInvitation("send")}
+                  >
+                    {invitationStatus?.latestInvitation?.effectiveStatus ===
+                    "pending" ? (
+                      <RefreshCw />
+                    ) : (
+                      <Mail />
+                    )}
+                    {invitationStatus?.latestInvitation?.effectiveStatus ===
+                    "pending"
+                      ? "Resend"
+                      : "Send invitation"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={savingInvitation}
+                    onClick={() => void handleInvitation("copy")}
+                  >
+                    <Copy />
+                    Copy new link
+                  </Button>
+                  {invitationStatus?.latestInvitation?.effectiveStatus ===
+                  "pending" ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={savingInvitation}
+                      onClick={() => void handleRevokeInvitation()}
+                    >
+                      <Ban />
+                      Revoke
+                    </Button>
+                  ) : null}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </DialogContent>
+    </Dialog>
   );
 }

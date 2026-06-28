@@ -877,9 +877,16 @@ function AdminClassDetailPage() {
                         className="flex flex-col gap-2 rounded-md border p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
-                          <div className="font-medium">
-                            {formatMDYYYY(session.date)}
-                          </div>
+                          <Button asChild variant="link" className="p-0">
+                            <Link
+                              to="/admin/classes/$classId/$sessionId"
+                              params={{ classId, sessionId: session._id }}
+                            >
+                              <div className="font-medium">
+                                {formatMDYYYY(session.date)}
+                              </div>
+                            </Link>
+                          </Button>
                           <div className="text-muted-foreground">
                             {formatTimeRange(
                               session.startTime,

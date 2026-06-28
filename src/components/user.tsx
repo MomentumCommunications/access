@@ -31,9 +31,7 @@ export function NavUser({ user }: { user: Doc<"users"> }) {
   const { signOut } = useAuthActions();
   const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const disablePushSubscription = useConvexMutation(
-    disablePushSubscriptionRef,
-  );
+  const disablePushSubscription = useConvexMutation(disablePushSubscriptionRef);
 
   const name = user.firstName + " " + user.lastName || "User";
   const email = Array.isArray(user.email) ? user.email[0] : user.email;
@@ -75,10 +73,10 @@ export function NavUser({ user }: { user: Doc<"users"> }) {
                   {initials || <User className="size-4" />}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex flex-1 items-end h-full text-left text-sm leading-tight">
-                <span className="truncate h-min font-medium">{name}</span>
+              <div className="flex h-full flex-1 items-end text-left text-sm leading-tight">
+                <span className="h-min truncate font-medium">{name}</span>
               </div>
-              <ChevronsUpDown className="ml-auto size-4" />
+              <ChevronsUpDown className="size-4 ml-auto" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent

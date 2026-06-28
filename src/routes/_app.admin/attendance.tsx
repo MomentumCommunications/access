@@ -1,4 +1,4 @@
-import { useConvexQuery } from "@convex-dev/react-query";
+import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Scan } from "lucide-react";
 import { useState } from "react";
 import AttendanceSession from "~/components/attendance-session";
 import { RoleGate } from "~/components/role-gate";
+import { SessionSubstituteCombobox } from "~/components/session-substitute-combobox";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -30,6 +31,7 @@ import { useIsMobile } from "~/hooks/use-mobile";
 import { format } from "date-fns";
 import { cn } from "~/lib/utils";
 import { Badge } from "~/components/ui/badge";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/admin/attendance")({
   component: AttendancePage,
@@ -49,8 +51,15 @@ function AttendancePage() {
   const [date, setDate] = useState(() => toDateInputValue(new Date()));
   const [targetSessionId, setTargetSessionId] = useState<string | null>();
   const [showUnmarked, setShowUnmarked] = useState(false);
+  const [savingSubstituteSessionId, setSavingSubstituteSessionId] = useState<
+    string | null
+  >(null);
 
   const isMobile = useIsMobile();
+  const accounts = useConvexQuery(api.classes.adminListAccounts, {});
+  const setSessionSubstitute = useConvexMutation(
+    api.classes.adminSetSessionSubstitute,
+  );
 
   const datedSessions = useConvexQuery(api.classes.adminListSessionsByDate, {
     date,
@@ -59,6 +68,23 @@ function AttendancePage() {
   const unmarkedSessions = useConvexQuery(api.classes.listUnmarkedAttendance);
 
   const sessions = showUnmarked ? unmarkedSessions : datedSessions;
+
+  async function handleSubstituteChange(
+    session: Id<"sessions">,
+    substitute: Id<"users"> | null,
+  ) {
+    setSavingSubstituteSessionId(session);
+    try {
+      await setSessionSubstitute({ session, substitute });
+      toast.success("Substitute updated.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to update substitute.",
+      );
+    } finally {
+      setSavingSubstituteSessionId(null);
+    }
+  }
 
   return (
     <RoleGate allow="admin">
@@ -124,6 +150,7 @@ function AttendancePage() {
                   <TableRow>
                     <TableHead>Class</TableHead>
                     <TableHead>DateTime</TableHead>
+                    <TableHead>Substitute</TableHead>
                     <TableHead>Marked</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -165,6 +192,23 @@ function AttendancePage() {
                         {format(row.session.date, "MM/dd/yy") || "Date TBD"}
                         {" · "}
                         {row.session.startTime}
+                      </TableCell>
+                      <TableCell className="min-w-56">
+                        <SessionSubstituteCombobox
+                          accounts={accounts}
+                          value={row.session.substitute}
+                          onValueChange={(substitute) =>
+                            void handleSubstituteChange(
+                              row.session._id,
+                              substitute,
+                            )
+                          }
+                          disabled={
+                            accounts === undefined ||
+                            savingSubstituteSessionId === row.session._id
+                          }
+                          className="w-min min-w-40"
+                        />
                       </TableCell>
                       <TableCell>
                         <Badge

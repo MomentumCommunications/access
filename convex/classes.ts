@@ -80,6 +80,10 @@ import {
   shouldSkipSharedStudentOnInactivation,
   type AccountStatus,
 } from "../shared/account-status";
+import {
+  canViewStaffAttendanceSession,
+  matchesStaffAttendanceMode,
+} from "../shared/staff-attendance";
 
 const roleValidator = v.union(
   v.literal("admin"),
@@ -285,9 +289,7 @@ async function resolveAccountStatusCascade(
         .collect()
     : [];
   const targetAccountIds = new Set<Id<"users">>(
-    membership
-      ? householdMemberships.map((item) => item.userId)
-      : [userId],
+    membership ? householdMemberships.map((item) => item.userId) : [userId],
   );
   const targetAccounts = (
     await Promise.all([...targetAccountIds].map((id) => ctx.db.get(id)))
@@ -1084,10 +1086,7 @@ export const listPublishedClasses = query({
     filterByAge: v.boolean(),
     weekday: v.optional(weekdayValidator),
   },
-  handler: async (
-    ctx,
-    { seasonId, studentId, filterByAge, weekday },
-  ) => {
+  handler: async (ctx, { seasonId, studentId, filterByAge, weekday }) => {
     const user = await getCurrentUser(ctx);
     let classes = await ctx.db
       .query("classes")
@@ -2448,10 +2447,16 @@ export const adminGetAccount = query({
     return {
       account,
       students: await Promise.all(
-        contacts.map(async (contact) => ({
-          contact,
-          student: await ctx.db.get(contact.student),
-        })),
+        contacts.map(async (contact) => {
+          const student = await ctx.db.get(contact.student);
+          return {
+            contact,
+            student,
+            studentPic: student?.photo
+              ? await ctx.storage.getUrl(student.photo)
+              : null,
+          };
+        }),
       ),
     };
   },
@@ -2643,8 +2648,7 @@ export const adminUpdateAccountRecord = internalMutation({
     const previousEmail = Array.isArray(account.email)
       ? account.email[0]
       : account.email;
-    const emailChanged =
-      previousEmail?.trim().toLowerCase() !== email;
+    const emailChanged = previousEmail?.trim().toLowerCase() !== email;
     if (passwordAccount && emailChanged) {
       await ctx.db.patch(passwordAccount._id, {
         providerAccountId: email,
@@ -3270,7 +3274,7 @@ export const adminApplyPendingEnrollmentAction = mutation({
         ...dates,
         prorateTuition:
           nextStatus === "enrolled"
-            ? enrollment.prorateTuition ?? true
+            ? (enrollment.prorateTuition ?? true)
             : enrollment.prorateTuition,
       });
       await notifyStudentManagersOfEnrollmentOutcome(ctx, {
@@ -3294,7 +3298,7 @@ export const adminGetClass = query({
     if (!classItem) {
       return null;
     }
-    const sessions = await ctx.db
+    const sessionItems = await ctx.db
       .query("sessions")
       .withIndex("byClass", (q) => q.eq("classId", classId))
       .collect();
@@ -3302,6 +3306,10 @@ export const adminGetClass = query({
       .query("seasonClasses")
       .withIndex("byClass", (q) => q.eq("class", classId))
       .first();
+
+    const sessions = sessionItems.sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
 
     return {
       classItem,
@@ -3482,6 +3490,26 @@ export const adminCreateSession = mutation({
   },
 });
 
+async function assertSessionTeacherAssignable(
+  ctx: QueryCtx | MutationCtx,
+  userId: Id<"users"> | null | undefined,
+) {
+  if (!userId) return;
+  const user = await ctx.db.get(userId);
+  if (!user || (!hasUserRole(user, "staff") && !hasUserRole(user, "admin"))) {
+    throw new Error("Select a staff account for this session.");
+  }
+}
+
+async function assertSessionTeachersAssignable(
+  ctx: QueryCtx | MutationCtx,
+  userIds: Id<"users">[] | undefined,
+) {
+  for (const userId of userIds || []) {
+    await assertSessionTeacherAssignable(ctx, userId);
+  }
+}
+
 export const adminSetSessionActive = mutation({
   args: {
     session: v.id("sessions"),
@@ -3491,6 +3519,88 @@ export const adminSetSessionActive = mutation({
     await requireAdmin(ctx);
     await ctx.db.patch(session, {
       active,
+      hasManualOverride: true,
+    });
+  },
+});
+
+export const adminGetClassSession = query({
+  args: {
+    classId: v.id("classes"),
+    session: v.id("sessions"),
+  },
+  handler: async (ctx, { classId, session }) => {
+    await requireAdmin(ctx);
+    const sessionDoc = await ctx.db.get(session);
+    if (!sessionDoc || sessionDoc.classId !== classId) {
+      return null;
+    }
+    return await getStaffAttendanceSessionRow(ctx, sessionDoc);
+  },
+});
+
+export const adminSetSessionSubstitute = mutation({
+  args: {
+    session: v.id("sessions"),
+    substitute: v.union(v.id("users"), v.null()),
+  },
+  handler: async (ctx, { session, substitute }) => {
+    await requireAdmin(ctx);
+    const sessionDoc = await ctx.db.get(session);
+    if (!sessionDoc) {
+      throw new Error("Session not found.");
+    }
+    await assertSessionTeacherAssignable(ctx, substitute);
+    await ctx.db.patch(session, {
+      substitute: substitute ?? undefined,
+      hasManualOverride: true,
+    });
+  },
+});
+
+export const adminUpdateSessionDetails = mutation({
+  args: {
+    session: v.id("sessions"),
+    date: v.string(),
+    active: v.boolean(),
+    source: v.optional(sessionSourceValidator),
+    startTime: v.optional(v.string()),
+    endTime: v.optional(v.string()),
+    location: v.optional(v.string()),
+    assignedStaff: v.optional(v.array(v.id("users"))),
+    substitute: v.union(v.id("users"), v.null()),
+    status: sessionStatusValidator,
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const sessionDoc = await ctx.db.get(args.session);
+    if (!sessionDoc) {
+      throw new Error("Session not found.");
+    }
+    const date = args.date.trim();
+    if (!date) {
+      throw new Error("Session date is required.");
+    }
+    if (args.startTime && args.endTime && args.endTime <= args.startTime) {
+      throw new Error("End time must be after start time.");
+    }
+    const assignedStaff = args.assignedStaff?.filter(
+      (userId, index, all) => all.indexOf(userId) === index,
+    );
+    await assertSessionTeachersAssignable(ctx, assignedStaff);
+    await assertSessionTeacherAssignable(ctx, args.substitute);
+
+    await ctx.db.patch(args.session, {
+      date,
+      active: args.active,
+      source: args.source ?? sessionDoc.source,
+      startTime: args.startTime?.trim() || undefined,
+      endTime: args.endTime?.trim() || undefined,
+      location: args.location?.trim() || undefined,
+      assignedStaff:
+        assignedStaff && assignedStaff.length > 0 ? assignedStaff : undefined,
+      substitute: args.substitute ?? undefined,
+      status: args.status,
       hasManualOverride: true,
     });
   },
@@ -3573,25 +3683,66 @@ export const staffListSessionsByDate = query({
     showAll: v.boolean(),
   },
   handler: async (ctx, { date, showAll }) => {
-    const user = await requireStaff(ctx);
-    const sessions = await ctx.db
-      .query("sessions")
-      .withIndex("byDate", (q) => q.eq("date", date))
-      .collect();
-    const activeSessions = sessions.filter((session) => session.active);
+    return await staffListSessionsHandler(ctx, {
+      date,
+      showAll,
+      incomplete: false,
+    });
+  },
+});
 
-    const sessionRows = await Promise.all(
-      activeSessions.map((session) =>
-        getStaffAttendanceSessionRow(ctx, session),
-      ),
-    );
+async function staffListSessionsHandler(
+  ctx: QueryCtx,
+  {
+    date,
+    showAll,
+    incomplete,
+  }: {
+    date: string;
+    showAll: boolean;
+    incomplete: boolean;
+  },
+) {
+  const user = await requireStaff(ctx);
+  const sessions = incomplete
+    ? await ctx.db.query("sessions").collect()
+    : await ctx.db
+        .query("sessions")
+        .withIndex("byDate", (q) => q.eq("date", date))
+        .collect();
 
-    const visibleRows =
-      showAll || isAdmin(user)
-        ? sessionRows
-        : sessionRows.filter((row) => canAccessAttendanceSession(user, row));
+  const sessionRows = await Promise.all(
+    sessions.map((session) => getStaffAttendanceSessionRow(ctx, session)),
+  );
 
-    return visibleRows;
+  const today = todayValue();
+  return sessionRows.filter(
+    (row) =>
+      matchesStaffAttendanceMode(
+        {
+          active: row.session.active,
+          date: row.session.date,
+          enrollmentCount: row.enrollments.length,
+          attendanceCount: row.attendance.length,
+        },
+        { date, incomplete, today },
+      ) &&
+      canViewStaffAttendanceSession({
+        isAdmin: isAdmin(user),
+        showAll,
+        canAccess: canAccessAttendanceSession(user, row),
+      }),
+  );
+}
+
+export const staffListSessions = query({
+  args: {
+    date: v.string(),
+    showAll: v.boolean(),
+    incomplete: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    return await staffListSessionsHandler(ctx, args);
   },
 });
 

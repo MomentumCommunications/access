@@ -263,7 +263,7 @@ const AppSidebarComponent = memo(() => {
                   <Collapsible asChild className="group/collapsible">
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>
-                        <SidebarMenuButton tooltip="Billing">
+                        <SidebarMenuButton tooltip="Classes">
                           <SportShoe />
                           <span>Classes</span>
                           <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />

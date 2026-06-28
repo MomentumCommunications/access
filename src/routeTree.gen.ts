@@ -77,6 +77,7 @@ import { Route as AppAdminStudentsStudentIdEditRouteImport } from './routes/_app
 import { Route as AppAdminPrivatesPrivateIdEditRouteImport } from './routes/_app.admin/privates/$privateId_.edit'
 import { Route as AppAdminPrivatesPrivateIdPrivateLessonIdRouteImport } from './routes/_app.admin/privates/$privateId_/$privateLessonId'
 import { Route as AppAdminClassesClassIdEditRouteImport } from './routes/_app.admin/classes/$classId_.edit'
+import { Route as AppAdminClassesClassIdSessionIdRouteImport } from './routes/_app.admin/classes/$classId_/$sessionId'
 import { Route as AppAdminBulletinsBulletinIdEditRouteImport } from './routes/_app.admin/bulletins/$bulletinId_.edit'
 import { Route as AppAdminAccountsUserIdEditRouteImport } from './routes/_app.admin/accounts_.$userId_.edit'
 import { Route as AppAdminAccountsUserIdStudentsCreateRouteImport } from './routes/_app.admin/accounts_.$userId_.students.create'
@@ -434,6 +435,12 @@ const AppAdminClassesClassIdEditRoute =
     path: '/admin/classes/$classId/edit',
     getParentRoute: () => AppRoute,
   } as any)
+const AppAdminClassesClassIdSessionIdRoute =
+  AppAdminClassesClassIdSessionIdRouteImport.update({
+    id: '/admin/classes/$classId_/$sessionId',
+    path: '/admin/classes/$classId/$sessionId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAdminBulletinsBulletinIdEditRoute =
   AppAdminBulletinsBulletinIdEditRouteImport.update({
     id: '/admin/bulletins/$bulletinId_/edit',
@@ -518,6 +525,7 @@ export interface FileRoutesByFullPath {
   '/admin/students/': typeof AppAdminStudentsIndexRoute
   '/admin/accounts/$userId/edit': typeof AppAdminAccountsUserIdEditRoute
   '/admin/bulletins/$bulletinId/edit': typeof AppAdminBulletinsBulletinIdEditRoute
+  '/admin/classes/$classId/$sessionId': typeof AppAdminClassesClassIdSessionIdRoute
   '/admin/classes/$classId/edit': typeof AppAdminClassesClassIdEditRoute
   '/admin/privates/$privateId/$privateLessonId': typeof AppAdminPrivatesPrivateIdPrivateLessonIdRoute
   '/admin/privates/$privateId/edit': typeof AppAdminPrivatesPrivateIdEditRoute
@@ -589,6 +597,7 @@ export interface FileRoutesByTo {
   '/admin/students': typeof AppAdminStudentsIndexRoute
   '/admin/accounts/$userId/edit': typeof AppAdminAccountsUserIdEditRoute
   '/admin/bulletins/$bulletinId/edit': typeof AppAdminBulletinsBulletinIdEditRoute
+  '/admin/classes/$classId/$sessionId': typeof AppAdminClassesClassIdSessionIdRoute
   '/admin/classes/$classId/edit': typeof AppAdminClassesClassIdEditRoute
   '/admin/privates/$privateId/$privateLessonId': typeof AppAdminPrivatesPrivateIdPrivateLessonIdRoute
   '/admin/privates/$privateId/edit': typeof AppAdminPrivatesPrivateIdEditRoute
@@ -663,6 +672,7 @@ export interface FileRoutesById {
   '/_app/admin/students/': typeof AppAdminStudentsIndexRoute
   '/_app/admin/accounts_/$userId_/edit': typeof AppAdminAccountsUserIdEditRoute
   '/_app/admin/bulletins/$bulletinId_/edit': typeof AppAdminBulletinsBulletinIdEditRoute
+  '/_app/admin/classes/$classId_/$sessionId': typeof AppAdminClassesClassIdSessionIdRoute
   '/_app/admin/classes/$classId_/edit': typeof AppAdminClassesClassIdEditRoute
   '/_app/admin/privates/$privateId_/$privateLessonId': typeof AppAdminPrivatesPrivateIdPrivateLessonIdRoute
   '/_app/admin/privates/$privateId_/edit': typeof AppAdminPrivatesPrivateIdEditRoute
@@ -737,6 +747,7 @@ export interface FileRouteTypes {
     | '/admin/students/'
     | '/admin/accounts/$userId/edit'
     | '/admin/bulletins/$bulletinId/edit'
+    | '/admin/classes/$classId/$sessionId'
     | '/admin/classes/$classId/edit'
     | '/admin/privates/$privateId/$privateLessonId'
     | '/admin/privates/$privateId/edit'
@@ -808,6 +819,7 @@ export interface FileRouteTypes {
     | '/admin/students'
     | '/admin/accounts/$userId/edit'
     | '/admin/bulletins/$bulletinId/edit'
+    | '/admin/classes/$classId/$sessionId'
     | '/admin/classes/$classId/edit'
     | '/admin/privates/$privateId/$privateLessonId'
     | '/admin/privates/$privateId/edit'
@@ -881,6 +893,7 @@ export interface FileRouteTypes {
     | '/_app/admin/students/'
     | '/_app/admin/accounts_/$userId_/edit'
     | '/_app/admin/bulletins/$bulletinId_/edit'
+    | '/_app/admin/classes/$classId_/$sessionId'
     | '/_app/admin/classes/$classId_/edit'
     | '/_app/admin/privates/$privateId_/$privateLessonId'
     | '/_app/admin/privates/$privateId_/edit'
@@ -1377,6 +1390,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminClassesClassIdEditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/classes/$classId_/$sessionId': {
+      id: '/_app/admin/classes/$classId_/$sessionId'
+      path: '/admin/classes/$classId/$sessionId'
+      fullPath: '/admin/classes/$classId/$sessionId'
+      preLoaderRoute: typeof AppAdminClassesClassIdSessionIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/bulletins/$bulletinId_/edit': {
       id: '/_app/admin/bulletins/$bulletinId_/edit'
       path: '/admin/bulletins/$bulletinId/edit'
@@ -1454,6 +1474,7 @@ interface AppRouteChildren {
   AppAdminStudentsIndexRoute: typeof AppAdminStudentsIndexRoute
   AppAdminAccountsUserIdEditRoute: typeof AppAdminAccountsUserIdEditRoute
   AppAdminBulletinsBulletinIdEditRoute: typeof AppAdminBulletinsBulletinIdEditRoute
+  AppAdminClassesClassIdSessionIdRoute: typeof AppAdminClassesClassIdSessionIdRoute
   AppAdminClassesClassIdEditRoute: typeof AppAdminClassesClassIdEditRoute
   AppAdminPrivatesPrivateIdPrivateLessonIdRoute: typeof AppAdminPrivatesPrivateIdPrivateLessonIdRoute
   AppAdminPrivatesPrivateIdEditRoute: typeof AppAdminPrivatesPrivateIdEditRoute
@@ -1515,6 +1536,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminStudentsIndexRoute: AppAdminStudentsIndexRoute,
   AppAdminAccountsUserIdEditRoute: AppAdminAccountsUserIdEditRoute,
   AppAdminBulletinsBulletinIdEditRoute: AppAdminBulletinsBulletinIdEditRoute,
+  AppAdminClassesClassIdSessionIdRoute: AppAdminClassesClassIdSessionIdRoute,
   AppAdminClassesClassIdEditRoute: AppAdminClassesClassIdEditRoute,
   AppAdminPrivatesPrivateIdPrivateLessonIdRoute:
     AppAdminPrivatesPrivateIdPrivateLessonIdRoute,

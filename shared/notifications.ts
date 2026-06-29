@@ -3,6 +3,7 @@ export type NotificationEventInput = {
   title: string;
   body: string;
   href: string;
+  dedupeKey?: string;
   actorUserId?: string;
   entityType?: string;
   entityId?: string;
@@ -103,6 +104,38 @@ export function enrollmentOutcomeNotification({
     entityType: "classEnrollment",
     entityId: enrollmentId,
     metadata: { classId, studentId, outcome },
+  };
+}
+
+export function incompleteAttendanceNotification({
+  sessionId,
+  classId,
+  className,
+  sessionDate,
+  attendanceCount,
+  enrollmentCount,
+}: {
+  sessionId: string;
+  classId: string;
+  className: string;
+  sessionDate: string;
+  attendanceCount: number;
+  enrollmentCount: number;
+}): NotificationEventInput {
+  return {
+    type: "attendance.incomplete",
+    title: "Attendance incomplete",
+    body: `${className} still needs attendance for ${sessionDate}.`,
+    href: `/staff/attendance/${sessionId}`,
+    dedupeKey: `attendance.incomplete:${sessionId}`,
+    entityType: "session",
+    entityId: sessionId,
+    metadata: {
+      sessionId,
+      classId,
+      attendanceCount,
+      enrollmentCount,
+    },
   };
 }
 

@@ -62,12 +62,14 @@ import { recordActivityEvent } from "./lib/activityLog";
 import { ensureDefaultHouseholdBilling } from "./lib/householdBilling";
 import { isWorkforceAccount } from "../shared/account-invitations";
 import {
+  createNotifications,
   createAdminNotifications,
   createStudentManagerNotifications,
 } from "./lib/notifications";
 import { getCurrentUser, getCurrentUserOrThrow } from "./users";
 import {
   enrollmentOutcomeNotification,
+  incompleteAttendanceNotification,
   pendingEnrollmentNotification,
   type EnrollmentOutcome,
 } from "../shared/notifications";
@@ -81,8 +83,12 @@ import {
   type AccountStatus,
 } from "../shared/account-status";
 import {
+  attendanceReminderRecipientIds,
   canViewStaffAttendanceSession,
+  isIncompleteAttendanceReminderEligible,
+  isWeekdayIncompleteAttendanceSweepTime,
   matchesStaffAttendanceMode,
+  zonedDateTimeParts,
 } from "../shared/staff-attendance";
 
 const roleValidator = v.union(
@@ -3791,6 +3797,92 @@ export const listUnmarkedAttendance = query({
       return row.enrollments.length !== row.attendance.length;
     });
     return incompleteAttendance;
+  },
+});
+
+export const sendIncompleteAttendanceReminders = internalMutation({
+  args: {
+    now: v.optional(v.number()),
+  },
+  handler: async (ctx, { now }) => {
+    const timestamp = now ?? Date.now();
+    const current = new Date(timestamp);
+    if (!isWeekdayIncompleteAttendanceSweepTime(current)) {
+      return {
+        skipped: true,
+        reason: "outside-reminder-window",
+        notificationCount: 0,
+      };
+    }
+
+    const { date: today, minutesSinceMidnight } =
+      zonedDateTimeParts(current);
+    const sessions = await ctx.db.query("sessions").collect();
+    const rows = await Promise.all(
+      sessions.map((session) => getStaffAttendanceSessionRow(ctx, session)),
+    );
+
+    let notificationCount = 0;
+    for (const row of rows) {
+      if (
+        !row.classItem ||
+        !isIncompleteAttendanceReminderEligible(
+          {
+            active: row.session.active,
+            date: row.session.date,
+            status: row.session.status,
+            endTime: row.session.endTime,
+            enrollmentCount: row.enrollments.length,
+            attendanceCount: row.attendance.length,
+          },
+          { today, minutesSinceMidnight },
+        )
+      ) {
+        continue;
+      }
+
+      const recipientIds = attendanceReminderRecipientIds({
+        sessionAssignedStaff: row.session.assignedStaff,
+        sessionSubstitute: row.session.substitute,
+        classAssignedStaff: row.classItem.assignedStaff,
+      }) as Id<"users">[];
+      const recipients = (
+        await Promise.all(
+          recipientIds.map(async (recipientId) => {
+            const user = await ctx.db.get(recipientId);
+            if (
+              user &&
+              resolveAccountStatus(user.status) === "active" &&
+              (hasUserRole(user, "staff") || hasUserRole(user, "admin"))
+            ) {
+              return user._id;
+            }
+            return null;
+          }),
+        )
+      ).filter((userId): userId is Id<"users"> => userId !== null);
+
+      if (recipients.length === 0) continue;
+
+      const notificationIds = await createNotifications(ctx, {
+        recipientUserIds: recipients,
+        createdAt: timestamp,
+        event: incompleteAttendanceNotification({
+          sessionId: row.session._id,
+          classId: row.classItem._id,
+          className: row.classItem.title || "Class",
+          sessionDate: row.session.date,
+          attendanceCount: row.attendance.length,
+          enrollmentCount: row.enrollments.length,
+        }),
+      });
+      notificationCount += notificationIds.length;
+    }
+
+    return {
+      skipped: false,
+      notificationCount,
+    };
   },
 });
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   enrollmentOutcomeNotification,
+  incompleteAttendanceNotification,
   markAllNotificationsRead,
   markNotificationRead,
   newUserNotification,
@@ -90,6 +91,34 @@ describe("notification event generation", () => {
     assert.equal(
       enrollmentOutcomeNotification({ ...input, outcome: "rejected" }).body,
       "Grace Hopper's enrollment request for Jazz I was not approved.",
+    );
+  });
+
+  it("builds incomplete attendance notifications with dedupe metadata", () => {
+    assert.deepEqual(
+      incompleteAttendanceNotification({
+        sessionId: "session-1",
+        classId: "class-1",
+        className: "Jazz I",
+        sessionDate: "2026-06-29",
+        attendanceCount: 4,
+        enrollmentCount: 5,
+      }),
+      {
+        type: "attendance.incomplete",
+        title: "Attendance incomplete",
+        body: "Jazz I still needs attendance for 2026-06-29.",
+        href: "/staff/attendance/session-1",
+        dedupeKey: "attendance.incomplete:session-1",
+        entityType: "session",
+        entityId: "session-1",
+        metadata: {
+          sessionId: "session-1",
+          classId: "class-1",
+          attendanceCount: 4,
+          enrollmentCount: 5,
+        },
+      },
     );
   });
 });

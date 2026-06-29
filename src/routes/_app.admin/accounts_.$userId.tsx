@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   Ban,
   Copy,
-  Home,
   HousePlus,
   Mail,
   Pencil,
@@ -52,10 +51,8 @@ import {
 } from "../../../shared/account-status";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,

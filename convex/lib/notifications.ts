@@ -38,12 +38,26 @@ export async function createNotifications(
   const recipients = [...new Set(recipientUserIds)];
   return await Promise.all(
     recipients.map(async (recipientUserId) => {
+      if (event.dedupeKey) {
+        const existing = await ctx.db
+          .query("notifications")
+          .withIndex("byRecipientAndDedupeKey", (q) =>
+            q
+              .eq("recipientUserId", recipientUserId)
+              .eq("dedupeKey", event.dedupeKey),
+          )
+          .first();
+        if (existing) {
+          return existing._id;
+        }
+      }
       const notificationId = await ctx.db.insert("notifications", {
         recipientUserId,
         type: event.type,
         title: event.title,
         body: event.body,
         href: event.href,
+        dedupeKey: event.dedupeKey,
         actorUserId: event.actorUserId as Id<"users"> | undefined,
         entityType: event.entityType,
         entityId: event.entityId,

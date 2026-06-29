@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  attendanceReminderRecipientIds,
   canViewStaffAttendanceSession,
+  isIncompleteAttendanceReminderEligible,
   isIncompleteAttendanceSession,
+  isWeekdayIncompleteAttendanceSweepTime,
   matchesStaffAttendanceMode,
+  zonedDateTimeParts,
 } from "../shared/staff-attendance.ts";
 
 describe("staff attendance session filtering", () => {
@@ -123,6 +127,93 @@ describe("staff attendance session filtering", () => {
         canAccess: false,
       }),
       true,
+    );
+  });
+
+  it("runs incomplete attendance reminder sweeps only on weekday 9 PM ET", () => {
+    assert.equal(
+      isWeekdayIncompleteAttendanceSweepTime(
+        new Date("2026-06-29T01:00:00.000Z"),
+      ),
+      false,
+    );
+    assert.equal(
+      isWeekdayIncompleteAttendanceSweepTime(
+        new Date("2026-06-30T01:00:00.000Z"),
+      ),
+      true,
+    );
+    assert.equal(
+      isWeekdayIncompleteAttendanceSweepTime(
+        new Date("2026-06-28T01:00:00.000Z"),
+      ),
+      false,
+    );
+    assert.equal(
+      zonedDateTimeParts(new Date("2026-06-30T01:00:00.000Z")).date,
+      "2026-06-29",
+    );
+  });
+
+  it("matches incomplete attendance reminder eligibility", () => {
+    const base = {
+      active: true,
+      status: "scheduled" as const,
+      enrollmentCount: 5,
+      attendanceCount: 4,
+    };
+    assert.equal(
+      isIncompleteAttendanceReminderEligible(
+        { ...base, date: "2026-06-28" },
+        { today: "2026-06-29", minutesSinceMidnight: 21 * 60 },
+      ),
+      true,
+    );
+    assert.equal(
+      isIncompleteAttendanceReminderEligible(
+        { ...base, date: "2026-06-29", endTime: "20:30" },
+        { today: "2026-06-29", minutesSinceMidnight: 21 * 60 },
+      ),
+      true,
+    );
+    assert.equal(
+      isIncompleteAttendanceReminderEligible(
+        { ...base, date: "2026-06-29", endTime: "21:30" },
+        { today: "2026-06-29", minutesSinceMidnight: 21 * 60 },
+      ),
+      false,
+    );
+    assert.equal(
+      isIncompleteAttendanceReminderEligible(
+        { ...base, date: "2026-06-29" },
+        { today: "2026-06-29", minutesSinceMidnight: 21 * 60 },
+      ),
+      false,
+    );
+    assert.equal(
+      isIncompleteAttendanceReminderEligible(
+        { ...base, status: "cancelled", date: "2026-06-28" },
+        { today: "2026-06-29", minutesSinceMidnight: 21 * 60 },
+      ),
+      false,
+    );
+    assert.equal(
+      isIncompleteAttendanceReminderEligible(
+        { ...base, date: "2026-06-28", attendanceCount: 5 },
+        { today: "2026-06-29", minutesSinceMidnight: 21 * 60 },
+      ),
+      false,
+    );
+  });
+
+  it("dedupes attendance reminder recipients", () => {
+    assert.deepEqual(
+      attendanceReminderRecipientIds({
+        sessionAssignedStaff: ["staff-1", "staff-2"],
+        sessionSubstitute: "staff-1",
+        classAssignedStaff: ["staff-2", "staff-3"],
+      }),
+      ["staff-1", "staff-2", "staff-3"],
     );
   });
 });

@@ -117,6 +117,7 @@ export default defineSchema({
     title: v.string(),
     body: v.string(),
     href: v.string(),
+    dedupeKey: v.optional(v.string()),
     actorUserId: v.optional(v.id("users")),
     entityType: v.optional(v.string()),
     entityId: v.optional(v.string()),
@@ -125,7 +126,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("byRecipient", ["recipientUserId"])
-    .index("byRecipientAndCreatedAt", ["recipientUserId", "createdAt"]),
+    .index("byRecipientAndCreatedAt", ["recipientUserId", "createdAt"])
+    .index("byRecipientAndDedupeKey", ["recipientUserId", "dedupeKey"]),
   pushSubscriptions: defineTable({
     recipientUserId: v.id("users"),
     endpoint: v.string(),

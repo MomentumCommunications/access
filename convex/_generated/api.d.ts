@@ -16,6 +16,7 @@ import type * as billingDispatch from "../billingDispatch.js";
 import type * as billingDispatchData from "../billingDispatchData.js";
 import type * as bulletins from "../bulletins.js";
 import type * as classes from "../classes.js";
+import type * as crons from "../crons.js";
 import type * as etcFunctions from "../etcFunctions.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
@@ -66,6 +67,7 @@ declare const fullApi: ApiFromModules<{
   billingDispatchData: typeof billingDispatchData;
   bulletins: typeof bulletins;
   classes: typeof classes;
+  crons: typeof crons;
   etcFunctions: typeof etcFunctions;
   files: typeof files;
   http: typeof http;

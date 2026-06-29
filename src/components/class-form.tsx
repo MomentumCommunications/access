@@ -468,7 +468,28 @@ export function ClassForm(props: ClassFormProps) {
               <Select
                 name={field.name}
                 value={field.value}
-                onValueChange={field.onChange}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  if (props.mode !== "create" || value === "none") {
+                    return;
+                  }
+                  const selectedSeason = seasons?.find(
+                    ({ season }) => season._id === value,
+                  )?.season;
+                  if (!selectedSeason) {
+                    return;
+                  }
+                  form.setValue("startDate", selectedSeason.startDate, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                    shouldValidate: true,
+                  });
+                  form.setValue("endDate", selectedSeason.endDate, {
+                    shouldDirty: true,
+                    shouldTouch: true,
+                    shouldValidate: true,
+                  });
+                }}
                 disabled={seasons === undefined}
               >
                 <SelectTrigger

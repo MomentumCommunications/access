@@ -478,17 +478,8 @@ function HouseholdDialog({ userId }: { userId: string }) {
               Assign this account to a household to manage tuition billing.
             </DialogDescription>
           </DialogHeader>
-          <Card className="rounded-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Home className="size-4" />
-                Household
-              </CardTitle>
-              <CardDescription>
-                Household membership groups regular tuition for billing review.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5">
+          <div className="rounded-lg">
+            <div className="space-y-5">
               {householdData === undefined || households === undefined ? (
                 <Spinner className="size-4" />
               ) : (
@@ -628,15 +619,8 @@ function HouseholdDialog({ userId }: { userId: string }) {
                   </form>
                 </>
               )}
-            </CardContent>
-          </Card>
-
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button type="submit">Save changes</Button>
-          </DialogFooter>
+            </div>
+          </div>
         </DialogContent>
       </form>
     </Dialog>
@@ -714,17 +698,8 @@ function InviteDialog({ userId }: { userId: string }) {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <Card className="rounded-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="size-4" />
-              Account invitation
-            </CardTitle>
-            <CardDescription>
-              Send a secure, email-bound account setup link.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="rounded-lg">
+          <div className="space-y-4">
             {invitationStatus === undefined ? (
               <Spinner className="size-4" />
             ) : invitationStatus?.hasLogin ? (
@@ -804,8 +779,8 @@ function InviteDialog({ userId }: { userId: string }) {
                 </div>
               </>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

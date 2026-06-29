@@ -147,7 +147,7 @@ function AdminAccountDetailPage() {
                 </Link>
               </Button>
             </div>
-            <div className="space-y-4 p-4">
+            <div className="space-y-4 p-0 lg:p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16 rounded-full">

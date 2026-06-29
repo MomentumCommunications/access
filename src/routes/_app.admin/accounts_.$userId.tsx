@@ -173,58 +173,68 @@ function AdminAccountDetailPage() {
                   </Link>
                 </Button>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <div className="text-muted-foreground">Status</div>
-                  <Select
-                    value={resolveAccountStatus(accountData.account.status)}
-                    onValueChange={(value) => {
-                      const status = value as AccountStatus;
-                      if (
-                        status !==
-                        resolveAccountStatus(accountData.account.status)
-                      ) {
-                        setPendingStatus(status);
+              <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <div className="text-muted-foreground">Status</div>
+                    <Select
+                      value={resolveAccountStatus(accountData.account.status)}
+                      onValueChange={(value) => {
+                        const status = value as AccountStatus;
+                        if (
+                          status !==
+                          resolveAccountStatus(accountData.account.status)
+                        ) {
+                          setPendingStatus(status);
+                        }
+                      }}
+                    >
+                      <SelectTrigger aria-label="Account status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-muted-foreground">Roles</div>
+                    <RoleDropdown
+                      roles={resolveUserRoles(accountData.account)}
+                      onRolesChange={(roles) =>
+                        void setRoles({ user: accountData.account._id, roles })
                       }
-                    }}
-                  >
-                    <SelectTrigger aria-label="Account status">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-muted-foreground">Roles</div>
-                  <RoleDropdown
-                    roles={resolveUserRoles(accountData.account)}
-                    onRolesChange={(roles) =>
-                      void setRoles({ user: accountData.account._id, roles })
-                    }
-                  />
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Email</div>
-                  <div className="font-medium">
-                    {formatEmail(accountData.account.email)}
+                    />
                   </div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Phone</div>
-                  <div className="font-medium">
+                  <div>
                     {accountData.account.phone ? (
-                      <PatternFormat
-                        value={accountData.account.phone}
-                        format="+1 (###) ###-####"
-                        mask="_"
-                        disabled
-                      />
+                      <Button asChild variant="link" className="h-auto p-0">
+                        <a href={`tel:${accountData.account.phone}`}>
+                          <PatternFormat
+                            value={accountData.account.phone}
+                            format="+1 (###) ###-####"
+                            mask="_"
+                            disabled
+                          />
+                        </a>
+                      </Button>
                     ) : (
                       "Not set"
                     )}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Email</div>
+                  <div className="font-medium">
+                    <Button asChild variant="link" className="h-auto p-0">
+                      <a href={`mailto:${accountData.account.email}`}>
+                        {formatEmail(accountData.account.email)}
+                      </a>
+                    </Button>
                   </div>
                 </div>
               </div>

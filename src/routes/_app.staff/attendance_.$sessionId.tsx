@@ -23,7 +23,7 @@ import {
   ComboboxList,
 } from "~/components/ui/combobox";
 import { Spinner } from "~/components/ui/spinner";
-import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
+import { formatMDYYYY, formatTimeRange, isBirthday } from "~/lib/date-utils";
 import { cn } from "~/lib/utils";
 
 export const Route = createFileRoute("/_app/staff/attendance_/$sessionId")({
@@ -305,6 +305,14 @@ function AttendanceSessionPage() {
                       <div className="min-w-0">
                         <div className="truncate font-medium">
                           {studentName}
+                          {isBirthday(student.dateOfBirth) && (
+                            <span
+                              title="Happy Birthday!"
+                              className="text-muted-foreground ml-1"
+                            >
+                              {" 🎉"}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 
 export function calculateAge(dateOfBirth?: string) {
   if (!dateOfBirth) return null;
@@ -26,12 +26,16 @@ export function formatAge(dateOfBirth?: string) {
 
 export function formatMDYYYY(date?: string) {
   if (!date) return "Not set";
-  return format(new Date(date), "M/d/yyyy");
+
+  const parsed = parse(date, "yyyy-MM-dd", new Date());
+  return format(parsed, "MMM d, yyyy");
 }
 
 export function formatFullDate(date?: string) {
   if (!date) return "Not set";
-  return format(new Date(date), "MMMM d, yyyy");
+
+  const parsed = parse(date, "yyyy-MM-dd", new Date());
+  return format(parsed, "EEEE, MMMM d, yyyy");
 }
 
 export function formatDateTime(timestamp?: number) {

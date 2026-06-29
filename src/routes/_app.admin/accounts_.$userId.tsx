@@ -11,8 +11,10 @@ import {
   Ban,
   Copy,
   HousePlus,
+  LucideMail,
   Mail,
   Pencil,
+  PhoneIcon,
   RefreshCw,
   Unlink,
   User,
@@ -209,7 +211,10 @@ function AdminAccountDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Phone</div>
+                  <div className="text-muted-foreground flex items-center gap-1">
+                    <PhoneIcon className="size-4" />
+                    Phone
+                  </div>
                   <div>
                     {accountData.account.phone ? (
                       <Button asChild variant="link" className="h-auto p-0">
@@ -228,7 +233,10 @@ function AdminAccountDetailPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Email</div>
+                  <div className="text-muted-foreground flex items-center gap-1">
+                    <LucideMail className="size-4" />
+                    Email
+                  </div>
                   <div className="font-medium">
                     <Button asChild variant="link" className="h-auto p-0">
                       <a href={`mailto:${accountData.account.email}`}>

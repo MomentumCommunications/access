@@ -65,6 +65,10 @@ function getDynamicIds(pathname: string) {
     segments[0] === "admin" && segments[1] === "classes"
       ? segments[2]
       : undefined;
+  const staffClassId =
+    segments[0] === "staff" && segments[1] === "classes"
+      ? segments[2]
+      : undefined;
   const publicClassId = segments[0] === "classes" ? segments[1] : undefined;
   const adminStudentId =
     segments[0] === "admin" && segments[1] === "students"
@@ -106,6 +110,8 @@ function getDynamicIds(pathname: string) {
         : undefined,
     publicClassId:
       publicClassId && isDynamicId(publicClassId) ? publicClassId : undefined,
+    staffClassId:
+      staffClassId && isDynamicId(staffClassId) ? staffClassId : undefined,
     privateId: privateId && isDynamicId(privateId) ? privateId : undefined,
     privateLessonId:
       privateLessonId && isDynamicId(privateLessonId)
@@ -132,6 +138,14 @@ export function AppBreadcrumbs() {
       api.classes.getClassForSignup,
       ids.publicClassId
         ? { classId: ids.publicClassId as Id<"classes"> }
+        : "skip",
+    ),
+  );
+  const { data: staffClassData } = useQuery(
+    convexQuery(
+      api.classes.staffGetClass,
+      ids.staffClassId
+        ? { classId: ids.staffClassId as Id<"classes"> }
         : "skip",
     ),
   );
@@ -195,6 +209,9 @@ export function AppBreadcrumbs() {
       : {}),
     ...(ids.publicClassId
       ? { [ids.publicClassId]: publicClassData?.classItem.title || "Class" }
+      : {}),
+    ...(ids.staffClassId
+      ? { [ids.staffClassId]: staffClassData?.classItem.title || "Class" }
       : {}),
     ...(ids.adminStudentId
       ? {

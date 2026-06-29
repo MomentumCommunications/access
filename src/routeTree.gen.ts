@@ -54,6 +54,7 @@ import { Route as AppAdminClassesIndexRouteImport } from './routes/_app.admin/cl
 import { Route as AppAdminBulletinsIndexRouteImport } from './routes/_app.admin/bulletins/index'
 import { Route as AppAdminBillingIndexRouteImport } from './routes/_app.admin/billing/index'
 import { Route as AppStudentsStudentIdEditRouteImport } from './routes/_app.students/$studentId_.edit'
+import { Route as AppStaffClassesClassIdRouteImport } from './routes/_app.staff/classes_.$classId'
 import { Route as AppStaffAttendanceSessionIdRouteImport } from './routes/_app.staff/attendance_.$sessionId'
 import { Route as AppAdminStudentsCreateRouteImport } from './routes/_app.admin/students/create'
 import { Route as AppAdminStudentsStudentIdRouteImport } from './routes/_app.admin/students/$studentId'
@@ -308,6 +309,11 @@ const AppStudentsStudentIdEditRoute =
     path: '/students/$studentId/edit',
     getParentRoute: () => AppRoute,
   } as any)
+const AppStaffClassesClassIdRoute = AppStaffClassesClassIdRouteImport.update({
+  id: '/staff/classes_/$classId',
+  path: '/staff/classes/$classId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppStaffAttendanceSessionIdRoute =
   AppStaffAttendanceSessionIdRouteImport.update({
     id: '/staff/attendance_/$sessionId',
@@ -517,6 +523,7 @@ export interface FileRoutesByFullPath {
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
   '/admin/students/create': typeof AppAdminStudentsCreateRoute
   '/staff/attendance/$sessionId': typeof AppStaffAttendanceSessionIdRoute
+  '/staff/classes/$classId': typeof AppStaffClassesClassIdRoute
   '/students/$studentId/edit': typeof AppStudentsStudentIdEditRoute
   '/admin/billing/': typeof AppAdminBillingIndexRoute
   '/admin/bulletins/': typeof AppAdminBulletinsIndexRoute
@@ -589,6 +596,7 @@ export interface FileRoutesByTo {
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
   '/admin/students/create': typeof AppAdminStudentsCreateRoute
   '/staff/attendance/$sessionId': typeof AppStaffAttendanceSessionIdRoute
+  '/staff/classes/$classId': typeof AppStaffClassesClassIdRoute
   '/students/$studentId/edit': typeof AppStudentsStudentIdEditRoute
   '/admin/billing': typeof AppAdminBillingIndexRoute
   '/admin/bulletins': typeof AppAdminBulletinsIndexRoute
@@ -664,6 +672,7 @@ export interface FileRoutesById {
   '/_app/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
   '/_app/admin/students/create': typeof AppAdminStudentsCreateRoute
   '/_app/staff/attendance_/$sessionId': typeof AppStaffAttendanceSessionIdRoute
+  '/_app/staff/classes_/$classId': typeof AppStaffClassesClassIdRoute
   '/_app/students/$studentId_/edit': typeof AppStudentsStudentIdEditRoute
   '/_app/admin/billing/': typeof AppAdminBillingIndexRoute
   '/_app/admin/bulletins/': typeof AppAdminBulletinsIndexRoute
@@ -739,6 +748,7 @@ export interface FileRouteTypes {
     | '/admin/students/$studentId'
     | '/admin/students/create'
     | '/staff/attendance/$sessionId'
+    | '/staff/classes/$classId'
     | '/students/$studentId/edit'
     | '/admin/billing/'
     | '/admin/bulletins/'
@@ -811,6 +821,7 @@ export interface FileRouteTypes {
     | '/admin/students/$studentId'
     | '/admin/students/create'
     | '/staff/attendance/$sessionId'
+    | '/staff/classes/$classId'
     | '/students/$studentId/edit'
     | '/admin/billing'
     | '/admin/bulletins'
@@ -885,6 +896,7 @@ export interface FileRouteTypes {
     | '/_app/admin/students/$studentId'
     | '/_app/admin/students/create'
     | '/_app/staff/attendance_/$sessionId'
+    | '/_app/staff/classes_/$classId'
     | '/_app/students/$studentId_/edit'
     | '/_app/admin/billing/'
     | '/_app/admin/bulletins/'
@@ -1229,6 +1241,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStudentsStudentIdEditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/staff/classes_/$classId': {
+      id: '/_app/staff/classes_/$classId'
+      path: '/staff/classes/$classId'
+      fullPath: '/staff/classes/$classId'
+      preLoaderRoute: typeof AppStaffClassesClassIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/staff/attendance_/$sessionId': {
       id: '/_app/staff/attendance_/$sessionId'
       path: '/staff/attendance/$sessionId'
@@ -1466,6 +1485,7 @@ interface AppRouteChildren {
   AppAdminStudentsStudentIdRoute: typeof AppAdminStudentsStudentIdRoute
   AppAdminStudentsCreateRoute: typeof AppAdminStudentsCreateRoute
   AppStaffAttendanceSessionIdRoute: typeof AppStaffAttendanceSessionIdRoute
+  AppStaffClassesClassIdRoute: typeof AppStaffClassesClassIdRoute
   AppStudentsStudentIdEditRoute: typeof AppStudentsStudentIdEditRoute
   AppAdminBillingIndexRoute: typeof AppAdminBillingIndexRoute
   AppAdminBulletinsIndexRoute: typeof AppAdminBulletinsIndexRoute
@@ -1528,6 +1548,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminStudentsStudentIdRoute: AppAdminStudentsStudentIdRoute,
   AppAdminStudentsCreateRoute: AppAdminStudentsCreateRoute,
   AppStaffAttendanceSessionIdRoute: AppStaffAttendanceSessionIdRoute,
+  AppStaffClassesClassIdRoute: AppStaffClassesClassIdRoute,
   AppStudentsStudentIdEditRoute: AppStudentsStudentIdEditRoute,
   AppAdminBillingIndexRoute: AppAdminBillingIndexRoute,
   AppAdminBulletinsIndexRoute: AppAdminBulletinsIndexRoute,

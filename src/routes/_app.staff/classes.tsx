@@ -1,10 +1,11 @@
 import { useConvexQuery } from "@convex-dev/react-query";
 import { ColumnDef } from "@tanstack/react-table";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Doc } from "convex/_generated/dataModel";
 import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
+import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 
 export const Route = createFileRoute("/_app/staff/classes")({
@@ -15,6 +16,16 @@ const columns: ColumnDef<Doc<"classes">>[] = [
   {
     accessorKey: "title",
     header: "Class",
+    cell: ({ row }) => (
+      <Button asChild variant="link" className="h-auto p-0">
+        <Link
+          to="/staff/classes/$classId"
+          params={{ classId: row.original._id }}
+        >
+          {row.original.title}
+        </Link>
+      </Button>
+    ),
   },
   {
     accessorKey: "status",

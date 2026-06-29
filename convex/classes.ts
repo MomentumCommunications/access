@@ -735,6 +735,54 @@ async function getEnrollmentRows(ctx: QueryCtx, classId: Id<"classes">) {
   );
 }
 
+async function getEnrollmentRowsWithStudentContacts(
+  ctx: QueryCtx,
+  classId: Id<"classes">,
+) {
+  const rows = await getEnrollmentRows(ctx, classId);
+  return await Promise.all(
+    rows.map(async (row) => {
+      if (!row.student) {
+        return {
+          ...row,
+          contacts: [],
+        };
+      }
+      const contacts = await ctx.db
+        .query("studentContacts")
+        .withIndex("byStudent", (q) => q.eq("student", row.student!._id))
+        .collect();
+      const contactRows = await Promise.all(
+        contacts.map(async (contact) => ({
+          contact,
+          user: contact.user ? await ctx.db.get(contact.user) : null,
+        })),
+      );
+      return {
+        ...row,
+        contacts: contactRows.sort((left, right) => {
+          if (left.contact.isPrimary !== right.contact.isPrimary) {
+            return left.contact.isPrimary ? -1 : 1;
+          }
+          const leftName =
+            left.user?.displayName ||
+            left.user?.name ||
+            left.contact.name ||
+            left.contact.inviteEmail ||
+            "";
+          const rightName =
+            right.user?.displayName ||
+            right.user?.name ||
+            right.contact.name ||
+            right.contact.inviteEmail ||
+            "";
+          return leftName.localeCompare(rightName);
+        }),
+      };
+    }),
+  );
+}
+
 async function getSessionSignupRows(ctx: QueryCtx, classId: Id<"classes">) {
   const signups = await ctx.db
     .query("classSessionSignups")
@@ -3680,6 +3728,31 @@ export const staffListClasses = query({
     return classes
       .filter((classItem) => classItem.assignedStaff?.includes(user._id))
       .sort(compareClassesBySchedule);
+  },
+});
+
+export const staffGetClass = query({
+  args: { classId: v.id("classes") },
+  handler: async (ctx, { classId }) => {
+    const user = await requireStaff(ctx);
+    const classItem = await ctx.db.get(classId);
+    if (!classItem) {
+      return null;
+    }
+    if (!isAdmin(user) && !classItem.assignedStaff?.includes(user._id)) {
+      throw new Error("Unauthorized");
+    }
+    const visibleGroups = await Promise.all(
+      (classItem.visibleToGroupIds || []).map((groupId) =>
+        ctx.db.get(groupId),
+      ),
+    );
+
+    return {
+      classItem,
+      visibleGroups: visibleGroups.filter((group) => group !== null),
+      enrollments: await getEnrollmentRowsWithStudentContacts(ctx, classId),
+    };
   },
 });
 

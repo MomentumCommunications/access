@@ -14,17 +14,20 @@ import {
 } from "~/components/ui/card";
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
 } from "~/components/ui/field";
 import { Input } from "~/components/ui/input";
+import { Textarea } from "~/components/ui/textarea";
 import { canAccessAdmin, canAccessStaff } from "~/lib/roles";
 
 const profileSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required.").max(80),
   lastName: z.string().trim().min(1, "Last name is required.").max(80),
   phone: z.string().max(30, "Phone number must be 30 characters or fewer."),
+  address: z.string().trim().min(1, "Address is required.").max(500),
 });
 
 type ProfileValues = z.infer<typeof profileSchema>;
@@ -45,6 +48,7 @@ export function ProfileStep() {
         state?.user.name?.trim().split(/\s+/).slice(-1).join(" ") ||
         "",
       phone: state?.user.phone || "",
+      address: state?.user.address || "",
     },
     mode: "onTouched",
   });
@@ -134,6 +138,28 @@ export function ProfileStep() {
                       autoComplete="tel"
                       aria-invalid={fieldState.invalid}
                     />
+                    <FieldError errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+              <Controller
+                name="address"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Address</FieldLabel>
+                    <Textarea
+                      {...field}
+                      id={field.name}
+                      autoComplete="street-address"
+                      aria-invalid={fieldState.invalid}
+                      rows={3}
+                    />
+                    <FieldDescription>
+                      Use your household mailing address. A separate billing
+                      address can be added when you pay an invoice or save a
+                      card on file.
+                    </FieldDescription>
                     <FieldError errors={[fieldState.error]} />
                   </Field>
                 )}

@@ -115,11 +115,13 @@ export const saveProfile = mutation({
     firstName: v.string(),
     lastName: v.string(),
     phone: v.string(),
+    address: v.string(),
   },
   handler: async (ctx, args) => {
     const { user, onboarding } = await getOnboarding(ctx);
     const firstName = args.firstName.trim();
     const lastName = args.lastName.trim();
+    const address = args.address.trim();
     const roles = resolveUserRoles(user);
     const students = await getConnectedStudents(ctx, user._id);
     const workforce = isWorkforceAccount(roles);
@@ -139,10 +141,14 @@ export const saveProfile = mutation({
     if (!lastName || lastName.length > 80) {
       throw new Error("Last name must be between 1 and 80 characters.");
     }
+    if (!address || address.length > 500) {
+      throw new Error("Address must be between 1 and 500 characters.");
+    }
     await ctx.db.patch(user._id, {
       firstName,
       lastName,
       phone: args.phone.trim() || undefined,
+      address,
       role: highestUserRole(roles),
       roles,
       onboardingStatus: workforce ? "complete" : "pending",

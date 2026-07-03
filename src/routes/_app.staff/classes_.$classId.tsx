@@ -35,7 +35,7 @@ import {
   SheetTrigger,
 } from "~/components/ui/sheet";
 import { Spinner } from "~/components/ui/spinner";
-import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
+import { formatMDYYYY } from "~/lib/date-utils";
 import { getAccountName } from "~/lib/account-name";
 import { formatPhone } from "~/lib/utils";
 
@@ -65,11 +65,6 @@ function initials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join("");
-}
-
-function formatEmail(email?: string | string[]) {
-  if (Array.isArray(email)) return email.join(", ");
-  return email || "Email not set";
 }
 
 function ContactSheet({ row }: { row: EnrollmentRow }) {

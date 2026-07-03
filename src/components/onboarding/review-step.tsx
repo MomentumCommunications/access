@@ -78,6 +78,12 @@ export function ReviewStep() {
               <p className="text-muted-foreground">Phone</p>
               <p className="font-medium">{state?.user.phone || "Not set"}</p>
             </div>
+            <div className="sm:col-span-2">
+              <p className="text-muted-foreground">Address</p>
+              <p className="whitespace-pre-line font-medium">
+                {state?.user.address || "Not set"}
+              </p>
+            </div>
           </CardContent>
         </Card>
 

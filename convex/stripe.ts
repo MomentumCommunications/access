@@ -27,7 +27,7 @@ const roleValidator = v.union(
 
 const saveOnboardingProfileRef = makeFunctionReference<
   "mutation",
-  { firstName: string; lastName: string; phone: string },
+  { firstName: string; lastName: string; phone: string; address: string },
   {
     userId: Id<"users">;
     destination:
@@ -405,6 +405,7 @@ export const saveOnboardingProfile = action({
     firstName: v.string(),
     lastName: v.string(),
     phone: v.string(),
+    address: v.string(),
   },
   handler: async (ctx, args) => {
     const profile = await ctx.runMutation(saveOnboardingProfileRef, args);

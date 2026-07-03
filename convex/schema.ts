@@ -17,6 +17,7 @@ export default defineSchema({
     emailVerificationTime: v.optional(v.number()),
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
+    address: v.optional(v.string()),
     isAnonymous: v.optional(v.boolean()),
     status: v.optional(v.union(v.literal("active"), v.literal("inactive"))),
     role: v.optional(

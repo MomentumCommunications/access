@@ -28,7 +28,7 @@ export function formatMDYYYY(date?: string) {
   if (!date) return "Not set";
 
   const parsed = parse(date, "yyyy-MM-dd", new Date());
-  return format(parsed, "MMM d, yyyy");
+  return format(parsed, "M/d/yyyy");
 }
 
 export function formatFullDate(date?: string) {

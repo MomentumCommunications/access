@@ -47,7 +47,12 @@ type StaffClassData = NonNullable<
   FunctionReturnType<typeof api.classes.staffGetClass>
 >;
 type EnrollmentRow = StaffClassData["enrollments"][number];
-type EnrollmentStatus = "pending" | "enrolled" | "waitlisted" | "dropped";
+type EnrollmentStatus =
+  | "pending"
+  | "enrolled"
+  | "waitlisted"
+  | "dropped"
+  | "declined";
 type EnrollmentStatusFilter = EnrollmentStatus | "all";
 
 function studentDisplayName(student: EnrollmentRow["student"]) {
@@ -327,6 +332,7 @@ function StaffClassDetailPage() {
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="waitlisted">Waitlisted</SelectItem>
                     <SelectItem value="dropped">Dropped</SelectItem>
+                    <SelectItem value="declined">Declined</SelectItem>
                     <SelectItem value="all">All</SelectItem>
                   </SelectContent>
                 </Select>

@@ -2,7 +2,8 @@ export type EnrollmentStatus =
   | "pending"
   | "enrolled"
   | "waitlisted"
-  | "dropped";
+  | "dropped"
+  | "declined";
 
 export type EnrollmentDateInput = {
   status: EnrollmentStatus;

@@ -51,7 +51,9 @@ import {
   studentSelfServiceEnrollmentAllowed,
 } from "../shared/class-enrollment-policy";
 import { resolvedClassEnrollmentOpen } from "../shared/class-enrollment-selection";
-import { buildEnrollmentDeletedEvent } from "../shared/enrollment-activity";
+import {
+  buildEnrollmentDeclinedEvent,
+} from "../shared/enrollment-activity";
 import {
   calculateEnrollmentEstimate,
   validateSpecificEnrollmentDateRange,
@@ -115,13 +117,23 @@ const enrollmentStatusValidator = v.union(
   v.literal("enrolled"),
   v.literal("waitlisted"),
   v.literal("dropped"),
+  v.literal("declined"),
 );
 
 const pendingEnrollmentActionValidator = v.union(
   v.literal("enroll"),
   v.literal("waitlist"),
+  v.literal("decline"),
   v.literal("delete"),
 );
+
+function isActiveClassEnrollmentStatus(
+  status: Doc<"classEnrollments">["status"],
+) {
+  return (
+    status === "pending" || status === "enrolled" || status === "waitlisted"
+  );
+}
 
 const classEnrollmentModeValidator = v.union(
   v.literal("standard"),
@@ -251,6 +263,7 @@ async function cleanupStudentForInactiveStatus(
         status: "dropped",
         startDate: cleanup.startDate,
         endDate: cleanup.endDate,
+        updatedAt: Date.now(),
       });
     }
   }
@@ -1575,7 +1588,7 @@ export const getClassForSignup = query({
       .withIndex("byClass", (q) => q.eq("classId", classId))
       .collect();
     const activeEnrollmentCount = enrollments.filter((enrollment) =>
-      ["pending", "enrolled", "waitlisted"].includes(enrollment.status),
+      isActiveClassEnrollmentStatus(enrollment.status),
     ).length;
     const contacts = user
       ? await ctx.db
@@ -1657,7 +1670,9 @@ export const listMyStudents = query({
           .collect();
         const classes = await Promise.all(
           enrollments
-            .filter((enrollment) => enrollment.status !== "dropped")
+            .filter((enrollment) =>
+              isActiveClassEnrollmentStatus(enrollment.status),
+            )
             .map(async (enrollment) => ({
               enrollment,
               classItem: await ctx.db.get(enrollment.classId),
@@ -1714,7 +1729,9 @@ export const getMyStudent = query({
 
     const enrollmentRows = await Promise.all(
       enrollments
-        .filter((enrollment) => enrollment.status !== "dropped")
+        .filter((enrollment) =>
+          isActiveClassEnrollmentStatus(enrollment.status),
+        )
         .map(async (enrollment) => ({
           ...enrollment,
           classItem: await ctx.db.get(enrollment.classId),
@@ -1873,6 +1890,7 @@ export const signUpStudentForClass = mutation({
       requestedBy: user._id,
       status: "pending",
       startDate: todayValue(classItem.timezone),
+      updatedAt: Date.now(),
     });
     await notifyAdminsOfPendingEnrollment(ctx, {
       enrollmentId,
@@ -2315,6 +2333,7 @@ export const saveMyClassSelections = mutation({
         status: "pending" as const,
         startDate: startDate || todayValue(classItem.timezone),
         endDate,
+        updatedAt: now,
       };
       let enrollmentId: Id<"classEnrollments">;
       if (existing) {
@@ -3088,6 +3107,7 @@ export const adminEnrollStudentInClass = mutation({
       throw new Error("Choose whether this enrollment should be prorated.");
     }
     validateEnrollmentDates({ status, startDate, endDate });
+    const now = Date.now();
 
     const existing = await ctx.db
       .query("classEnrollments")
@@ -3105,6 +3125,7 @@ export const adminEnrollStudentInClass = mutation({
         endDate,
         prorateTuition:
           status === "enrolled" ? prorateTuition : existing.prorateTuition,
+        updatedAt: now,
       });
       if (status === "pending" && !wasPending) {
         await notifyAdminsOfPendingEnrollment(ctx, {
@@ -3137,6 +3158,7 @@ export const adminEnrollStudentInClass = mutation({
       startDate,
       endDate,
       prorateTuition,
+      updatedAt: now,
     });
     if (status === "pending") {
       await notifyAdminsOfPendingEnrollment(ctx, {
@@ -3287,9 +3309,10 @@ export const adminApplyPendingEnrollmentAction = mutation({
       }),
     );
 
+    const now = Date.now();
     for (const { enrollment, student, classItem } of rows) {
-      if (action === "delete") {
-        const event = buildEnrollmentDeletedEvent({
+      if (action === "delete" || action === "decline") {
+        const event = buildEnrollmentDeclinedEvent({
           enrollmentId: enrollment._id,
           studentId: student._id,
           studentName: studentDisplayName(student),
@@ -3311,7 +3334,10 @@ export const adminApplyPendingEnrollmentAction = mutation({
           student,
           classItem,
         });
-        await ctx.db.delete(enrollment._id);
+        await ctx.db.patch(enrollment._id, {
+          status: "declined",
+          updatedAt: now,
+        });
         continue;
       }
 
@@ -3330,6 +3356,7 @@ export const adminApplyPendingEnrollmentAction = mutation({
           nextStatus === "enrolled"
             ? (enrollment.prorateTuition ?? true)
             : enrollment.prorateTuition,
+        updatedAt: now,
       });
       await notifyStudentManagersOfEnrollmentOutcome(ctx, {
         enrollmentId: enrollment._id,
@@ -3470,7 +3497,7 @@ export const adminUpdateClass = mutation({
       currentMode: resolvedClassEnrollmentMode(existing.enrollmentMode),
       nextMode: patch.enrollmentMode,
       hasActiveClassEnrollments: classEnrollments.some(
-        (enrollment) => enrollment.status !== "dropped",
+        (enrollment) => isActiveClassEnrollmentStatus(enrollment.status),
       ),
       hasActiveSessionSignups: sessionSignups.some((signup) =>
         isActiveSessionSignup(signup.status),
@@ -3688,6 +3715,7 @@ export const adminUpdateEnrollmentStatus = mutation({
       endDate,
       today: todayValue(),
     });
+    const now = Date.now();
     await ctx.db.patch(enrollment, {
       status,
       ...dates,
@@ -3695,6 +3723,7 @@ export const adminUpdateEnrollmentStatus = mutation({
         status === "enrolled" && prorateTuition !== undefined
           ? prorateTuition
           : existing.prorateTuition,
+      updatedAt: now,
     });
     if (
       existing.status === "pending" &&

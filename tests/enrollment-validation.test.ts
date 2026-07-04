@@ -71,6 +71,12 @@ describe("validateEnrollmentDates", () => {
         endDate: "2026-06-30",
       }),
     );
+    assert.doesNotThrow(() =>
+      validateEnrollmentDates({
+        status: "declined",
+        startDate: "2026-06-01",
+      }),
+    );
   });
 });
 

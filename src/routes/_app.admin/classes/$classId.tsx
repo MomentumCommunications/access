@@ -53,7 +53,12 @@ export const Route = createFileRoute("/_app/admin/classes/$classId")({
 });
 
 type SessionStatus = "scheduled" | "cancelled" | "completed";
-type EnrollmentStatus = "pending" | "enrolled" | "waitlisted" | "dropped";
+type EnrollmentStatus =
+  | "pending"
+  | "enrolled"
+  | "waitlisted"
+  | "dropped"
+  | "declined";
 type EnrollmentStatusFilter = EnrollmentStatus | "all";
 type BillingTreatment = "" | "prorate" | "full";
 
@@ -238,6 +243,7 @@ function AdminClassDetailPage() {
             <SelectItem value="enrolled">Enrolled</SelectItem>
             <SelectItem value="waitlisted">Waitlisted</SelectItem>
             <SelectItem value="dropped">Dropped</SelectItem>
+            <SelectItem value="declined">Declined</SelectItem>
           </SelectContent>
         </Select>
       ),
@@ -852,6 +858,7 @@ function AdminClassDetailPage() {
                           <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="waitlisted">Waitlisted</SelectItem>
                           <SelectItem value="dropped">Dropped</SelectItem>
+                          <SelectItem value="declined">Declined</SelectItem>
                           <SelectItem value="all">All</SelectItem>
                         </SelectContent>
                       </Select>

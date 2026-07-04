@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
-import { ArrowUpDown, Check, Clock3, Trash2 } from "lucide-react";
+import { ArrowUpDown, Check, Clock3, XCircle } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { toast } from "sonner";
 import { RoleGate } from "~/components/role-gate";
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/_app/admin/classes/enrollments")({
 type PendingEnrollment = FunctionReturnType<
   typeof api.classes.adminListPendingEnrollments
 >[number];
-type PendingAction = "enroll" | "waitlist" | "delete";
+type PendingAction = "enroll" | "waitlist" | "decline";
 type SortKey = "student" | "requestedBy" | "class" | "submitted";
 type SortDirection = "asc" | "desc";
 
@@ -78,7 +78,7 @@ function PendingEnrollmentsPage() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(
     null,
   );
-  const [deleteIds, setDeleteIds] = useState<Id<"classEnrollments">[]>([]);
+  const [declineIds, setDeclineIds] = useState<Id<"classEnrollments">[]>([]);
   const lastSelectedId = useRef<string | null>(null);
   const shiftPressed = useRef(false);
 
@@ -189,29 +189,29 @@ function PendingEnrollmentsPage() {
     }
   }
 
-  async function confirmDelete() {
-    setPendingAction("delete");
+  async function confirmDecline() {
+    setPendingAction("decline");
     try {
       const result = await applyAction({
-        action: "delete",
-        enrollments: deleteIds,
+        action: "decline",
+        enrollments: declineIds,
       });
       setSelectedIds((current) =>
         current.filter(
-          (id) => !deleteIds.includes(id as Id<"classEnrollments">),
+          (id) => !declineIds.includes(id as Id<"classEnrollments">),
         ),
       );
-      setDeleteIds([]);
+      setDeclineIds([]);
       toast.success(
         `${result.updated} enrollment request${
           result.updated === 1 ? "" : "s"
-        } deleted and logged.`,
+        } declined and logged.`,
       );
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "The enrollment requests could not be deleted.",
+          : "The enrollment requests could not be declined.",
       );
     } finally {
       setPendingAction(null);
@@ -275,11 +275,11 @@ function PendingEnrollmentsPage() {
                   className="cursor-pointer"
                   disabled={selectedIds.length === 0 || pendingAction !== null}
                   onClick={() =>
-                    setDeleteIds(selectedIds as Id<"classEnrollments">[])
+                    setDeclineIds(selectedIds as Id<"classEnrollments">[])
                   }
                 >
-                  <Trash2 />
-                  Delete
+                  <XCircle />
+                  Decline
                 </Button>
               </ButtonGroup>
             </div>
@@ -418,12 +418,12 @@ function PendingEnrollmentsPage() {
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                title="Delete"
-                                aria-label={`Delete ${studentName(row)} enrollment`}
+                                title="Decline"
+                                aria-label={`Decline ${studentName(row)} enrollment`}
                                 disabled={pendingAction !== null}
-                                onClick={() => setDeleteIds([enrollmentId])}
+                                onClick={() => setDeclineIds([enrollmentId])}
                               >
-                                <Trash2 />
+                                <XCircle />
                               </Button>
                             </ButtonGroup>
                           </TableCell>
@@ -445,34 +445,35 @@ function PendingEnrollmentsPage() {
       </main>
 
       <AlertDialog
-        open={deleteIds.length > 0}
+        open={declineIds.length > 0}
         onOpenChange={(open) => {
-          if (!open && pendingAction !== "delete") setDeleteIds([]);
+          if (!open && pendingAction !== "decline") setDeclineIds([]);
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete {deleteIds.length} enrollment request
-              {deleteIds.length === 1 ? "" : "s"}?
+              Decline {declineIds.length} enrollment request
+              {declineIds.length === 1 ? "" : "s"}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the pending enrollment request. A record of the
-              deletion will remain in the student activity log.
+              This keeps the enrollment request for reporting and changes its
+              status to declined. A record of the decision will remain in the
+              student activity log.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={pendingAction === "delete"}>
+            <AlertDialogCancel disabled={pendingAction === "decline"}>
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              disabled={pendingAction === "delete"}
+              disabled={pendingAction === "decline"}
               onClick={(event) => {
                 event.preventDefault();
-                void confirmDelete();
+                void confirmDecline();
               }}
             >
-              Delete
+              Decline
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -63,7 +63,12 @@ export const Route = createFileRoute("/_app/admin/students/$studentId")({
   component: AdminStudentDetailPage,
 });
 
-type EnrollmentStatus = "pending" | "enrolled" | "waitlisted" | "dropped";
+type EnrollmentStatus =
+  | "pending"
+  | "enrolled"
+  | "waitlisted"
+  | "dropped"
+  | "declined";
 type BillingTreatment = "" | "prorate" | "full";
 
 type AdminStudentData = NonNullable<
@@ -411,6 +416,7 @@ function AdminStudentDetailPage() {
                         <SelectItem value="enrolled">Enrolled</SelectItem>
                         <SelectItem value="waitlisted">Waitlisted</SelectItem>
                         <SelectItem value="dropped">Dropped</SelectItem>
+                        <SelectItem value="declined">Declined</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

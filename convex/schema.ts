@@ -397,11 +397,13 @@ export default defineSchema({
       v.literal("enrolled"),
       v.literal("waitlisted"),
       v.literal("dropped"),
+      v.literal("declined"),
     ),
     notes: v.optional(v.string()),
     startDate: v.optional(v.string()),
     endDate: v.optional(v.string()),
     prorateTuition: v.optional(v.boolean()),
+    updatedAt: v.optional(v.number()),
   })
     .index("byClass", ["classId"])
     .index("byStudent", ["student"])

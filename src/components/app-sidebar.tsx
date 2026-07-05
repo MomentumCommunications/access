@@ -44,7 +44,7 @@ import {
   useSidebar,
 } from "~/components/ui/sidebar";
 import { useSidebarDataContext } from "~/contexts/SidebarDataContext";
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import { NavUser } from "./user";
 import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import { Spinner } from "./ui/spinner";
@@ -55,6 +55,7 @@ const AppSidebarComponent = memo(() => {
   const { convexUser } = useSidebarDataContext();
   const { isMobile, setOpenMobile } = useSidebar();
   const { activeRole } = useActiveRole();
+  const { pathname } = useLocation();
 
   const closeMobileSidebar = () => {
     if (isMobile) {
@@ -90,6 +91,9 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/home", {
+                        exact: true,
+                      })}
                       tooltip="Home"
                       onClick={closeMobileSidebar}
                     >
@@ -102,6 +106,7 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/students")}
                       tooltip="Students"
                       onClick={closeMobileSidebar}
                     >
@@ -114,6 +119,7 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/classes")}
                       tooltip="Classes"
                       onClick={closeMobileSidebar}
                     >
@@ -126,6 +132,7 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/tuition-plan")}
                       tooltip="Tuition Plan"
                       onClick={closeMobileSidebar}
                     >
@@ -147,6 +154,9 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/staff", {
+                        exact: true,
+                      })}
                       tooltip="Staffroom"
                       onClick={closeMobileSidebar}
                     >
@@ -159,6 +169,7 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/staff/attendance")}
                       tooltip="Attendance"
                       onClick={closeMobileSidebar}
                     >
@@ -171,6 +182,7 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/staff/classes")}
                       tooltip="My Classes"
                       onClick={closeMobileSidebar}
                     >
@@ -192,6 +204,9 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/admin", {
+                        exact: true,
+                      })}
                       tooltip="Admin"
                       onClick={closeMobileSidebar}
                     >
@@ -204,6 +219,7 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/admin/accounts")}
                       tooltip="Accounts"
                       onClick={closeMobileSidebar}
                     >
@@ -216,6 +232,7 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/admin/students")}
                       tooltip="Students"
                       onClick={closeMobileSidebar}
                     >
@@ -228,6 +245,7 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/admin/groups")}
                       tooltip="Groups"
                       onClick={closeMobileSidebar}
                     >
@@ -240,6 +258,7 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/admin/bulletins")}
                       tooltip="Bulletins"
                       onClick={closeMobileSidebar}
                     >
@@ -252,6 +271,7 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/admin/reports")}
                       tooltip="Reports"
                       onClick={closeMobileSidebar}
                     >
@@ -264,6 +284,7 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
+                      isActive={isActivePath(pathname, "/admin/scheduling")}
                       tooltip="Scheduling"
                       onClick={closeMobileSidebar}
                     >
@@ -276,7 +297,10 @@ const AppSidebarComponent = memo(() => {
                   <Collapsible asChild className="group/collapsible">
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>
-                        <SidebarMenuButton tooltip="Classes">
+                        <SidebarMenuButton
+                          isActive={isAdminClassesSectionActive(pathname)}
+                          tooltip="Classes"
+                        >
                           <SportShoe />
                           <span>Classes</span>
                           <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
@@ -294,6 +318,10 @@ const AppSidebarComponent = memo(() => {
                             <SidebarMenuSubItem key={to}>
                               <SidebarMenuSubButton
                                 asChild
+                                isActive={isAdminClassesSubItemActive(
+                                  pathname,
+                                  to,
+                                )}
                                 onClick={closeMobileSidebar}
                               >
                                 <Link to={to as never}>{label}</Link>
@@ -307,7 +335,10 @@ const AppSidebarComponent = memo(() => {
                   <Collapsible asChild className="group/collapsible">
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>
-                        <SidebarMenuButton tooltip="Billing">
+                        <SidebarMenuButton
+                          isActive={isActivePath(pathname, "/admin/billing")}
+                          tooltip="Billing"
+                        >
                           <DollarSign />
                           <span>Billing</span>
                           <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
@@ -325,6 +356,7 @@ const AppSidebarComponent = memo(() => {
                             <SidebarMenuSubItem key={to}>
                               <SidebarMenuSubButton
                                 asChild
+                                isActive={isActivePath(pathname, to)}
                                 onClick={closeMobileSidebar}
                               >
                                 <Link to={to as never}>{label}</Link>
@@ -346,6 +378,7 @@ const AppSidebarComponent = memo(() => {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
+                    isActive={isActivePath(pathname, "/calendar")}
                     tooltip="Calendar"
                     onClick={closeMobileSidebar}
                   >
@@ -358,6 +391,7 @@ const AppSidebarComponent = memo(() => {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
+                    isActive={isActivePath(pathname, "/payments")}
                     tooltip="Payments"
                     onClick={closeMobileSidebar}
                   >
@@ -370,6 +404,7 @@ const AppSidebarComponent = memo(() => {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
+                    isActive={isActivePath(pathname, "/settings")}
                     tooltip="Settings"
                     onClick={closeMobileSidebar}
                   >
@@ -382,6 +417,7 @@ const AppSidebarComponent = memo(() => {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
+                    isActive={isActivePath(pathname, "/help")}
                     tooltip="Help"
                     onClick={closeMobileSidebar}
                   >
@@ -433,3 +469,43 @@ const AppSidebarComponent = memo(() => {
 AppSidebarComponent.displayName = "AppSidebar";
 
 export const AppSidebar = AppSidebarComponent;
+
+function isActivePath(
+  pathname: string,
+  target: string,
+  options: { exact?: boolean } = {},
+) {
+  const normalizedTarget = target.endsWith("/")
+    ? target.slice(0, -1)
+    : target;
+  const normalizedPath = pathname.endsWith("/")
+    ? pathname.slice(0, -1)
+    : pathname;
+
+  if (options.exact) {
+    return normalizedPath === normalizedTarget;
+  }
+  return (
+    normalizedPath === normalizedTarget ||
+    normalizedPath.startsWith(`${normalizedTarget}/`)
+  );
+}
+
+function isAdminClassesSectionActive(pathname: string) {
+  return (
+    isActivePath(pathname, "/admin/classes") ||
+    isActivePath(pathname, "/admin/attendance") ||
+    isActivePath(pathname, "/admin/privates")
+  );
+}
+
+function isAdminClassesSubItemActive(pathname: string, target: string) {
+  if (target === "/admin/classes") {
+    return (
+      isActivePath(pathname, "/admin/classes") &&
+      !isActivePath(pathname, "/admin/classes/create") &&
+      !isActivePath(pathname, "/admin/classes/enrollments")
+    );
+  }
+  return isActivePath(pathname, target);
+}

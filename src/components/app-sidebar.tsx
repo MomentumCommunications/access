@@ -18,6 +18,7 @@ import {
   SportShoe,
   PersonStanding,
   BookOpen,
+  BarChart3,
   Calendar,
   Newspaper,
 } from "lucide-react";
@@ -245,6 +246,18 @@ const AppSidebarComponent = memo(() => {
                       <Link to="/admin/bulletins">
                         <Newspaper />
                         <span>Bulletins</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip="Reports"
+                      onClick={closeMobileSidebar}
+                    >
+                      <Link to="/admin/reports">
+                        <BarChart3 />
+                        <span>Reports</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

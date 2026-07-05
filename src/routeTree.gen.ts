@@ -49,6 +49,7 @@ import { Route as AppAdminGroupsRouteImport } from './routes/_app.admin/groups'
 import { Route as AppAdminAttendanceRouteImport } from './routes/_app.admin/attendance'
 import { Route as AppAdminAccountsRouteImport } from './routes/_app.admin/accounts'
 import { Route as AppAdminStudentsIndexRouteImport } from './routes/_app.admin/students/index'
+import { Route as AppAdminReportsIndexRouteImport } from './routes/_app.admin/reports/index'
 import { Route as AppAdminPrivatesIndexRouteImport } from './routes/_app.admin/privates/index'
 import { Route as AppAdminClassesIndexRouteImport } from './routes/_app.admin/classes/index'
 import { Route as AppAdminBulletinsIndexRouteImport } from './routes/_app.admin/bulletins/index'
@@ -281,6 +282,11 @@ const AppAdminAccountsRoute = AppAdminAccountsRouteImport.update({
 const AppAdminStudentsIndexRoute = AppAdminStudentsIndexRouteImport.update({
   id: '/admin/students/',
   path: '/admin/students/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminReportsIndexRoute = AppAdminReportsIndexRouteImport.update({
+  id: '/admin/reports/',
+  path: '/admin/reports/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminPrivatesIndexRoute = AppAdminPrivatesIndexRouteImport.update({
@@ -529,6 +535,7 @@ export interface FileRoutesByFullPath {
   '/admin/bulletins/': typeof AppAdminBulletinsIndexRoute
   '/admin/classes/': typeof AppAdminClassesIndexRoute
   '/admin/privates/': typeof AppAdminPrivatesIndexRoute
+  '/admin/reports/': typeof AppAdminReportsIndexRoute
   '/admin/students/': typeof AppAdminStudentsIndexRoute
   '/admin/accounts/$userId/edit': typeof AppAdminAccountsUserIdEditRoute
   '/admin/bulletins/$bulletinId/edit': typeof AppAdminBulletinsBulletinIdEditRoute
@@ -602,6 +609,7 @@ export interface FileRoutesByTo {
   '/admin/bulletins': typeof AppAdminBulletinsIndexRoute
   '/admin/classes': typeof AppAdminClassesIndexRoute
   '/admin/privates': typeof AppAdminPrivatesIndexRoute
+  '/admin/reports': typeof AppAdminReportsIndexRoute
   '/admin/students': typeof AppAdminStudentsIndexRoute
   '/admin/accounts/$userId/edit': typeof AppAdminAccountsUserIdEditRoute
   '/admin/bulletins/$bulletinId/edit': typeof AppAdminBulletinsBulletinIdEditRoute
@@ -678,6 +686,7 @@ export interface FileRoutesById {
   '/_app/admin/bulletins/': typeof AppAdminBulletinsIndexRoute
   '/_app/admin/classes/': typeof AppAdminClassesIndexRoute
   '/_app/admin/privates/': typeof AppAdminPrivatesIndexRoute
+  '/_app/admin/reports/': typeof AppAdminReportsIndexRoute
   '/_app/admin/students/': typeof AppAdminStudentsIndexRoute
   '/_app/admin/accounts_/$userId_/edit': typeof AppAdminAccountsUserIdEditRoute
   '/_app/admin/bulletins/$bulletinId_/edit': typeof AppAdminBulletinsBulletinIdEditRoute
@@ -754,6 +763,7 @@ export interface FileRouteTypes {
     | '/admin/bulletins/'
     | '/admin/classes/'
     | '/admin/privates/'
+    | '/admin/reports/'
     | '/admin/students/'
     | '/admin/accounts/$userId/edit'
     | '/admin/bulletins/$bulletinId/edit'
@@ -827,6 +837,7 @@ export interface FileRouteTypes {
     | '/admin/bulletins'
     | '/admin/classes'
     | '/admin/privates'
+    | '/admin/reports'
     | '/admin/students'
     | '/admin/accounts/$userId/edit'
     | '/admin/bulletins/$bulletinId/edit'
@@ -902,6 +913,7 @@ export interface FileRouteTypes {
     | '/_app/admin/bulletins/'
     | '/_app/admin/classes/'
     | '/_app/admin/privates/'
+    | '/_app/admin/reports/'
     | '/_app/admin/students/'
     | '/_app/admin/accounts_/$userId_/edit'
     | '/_app/admin/bulletins/$bulletinId_/edit'
@@ -1206,6 +1218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminStudentsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/reports/': {
+      id: '/_app/admin/reports/'
+      path: '/admin/reports'
+      fullPath: '/admin/reports/'
+      preLoaderRoute: typeof AppAdminReportsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/privates/': {
       id: '/_app/admin/privates/'
       path: '/admin/privates'
@@ -1491,6 +1510,7 @@ interface AppRouteChildren {
   AppAdminBulletinsIndexRoute: typeof AppAdminBulletinsIndexRoute
   AppAdminClassesIndexRoute: typeof AppAdminClassesIndexRoute
   AppAdminPrivatesIndexRoute: typeof AppAdminPrivatesIndexRoute
+  AppAdminReportsIndexRoute: typeof AppAdminReportsIndexRoute
   AppAdminStudentsIndexRoute: typeof AppAdminStudentsIndexRoute
   AppAdminAccountsUserIdEditRoute: typeof AppAdminAccountsUserIdEditRoute
   AppAdminBulletinsBulletinIdEditRoute: typeof AppAdminBulletinsBulletinIdEditRoute
@@ -1554,6 +1574,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminBulletinsIndexRoute: AppAdminBulletinsIndexRoute,
   AppAdminClassesIndexRoute: AppAdminClassesIndexRoute,
   AppAdminPrivatesIndexRoute: AppAdminPrivatesIndexRoute,
+  AppAdminReportsIndexRoute: AppAdminReportsIndexRoute,
   AppAdminStudentsIndexRoute: AppAdminStudentsIndexRoute,
   AppAdminAccountsUserIdEditRoute: AppAdminAccountsUserIdEditRoute,
   AppAdminBulletinsBulletinIdEditRoute: AppAdminBulletinsBulletinIdEditRoute,

@@ -46,6 +46,7 @@ import type * as pushActions from "../pushActions.js";
 import type * as pushData from "../pushData.js";
 import type * as pushSubscriptions from "../pushSubscriptions.js";
 import type * as random from "../random.js";
+import type * as reports from "../reports.js";
 import type * as resendConfig from "../resendConfig.js";
 import type * as stripe from "../stripe.js";
 import type * as stripeData from "../stripeData.js";
@@ -97,6 +98,7 @@ declare const fullApi: ApiFromModules<{
   pushData: typeof pushData;
   pushSubscriptions: typeof pushSubscriptions;
   random: typeof random;
+  reports: typeof reports;
   resendConfig: typeof resendConfig;
   stripe: typeof stripe;
   stripeData: typeof stripeData;

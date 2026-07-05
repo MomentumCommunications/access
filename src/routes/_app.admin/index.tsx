@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   BookOpen,
   CalendarDays,
+  BarChart3,
   ListChecks,
   PersonStanding,
   Users,
@@ -59,6 +60,12 @@ function AdminHome() {
             icon={<BookOpen />}
           />
           <AdminCard
+            title="Reports"
+            description="Review enrollment trends and status mix."
+            to="/admin/reports"
+            icon={<BarChart3 />}
+          />
+          <AdminCard
             title="Scheduling"
             description="Manage holidays and generated session rules."
             to="/admin/scheduling"
@@ -83,6 +90,7 @@ function AdminCard({
     | "/admin/accounts"
     | "/admin/students"
     | "/admin/classes"
+    | "/admin/reports"
     | "/admin/scheduling";
   icon: ReactNode;
 }) {

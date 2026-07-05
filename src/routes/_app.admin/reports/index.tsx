@@ -84,10 +84,10 @@ function AdminReportsPage() {
 
   return (
     <RoleGate allow="admin">
-      <main className="flex w-full flex-col gap-6 p-4 lg:p-8">
-        <div>
+      <main className="flex min-w-0 w-full max-w-full flex-col gap-6 overflow-hidden p-4 lg:p-8">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold">Reports</h1>
-          <p className="text-muted-foreground">
+          <p className="break-words text-muted-foreground">
             A first pass at enrollment reporting from current class enrollment
             records.
           </p>
@@ -99,57 +99,59 @@ function AdminReportsPage() {
           </div>
         ) : (
           <>
-            <section className="space-y-3">
-              <div>
+            <section className="min-w-0 max-w-full space-y-3">
+              <div className="min-w-0">
                 <h2 className="text-xl font-semibold">
                   Monthly participation
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="break-words text-sm text-muted-foreground">
                   Counts reflect enrollments and distinct students active at any
                   point during the month.
                 </p>
               </div>
-              <ChartContainer
-                config={monthlyChartConfig}
-                className="h-[340px] w-full"
-              >
-                <LineChart
-                  accessibilityLayer
-                  data={report.months}
-                  margin={{ left: 8, right: 16, top: 12, bottom: 8 }}
+              <div className="min-w-0 max-w-full overflow-x-auto">
+                <ChartContainer
+                  config={monthlyChartConfig}
+                  className="h-[340px] min-w-[38rem] max-w-full"
                 >
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                  />
-                  <YAxis tickLine={false} axisLine={false} tickMargin={8} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Line
-                    dataKey="activeEnrollments"
-                    type="monotone"
-                    stroke="var(--color-activeEnrollments)"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  <Line
-                    dataKey="activeStudents"
-                    type="monotone"
-                    stroke="var(--color-activeStudents)"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ChartContainer>
+                  <LineChart
+                    accessibilityLayer
+                    data={report.months}
+                    margin={{ left: 8, right: 16, top: 12, bottom: 8 }}
+                  >
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                    />
+                    <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Line
+                      dataKey="activeEnrollments"
+                      type="monotone"
+                      stroke="var(--color-activeEnrollments)"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      dataKey="activeStudents"
+                      type="monotone"
+                      stroke="var(--color-activeStudents)"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ChartContainer>
+              </div>
             </section>
 
             <Separator />
 
-            <section className="grid gap-6 lg:grid-cols-6">
-              <div className="grid gap-3 sm:grid-cols-2 lg:col-span-6 lg:grid-cols-4">
+            <section className="grid min-w-0 max-w-full gap-6 lg:grid-cols-6">
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:col-span-6 lg:grid-cols-4">
                 <KpiStat
                   label="Active enrollments"
                   value={report.kpis.currentActiveEnrollments}
@@ -177,31 +179,33 @@ function AdminReportsPage() {
                 description="Enrollment requests by creation month."
                 className="lg:col-span-4"
               >
-                <ChartContainer
-                  config={requestsChartConfig}
-                  className="h-[280px] w-full"
-                >
-                  <BarChart
-                    accessibilityLayer
-                    data={report.months}
-                    margin={{ left: 8, right: 12, top: 12, bottom: 8 }}
+                <div className="min-w-0 max-w-full overflow-x-auto">
+                  <ChartContainer
+                    config={requestsChartConfig}
+                    className="h-[280px] min-w-[34rem] max-w-full"
                   >
-                    <CartesianGrid vertical={false} />
-                    <XAxis
-                      dataKey="label"
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={8}
-                    />
-                    <YAxis tickLine={false} axisLine={false} tickMargin={8} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar
-                      dataKey="requests"
-                      fill="var(--color-requests)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ChartContainer>
+                    <BarChart
+                      accessibilityLayer
+                      data={report.months}
+                      margin={{ left: 8, right: 12, top: 12, bottom: 8 }}
+                    >
+                      <CartesianGrid vertical={false} />
+                      <XAxis
+                        dataKey="label"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                      />
+                      <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar
+                        dataKey="requests"
+                        fill="var(--color-requests)"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ChartContainer>
+                </div>
               </ReportSection>
 
               <ReportSection
@@ -252,7 +256,7 @@ function KpiStat({
   description: string;
 }) {
   return (
-    <div className="rounded-lg border bg-muted/20 p-4">
+    <div className="min-w-0 rounded-lg border bg-muted/20 p-4">
       <div className="text-sm font-medium text-muted-foreground">{label}</div>
       <div className="mt-2 text-3xl font-semibold tabular-nums">{value}</div>
       <div className="mt-1 text-xs text-muted-foreground">{description}</div>
@@ -272,10 +276,12 @@ function ReportSection({
   children: ReactNode;
 }) {
   return (
-    <div className={`min-w-0 space-y-3 ${className ?? ""}`}>
-      <div>
+    <div className={`min-w-0 max-w-full space-y-3 ${className ?? ""}`}>
+      <div className="min-w-0">
         <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className="break-words text-sm text-muted-foreground">
+          {description}
+        </p>
       </div>
       {children}
     </div>
@@ -302,7 +308,10 @@ function StatusMixChart({
   }
 
   return (
-    <ChartContainer config={statusChartConfig} className="h-[280px] w-full">
+    <ChartContainer
+      config={statusChartConfig}
+      className="h-[280px] min-w-0 max-w-full"
+    >
       <PieChart accessibilityLayer>
         <ChartTooltip content={<ChartTooltipContent hideLabel />} />
         <Pie
@@ -372,27 +381,29 @@ function RankingBarChart({
   }
 
   return (
-    <ChartContainer config={config} className="h-[300px] w-full">
-      <BarChart
-        accessibilityLayer
-        data={data}
-        layout="vertical"
-        margin={{ left: 8, right: 24, top: 8, bottom: 8 }}
-      >
-        <CartesianGrid horizontal={false} />
-        <XAxis type="number" tickLine={false} axisLine={false} />
-        <YAxis
-          type="category"
-          dataKey="classTitle"
-          tickLine={false}
-          axisLine={false}
-          width={140}
-          tickMargin={8}
-        />
-        <ChartTooltip content={<ChartTooltipContent hideLabel />} />
-        <Bar dataKey="count" fill="var(--color-count)" radius={4} />
-      </BarChart>
-    </ChartContainer>
+    <div className="min-w-0 max-w-full overflow-x-auto">
+      <ChartContainer config={config} className="h-[300px] min-w-[32rem]">
+        <BarChart
+          accessibilityLayer
+          data={data}
+          layout="vertical"
+          margin={{ left: 8, right: 24, top: 8, bottom: 8 }}
+        >
+          <CartesianGrid horizontal={false} />
+          <XAxis type="number" tickLine={false} axisLine={false} />
+          <YAxis
+            type="category"
+            dataKey="classTitle"
+            tickLine={false}
+            axisLine={false}
+            width={140}
+            tickMargin={8}
+          />
+          <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+          <Bar dataKey="count" fill="var(--color-count)" radius={4} />
+        </BarChart>
+      </ChartContainer>
+    </div>
   );
 }
 

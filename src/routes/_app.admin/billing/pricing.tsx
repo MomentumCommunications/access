@@ -127,11 +127,11 @@ function PricingAdminPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-col gap-5 p-4 lg:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+    <main className="mx-auto flex min-w-0 w-full max-w-7xl flex-col gap-5 overflow-hidden p-4 lg:p-8">
+        <div className="flex min-w-0 max-w-full flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-3xl font-bold">Pricing</h1>
-            <p className="text-muted-foreground">
+            <p className="break-words text-muted-foreground">
               Configure recurring tuition and app-calculated charge rates.
             </p>
           </div>
@@ -142,7 +142,7 @@ function PricingAdminPage() {
         </div>
 
         {showCreate ? (
-          <Card className="rounded-lg">
+          <Card className="min-w-0 max-w-full rounded-lg">
             <CardHeader>
               <CardTitle className="text-base">New pricing schema</CardTitle>
             </CardHeader>
@@ -186,7 +186,7 @@ function PricingAdminPage() {
             <Spinner className="size-5" />
           </div>
         ) : schemas.length === 0 ? (
-          <Card className="rounded-lg">
+          <Card className="min-w-0 max-w-full rounded-lg">
             <CardContent className="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
               <div>
                 <p className="font-medium">No pricing schemas yet</p>
@@ -201,11 +201,11 @@ function PricingAdminPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid min-w-0 gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
-            <Card className="h-min rounded-lg">
+          <div className="grid min-w-0 max-w-full gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
+            <Card className="h-min min-w-0 max-w-full rounded-lg">
               <CardHeader>
                 <CardTitle className="text-base">Pricing schemas</CardTitle>
-                <CardDescription>
+                <CardDescription className="break-words">
                   Drafts can be edited. Active and archived versions are locked.
                 </CardDescription>
               </CardHeader>
@@ -249,11 +249,11 @@ function PricingAdminPage() {
 
         <PrivatePricingSection />
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid min-w-0 max-w-full gap-4 md:grid-cols-2">
           {[
             ["Packages", "Reserved for package-based pricing."],
           ].map(([title, description]) => (
-            <Card key={title} className="rounded-lg">
+            <Card key={title} className="min-w-0 max-w-full rounded-lg">
               <CardHeader>
                 <CardTitle className="text-base">{title}</CardTitle>
                 <CardDescription>{description}</CardDescription>
@@ -340,10 +340,10 @@ function PrivatePricingSection() {
   }
 
   return (
-    <Card className="rounded-lg">
+    <Card className="min-w-0 max-w-full rounded-lg">
       <CardHeader>
         <CardTitle>Private Pricing</CardTitle>
-        <CardDescription>
+        <CardDescription className="break-words">
           Hourly per-student rates based on a private&apos;s default participant
           count. New rates replace the active version without changing saved
           historical charges.
@@ -421,8 +421,8 @@ function PrivatePricingSection() {
             </p>
           </div>
         ) : (
-          <div className="rounded-md border">
-            <Table>
+          <div className="min-w-0 max-w-full overflow-x-auto rounded-md border">
+            <Table className="min-w-[44rem]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Bucket</TableHead>
@@ -512,7 +512,7 @@ function PricingSchemaEditor({
 
   if (detail === undefined) {
     return (
-      <Card className="rounded-lg">
+      <Card className="min-w-0 max-w-full rounded-lg">
         <CardContent className="flex min-h-64 items-center justify-center">
           <Spinner className="size-5" />
         </CardContent>
@@ -521,7 +521,7 @@ function PricingSchemaEditor({
   }
   if (detail === null) {
     return (
-      <Card className="rounded-lg">
+      <Card className="min-w-0 max-w-full rounded-lg">
         <CardContent className="py-10 text-center text-muted-foreground">
           Pricing schema not found.
         </CardContent>
@@ -607,17 +607,17 @@ function PricingSchemaEditor({
 
   return (
     <>
-      <Card className="min-w-0 rounded-lg">
+      <Card className="min-w-0 max-w-full rounded-lg">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <CardTitle>{schema.name}</CardTitle>
                 <Badge variant={statusBadgeVariant(schema.status)}>
                   {schema.status}
                 </Badge>
               </div>
-              <CardDescription>
+              <CardDescription className="break-words">
                 Version {schema.version} · Updated{" "}
                 {formatUpdatedAt(schema.updatedAt)}
               </CardDescription>
@@ -662,7 +662,7 @@ function PricingSchemaEditor({
             </p>
           ) : null}
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0 max-w-full">
           <TuitionTierGrid
             key={`${schema._id}-${schema.updatedAt}`}
             tiers={tiers}
@@ -804,12 +804,12 @@ function SiblingDiscountEditor({
   }
 
   return (
-    <section className="mt-6 border-t pt-6">
+    <section className="mt-6 min-w-0 max-w-full border-t pt-6">
       <div className="flex flex-col gap-5">
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <h3 className="font-semibold">Sibling discount</h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="break-words text-sm text-muted-foreground">
               Keep the highest tuition at full price and discount every
               additional tuition-bearing student in the household.
             </p>

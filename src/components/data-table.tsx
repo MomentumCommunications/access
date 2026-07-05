@@ -93,8 +93,8 @@ export function DataTable<TData, TValue>({
   }, [table]);
 
   return (
-    <div className="min-w-0 space-y-3">
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
+    <div className="min-w-0 max-w-full space-y-3">
+      <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
         {toolbar}
         {filterColumn ? (
           <Input
@@ -133,7 +133,7 @@ export function DataTable<TData, TValue>({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="max-w-full overflow-x-auto rounded-md border">
+      <div className="min-w-0 max-w-full overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

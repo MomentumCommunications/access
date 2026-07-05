@@ -111,11 +111,11 @@ function AdminAccountsPage() {
 
   return (
     <RoleGate allow="admin">
-      <main className="flex w-full flex-col gap-4 p-4 lg:p-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
+      <main className="flex min-w-0 w-full max-w-full flex-col gap-4 overflow-hidden p-4 lg:p-8">
+        <div className="flex min-w-0 max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <h1 className="text-3xl font-bold">Accounts</h1>
-            <p className="text-muted-foreground">
+            <p className="break-words text-muted-foreground">
               Review user accounts and update sidebar access roles.
             </p>
           </div>
@@ -137,8 +137,10 @@ function AdminAccountsPage() {
             filterColumn="name"
             filterPlaceholder="Filter accounts..."
             toolbar={
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Status</span>
+              <div className="flex min-w-0 max-w-full items-center gap-2">
+                <span className="shrink-0 text-sm text-muted-foreground">
+                  Status
+                </span>
                 <Select
                   value={statusFilter}
                   onValueChange={(value) =>

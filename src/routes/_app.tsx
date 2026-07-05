@@ -81,9 +81,11 @@ function AppLayoutComponent() {
           <Suspense fallback={<SidebarSkeleton />}>
             <MemoizedAppSidebar />
           </Suspense>
-          <div className="flex flex-1 flex-col overscroll-contain pb-24 md:pb-0">
+          <div className="flex min-w-0 w-full max-w-full flex-1 flex-col overflow-x-clip overscroll-contain pb-24 md:pb-0">
             <MemoizedHeader />
-            <Outlet />
+            <div className="min-w-0 max-w-full">
+              <Outlet />
+            </div>
           </div>
           <MemoizedMobileBottomNav />
         </SidebarDataProvider>

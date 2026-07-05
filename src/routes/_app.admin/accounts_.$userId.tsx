@@ -12,11 +12,13 @@ import {
   ArrowLeft,
   Ban,
   Copy,
-  HousePlus,
+  HouseIcon,
   LucideMail,
   Mail,
   Pencil,
+  PersonStanding,
   PhoneIcon,
+  Receipt,
   RefreshCw,
   Unlink,
   User,
@@ -28,6 +30,7 @@ import { BillingDateRangePicker } from "~/components/billing-date-range-picker";
 import { RoleGate } from "~/components/role-gate";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -54,12 +57,7 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "~/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { formatAge, formatFullDate } from "~/lib/date-utils";
 import { getAccountName } from "~/lib/account-name";
 import { RoleDropdown } from "~/components/role-controls";
@@ -69,14 +67,7 @@ import {
   resolveAccountStatus,
   type AccountStatus,
 } from "../../../shared/account-status";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "~/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "~/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -101,9 +92,10 @@ type AdminAccountData = NonNullable<
 type AccountTuitionSummary = FunctionReturnType<
   typeof api.billing.adminAccountTuitionSummary
 >;
-type AccountTuition = Extract<AccountTuitionSummary, { status: "ready" }>[
-  "tuition"
-];
+type AccountTuition = Extract<
+  AccountTuitionSummary,
+  { status: "ready" }
+>["tuition"];
 type AccountTuitionStudent = AccountTuition["students"][number];
 
 const tuitionReasonLabels = {
@@ -339,24 +331,32 @@ function AdminAccountDetailPage() {
               </div>
             </div>
             <div className="flex flex-col gap-2 space-y-2 sm:flex-row sm:justify-end sm:space-y-4">
-              <HouseholdDialog userId={userId} />
               <InviteDialog userId={userId} />
             </div>
             <Separator className="my-4 w-full" />
           </section>
           <Tabs defaultValue="students" className="gap-4">
-            <TabsList className="h-auto w-full justify-start gap-6 overflow-x-auto rounded-none border-b bg-transparent p-0 text-muted-foreground">
+            <TabsList className="text-muted-foreground h-auto w-full justify-start gap-6 overflow-x-auto rounded-none border-b bg-transparent p-0">
               <TabsTrigger
                 value="students"
-                className="relative h-10 flex-none rounded-none border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent"
+                className="data-[state=active]:border-primary relative h-10 flex-none rounded-none border-x-0 border-b-2 border-t-0 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent"
               >
-                Connected students
+                <PersonStanding />
+                Students
               </TabsTrigger>
               <TabsTrigger
                 value="tuition"
-                className="relative h-10 flex-none rounded-none border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent"
+                className="data-[state=active]:border-primary relative h-10 flex-none rounded-none border-x-0 border-b-2 border-t-0 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent"
               >
+                <Receipt />
                 Tuition
+              </TabsTrigger>
+              <TabsTrigger
+                value="household"
+                className="data-[state=active]:border-primary relative h-10 flex-none rounded-none border-x-0 border-b-2 border-t-0 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent"
+              >
+                <HouseIcon />
+                Household
               </TabsTrigger>
             </TabsList>
             <TabsContent value="students" className="space-y-4">
@@ -364,6 +364,9 @@ function AdminAccountDetailPage() {
             </TabsContent>
             <TabsContent value="tuition" className="space-y-4">
               <AccountTuitionSummaryTab userId={typedUserId} />
+            </TabsContent>
+            <TabsContent value="household" className="space-y-4">
+              <HouseholdTab userId={userId} />
             </TabsContent>
           </Tabs>
         </main>
@@ -542,12 +545,12 @@ function AccountTuitionSummaryTab({ userId }: { userId: Id<"users"> }) {
         />
       </div>
       {!validPeriod ? (
-        <p className="text-sm text-destructive">
+        <p className="text-destructive text-sm">
           End date must be on or after start date.
         </p>
       ) : null}
       {summary === undefined ? (
-        <div className="flex min-h-40 items-center justify-center">
+        <div className="min-h-40 flex items-center justify-center">
           <Spinner className="size-5" />
         </div>
       ) : (
@@ -636,7 +639,10 @@ function AccountTuitionCard({
   pricingSchema,
 }: {
   tuition: AccountTuition;
-  pricingSchema: Extract<AccountTuitionSummary, { status: "ready" }>["pricingSchema"];
+  pricingSchema: Extract<
+    AccountTuitionSummary,
+    { status: "ready" }
+  >["pricingSchema"];
 }) {
   const linkageWarning = tuition.students.find(
     (student) => student.householdLinkWarning,
@@ -707,9 +713,7 @@ function AccountTuitionCard({
                 <TableCell>{formatWeeklyHourRange(student)}</TableCell>
                 <TableCell>{tierLabels(student)}</TableCell>
                 <TableCell>
-                  <Badge
-                    variant={student.isProrated ? "secondary" : "outline"}
-                  >
+                  <Badge variant={student.isProrated ? "secondary" : "outline"}>
                     {student.isProrated ? "Prorated" : "Full period"}
                   </Badge>
                 </TableCell>
@@ -726,7 +730,7 @@ function AccountTuitionCard({
                       {student.studentBillingAdjustments.map((adjustment) => (
                         <div
                           key={adjustment.id}
-                          className="text-xs text-muted-foreground"
+                          className="text-muted-foreground text-xs"
                         >
                           {tuitionReasonLabels[adjustment.reasonCode]}:{" "}
                           {adjustment.applicable
@@ -742,7 +746,7 @@ function AccountTuitionCard({
           </TableBody>
         </Table>
         <div className="grid gap-4 border-t p-4 md:grid-cols-[1fr_auto]">
-          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+          <div className="text-muted-foreground flex flex-wrap gap-2 text-xs">
             <Badge variant="outline">
               Scholarships: manual adjustments only
             </Badge>
@@ -793,7 +797,7 @@ function AccountTuitionCard({
               <span>{formatCurrency(tuition.totalTuitionCents)}</span>
             </div>
             {tuition.hasIncompleteTuition ? (
-              <div className="text-xs text-destructive">
+              <div className="text-destructive text-xs">
                 Total excludes unpriced students
               </div>
             ) : null}
@@ -804,7 +808,7 @@ function AccountTuitionCard({
   );
 }
 
-function HouseholdDialog({ userId }: { userId: string }) {
+function HouseholdTab({ userId }: { userId: string }) {
   const typedUserId = userId as Id<"users">;
   const householdData = useConvexQuery(api.billing.adminGetAccountHousehold, {
     userId: typedUserId,
@@ -820,12 +824,23 @@ function HouseholdDialog({ userId }: { userId: string }) {
   const removeHousehold = useConvexMutation(
     api.billing.adminRemoveAccountFromHousehold,
   );
+  const createPayer = useConvexMutation(
+    api.billing.adminCreateHouseholdPayerForAccount,
+  );
+  const setPayerActive = useConvexMutation(
+    api.billing.adminSetHouseholdPayerActive,
+  );
+  const setPayerPrimary = useConvexMutation(
+    api.billing.adminSetHouseholdPayerPrimary,
+  );
   const setPayerAutopay = useConvexMutation(
     api.billing.adminSetHouseholdPayerAutopay,
   );
   const [selectedHouseholdId, setSelectedHouseholdId] = useState("");
   const [newHouseholdName, setNewHouseholdName] = useState("");
   const [savingHousehold, setSavingHousehold] = useState(false);
+  const [savingPayer, setSavingPayer] = useState(false);
+  const [newPayerPrimary, setNewPayerPrimary] = useState<boolean | null>(null);
 
   async function handleAttachHousehold() {
     if (!selectedHouseholdId) return;
@@ -879,172 +894,315 @@ function HouseholdDialog({ userId }: { userId: string }) {
     }
   }
 
+  async function handleCreatePayer() {
+    if (!householdData) return;
+    const isPrimary =
+      newPayerPrimary ?? !householdData.hasOtherActivePrimaryPayer;
+    setSavingPayer(true);
+    try {
+      await createPayer({
+        userId: typedUserId,
+        householdId: householdData.household._id,
+        isPrimary,
+      });
+      setNewPayerPrimary(null);
+      toast.success("Account added as a household payer.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to add household payer.",
+      );
+    } finally {
+      setSavingPayer(false);
+    }
+  }
+
+  async function handleSetPayerActive(active: boolean) {
+    if (!householdData?.payer) return;
+    setSavingPayer(true);
+    try {
+      await setPayerActive({
+        householdPayerId: householdData.payer._id,
+        active,
+      });
+      toast.success(
+        `Household payer marked ${active ? "active" : "inactive"}.`,
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to update household payer.",
+      );
+    } finally {
+      setSavingPayer(false);
+    }
+  }
+
+  async function handleSetPayerPrimary(isPrimary: boolean) {
+    if (!householdData?.payer) return;
+    setSavingPayer(true);
+    try {
+      await setPayerPrimary({
+        householdPayerId: householdData.payer._id,
+        isPrimary,
+      });
+      toast.success(
+        isPrimary
+          ? "Account is now the primary payer."
+          : "Account is no longer the primary payer.",
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to update primary payer.",
+      );
+    } finally {
+      setSavingPayer(false);
+    }
+  }
+
   return (
-    <Dialog>
-      <form>
-        <DialogTrigger asChild>
-          <Button variant="outline" className="w-full sm:w-min">
-            <HousePlus className="size-4" />
+    <section className="space-y-4">
+      <div>
+        <h1 className="text-3xl font-bold">Household</h1>
+        <p className="text-muted-foreground">
+          Manage this account&apos;s household link and billing responsibility.
+        </p>
+      </div>
+      <Card className="rounded-lg">
+        <CardContent>
+          <div className="space-y-5">
             {householdData === undefined || households === undefined ? (
               <Spinner className="size-4" />
             ) : (
-              <span>{householdData?.household.name || "Not assigned"}</span>
-            )}
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Manage Household</DialogTitle>
-            <DialogDescription>
-              Assign this account to a household to manage tuition billing.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="rounded-lg">
-            <div className="space-y-5">
-              {householdData === undefined || households === undefined ? (
-                <Spinner className="size-4" />
-              ) : (
-                <>
-                  <div className="rounded-md border p-3 text-sm">
-                    <div className="text-muted-foreground">
-                      Current household
-                    </div>
-                    <div className="font-medium">
-                      {householdData?.household.name || "Not assigned"}
-                    </div>
-                    {!householdData ? (
-                      <p className="text-muted-foreground mt-1 text-xs">
-                        Until linked, billing falls back to the connected
-                        account or a standalone student group.
-                      </p>
-                    ) : (
-                      <>
-                        {householdData.payer?.active &&
-                        householdData.payer.isPrimary ? (
-                          <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
-                            <div>
-                              <Label htmlFor="account-autopay">
-                                Automatic payment
-                              </Label>
-                              <p className="text-muted-foreground text-xs">
-                                Auto-charge draft invoices only when Stripe has
-                                a default payment method.
-                              </p>
-                            </div>
-                            <Switch
-                              id="account-autopay"
-                              checked={
-                                householdData.payer.autopayEnabled === true
-                              }
-                              onCheckedChange={(enabled) => {
-                                void setPayerAutopay({
-                                  householdPayerId: householdData.payer!._id,
-                                  enabled,
-                                }).catch((error) =>
-                                  toast.error(
-                                    error instanceof Error
-                                      ? error.message
-                                      : "Unable to update autopay.",
-                                  ),
-                                );
-                              }}
-                            />
-                          </div>
-                        ) : null}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive -ml-2 mt-2"
-                          disabled={savingHousehold}
-                          onClick={() => void handleRemoveHousehold()}
-                        >
-                          <Unlink />
-                          Remove link
-                        </Button>
-                      </>
-                    )}
+              <>
+                <div className="rounded-md border p-3 text-sm">
+                  <div className="text-muted-foreground">Current household</div>
+                  <div className="font-medium">
+                    {householdData?.household.name || "Not assigned"}
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="existing-household">
-                      Attach existing household
-                    </Label>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <Select
-                        value={selectedHouseholdId}
-                        onValueChange={setSelectedHouseholdId}
-                        disabled={households.length === 0}
-                      >
-                        <SelectTrigger
-                          id="existing-household"
-                          className="min-w-0 flex-1"
-                        >
-                          <SelectValue
-                            placeholder={
-                              households.length === 0
-                                ? "No households yet"
-                                : "Select household"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {households.map(({ household, memberCount }) => (
-                            <SelectItem
-                              key={household._id}
-                              value={household._id}
+                  {!householdData ? (
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Until linked, billing falls back to the connected account
+                      or a standalone student group.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="mt-3 space-y-3 border-t pt-3">
+                        <div>
+                          <div className="font-medium">
+                            Billing responsibility
+                          </div>
+                          <p className="text-muted-foreground text-xs">
+                            Household payers can be used for billing and Stripe
+                            invoice dispatch.
+                          </p>
+                        </div>
+                        {!householdData.payer ? (
+                          <div className="space-y-3 rounded-md border p-3">
+                            <label className="flex items-start gap-2 text-sm">
+                              <Checkbox
+                                checked={
+                                  newPayerPrimary ??
+                                  !householdData.hasOtherActivePrimaryPayer
+                                }
+                                onCheckedChange={(checked) =>
+                                  setNewPayerPrimary(checked === true)
+                                }
+                                disabled={savingPayer}
+                              />
+                              <span>
+                                <span className="font-medium">
+                                  Make primary payer
+                                </span>
+                                <span className="text-muted-foreground block text-xs">
+                                  {householdData.hasOtherActivePrimaryPayer
+                                    ? "Another active primary payer already exists."
+                                    : "No active primary payer exists yet."}
+                                </span>
+                              </span>
+                            </label>
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={savingPayer}
+                              onClick={() => void handleCreatePayer()}
                             >
-                              {household.name} ({memberCount})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                              Add as payer
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3 rounded-md border p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <Label htmlFor="account-payer-active">
+                                  Active payer
+                                </Label>
+                                <p className="text-muted-foreground text-xs">
+                                  Inactive payers are ignored by billing
+                                  dispatch.
+                                </p>
+                              </div>
+                              <Switch
+                                id="account-payer-active"
+                                checked={householdData.payer.active}
+                                disabled={savingPayer}
+                                onCheckedChange={(active) =>
+                                  void handleSetPayerActive(active)
+                                }
+                              />
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <Label htmlFor="account-payer-primary">
+                                  Primary payer
+                                </Label>
+                                <p className="text-muted-foreground text-xs">
+                                  Setting this account primary will demote other
+                                  primary payers.
+                                </p>
+                              </div>
+                              <Switch
+                                id="account-payer-primary"
+                                checked={householdData.payer.isPrimary}
+                                disabled={savingPayer}
+                                onCheckedChange={(isPrimary) =>
+                                  void handleSetPayerPrimary(isPrimary)
+                                }
+                              />
+                            </div>
+                            {householdData.payer.active &&
+                            householdData.payer.isPrimary ? (
+                              <div className="flex items-center justify-between gap-3 border-t pt-3">
+                                <div>
+                                  <Label htmlFor="account-autopay">
+                                    Automatic payment
+                                  </Label>
+                                  <p className="text-muted-foreground text-xs">
+                                    Auto-charge draft invoices only when Stripe
+                                    has a default payment method.
+                                  </p>
+                                </div>
+                                <Switch
+                                  id="account-autopay"
+                                  checked={
+                                    householdData.payer.autopayEnabled === true
+                                  }
+                                  onCheckedChange={(enabled) => {
+                                    void setPayerAutopay({
+                                      householdPayerId:
+                                        householdData.payer!._id,
+                                      enabled,
+                                    }).catch((error) =>
+                                      toast.error(
+                                        error instanceof Error
+                                          ? error.message
+                                          : "Unable to update autopay.",
+                                      ),
+                                    );
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              <p className="text-muted-foreground border-t pt-3 text-xs">
+                                Automatic payment is available only for an
+                                active primary payer.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <Button
                         type="button"
-                        disabled={!selectedHouseholdId || savingHousehold}
-                        onClick={() => void handleAttachHousehold()}
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive -ml-2 mt-2"
+                        disabled={savingHousehold}
+                        onClick={() => void handleRemoveHousehold()}
                       >
-                        Attach
+                        <Unlink />
+                        Remove link
                       </Button>
-                    </div>
-                  </div>
+                    </>
+                  )}
+                </div>
 
-                  <form
-                    className="space-y-2"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      void handleCreateHousehold();
-                    }}
-                  >
-                    <Label htmlFor="new-household-name">
-                      Create a household
-                    </Label>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <Input
-                        id="new-household-name"
-                        value={newHouseholdName}
-                        onChange={(event) =>
-                          setNewHouseholdName(event.target.value)
-                        }
-                        placeholder="Household name"
-                        maxLength={100}
-                      />
-                      <Button
-                        type="submit"
-                        variant="secondary"
-                        disabled={!newHouseholdName.trim() || savingHousehold}
+                <div className="space-y-2">
+                  <Label htmlFor="existing-household">
+                    Attach existing household
+                  </Label>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Select
+                      value={selectedHouseholdId}
+                      onValueChange={setSelectedHouseholdId}
+                      disabled={households.length === 0}
+                    >
+                      <SelectTrigger
+                        id="existing-household"
+                        className="min-w-0 flex-1"
                       >
-                        Create
-                      </Button>
-                    </div>
-                  </form>
-                </>
-              )}
-            </div>
+                        <SelectValue
+                          placeholder={
+                            households.length === 0
+                              ? "No households yet"
+                              : "Select household"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {households.map(({ household, memberCount }) => (
+                          <SelectItem key={household._id} value={household._id}>
+                            {household.name} ({memberCount})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      disabled={!selectedHouseholdId || savingHousehold}
+                      onClick={() => void handleAttachHousehold()}
+                    >
+                      Attach
+                    </Button>
+                  </div>
+                </div>
+
+                <form
+                  className="space-y-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleCreateHousehold();
+                  }}
+                >
+                  <Label htmlFor="new-household-name">Create a household</Label>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      id="new-household-name"
+                      value={newHouseholdName}
+                      onChange={(event) =>
+                        setNewHouseholdName(event.target.value)
+                      }
+                      placeholder="Household name"
+                      maxLength={100}
+                    />
+                    <Button
+                      type="submit"
+                      variant="secondary"
+                      disabled={!newHouseholdName.trim() || savingHousehold}
+                    >
+                      Create
+                    </Button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
-        </DialogContent>
-      </form>
-    </Dialog>
+        </CardContent>
+      </Card>
+    </section>
   );
 }
 

@@ -2012,7 +2012,135 @@ export const adminGetAccountHousehold = query({
           .eq("userId", userId),
       )
       .first();
-    return { membership, household, payer };
+    const householdPayers = await ctx.db
+      .query("householdPayers")
+      .withIndex("byHousehold", (q) => q.eq("householdId", household._id))
+      .collect();
+    const hasOtherActivePrimaryPayer = householdPayers.some(
+      (candidate) =>
+        candidate.userId !== userId &&
+        candidate.active &&
+        candidate.isPrimary,
+    );
+    return { membership, household, payer, hasOtherActivePrimaryPayer };
+  },
+});
+
+async function demoteHouseholdPrimaryPayers(
+  ctx: BillingCtx,
+  householdId: Id<"households">,
+  exceptPayerId?: Id<"householdPayers">,
+) {
+  const now = Date.now();
+  const payers = await ctx.db
+    .query("householdPayers")
+    .withIndex("byHousehold", (q) => q.eq("householdId", householdId))
+    .collect();
+  await Promise.all(
+    payers
+      .filter(
+        (payer) => payer.isPrimary && payer._id !== exceptPayerId,
+      )
+      .map((payer) =>
+        ctx.db.patch(payer._id, {
+          isPrimary: false,
+          updatedAt: now,
+        }),
+      ),
+  );
+}
+
+export const adminCreateHouseholdPayerForAccount = mutation({
+  args: {
+    userId: v.id("users"),
+    householdId: v.id("households"),
+    isPrimary: v.boolean(),
+  },
+  handler: async (ctx, { userId, householdId, isPrimary }) => {
+    await requireAdmin(ctx);
+    const [user, household] = await Promise.all([
+      ctx.db.get(userId),
+      ctx.db.get(householdId),
+    ]);
+    if (!user) {
+      throw new Error("Account not found.");
+    }
+    if (!household) {
+      throw new Error("Household not found.");
+    }
+    const membership = await ctx.db
+      .query("householdMembers")
+      .withIndex("byHouseholdUser", (q) =>
+        q.eq("householdId", householdId).eq("userId", userId),
+      )
+      .first();
+    if (!membership) {
+      throw new Error("The account must be attached to this household first.");
+    }
+    const existing = await ctx.db
+      .query("householdPayers")
+      .withIndex("byHouseholdUser", (q) =>
+        q.eq("householdId", householdId).eq("userId", userId),
+      )
+      .first();
+    if (existing) {
+      throw new Error("This account is already a payer for this household.");
+    }
+    if (isPrimary) {
+      await demoteHouseholdPrimaryPayers(ctx, householdId);
+    }
+    const now = Date.now();
+    return await ctx.db.insert("householdPayers", {
+      householdId,
+      userId,
+      active: true,
+      isPrimary,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const adminSetHouseholdPayerActive = mutation({
+  args: {
+    householdPayerId: v.id("householdPayers"),
+    active: v.boolean(),
+  },
+  handler: async (ctx, { householdPayerId, active }) => {
+    await requireAdmin(ctx);
+    const payer = await ctx.db.get(householdPayerId);
+    if (!payer) {
+      throw new Error("Household payer not found.");
+    }
+    await ctx.db.patch(householdPayerId, {
+      active,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const adminSetHouseholdPayerPrimary = mutation({
+  args: {
+    householdPayerId: v.id("householdPayers"),
+    isPrimary: v.boolean(),
+  },
+  handler: async (ctx, { householdPayerId, isPrimary }) => {
+    await requireAdmin(ctx);
+    const payer = await ctx.db.get(householdPayerId);
+    if (!payer) {
+      throw new Error("Household payer not found.");
+    }
+    if (isPrimary) {
+      await demoteHouseholdPrimaryPayers(
+        ctx,
+        payer.householdId,
+        householdPayerId,
+      );
+    }
+    await ctx.db.patch(householdPayerId, {
+      isPrimary,
+      updatedAt: Date.now(),
+    });
   },
 });
 

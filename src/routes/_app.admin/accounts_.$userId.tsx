@@ -60,7 +60,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { formatAge, formatDateTime, formatFullDate } from "~/lib/date-utils";
+import { formatAge, formatDateTime, formatMDYYYY } from "~/lib/date-utils";
 import { getAccountName } from "~/lib/account-name";
 import { RoleDropdown } from "~/components/role-controls";
 import { resolveUserRoles } from "~/lib/roles";
@@ -402,7 +402,12 @@ function AdminAccountDetailPage() {
   );
 }
 
-type AccountTabValue = "students" | "tuition" | "household" | "classes" | "logs";
+type AccountTabValue =
+  | "students"
+  | "tuition"
+  | "household"
+  | "classes"
+  | "logs";
 
 function getDefaultAccountTab(accountData: AdminAccountData): AccountTabValue {
   const roles = resolveUserRoles(accountData.account);
@@ -569,7 +574,7 @@ function ConnectedStudentsTab({
                 <div className="rounded-md border p-3">
                   <div className="text-muted-foreground">Birthday</div>
                   <div className="font-medium">
-                    {formatFullDate(student?.dateOfBirth) || "Not set"}
+                    {formatMDYYYY(student?.dateOfBirth) || "Not set"}
                   </div>
                 </div>
                 <div className="rounded-md border p-3">
@@ -596,9 +601,12 @@ function formatEventType(eventType: string) {
 }
 
 function AccountInstructorClassesTab({ userId }: { userId: Id<"users"> }) {
-  const classes = useConvexQuery(api.classes.adminListAccountInstructorClasses, {
-    userId,
-  });
+  const classes = useConvexQuery(
+    api.classes.adminListAccountInstructorClasses,
+    {
+      userId,
+    },
+  );
 
   return (
     <section className="space-y-4">
@@ -609,7 +617,7 @@ function AccountInstructorClassesTab({ userId }: { userId: Id<"users"> }) {
         </p>
       </div>
       {classes === undefined ? (
-        <div className="flex min-h-40 items-center justify-center">
+        <div className="min-h-40 flex items-center justify-center">
           <Spinner className="size-5" />
         </div>
       ) : classes.length === 0 ? (
@@ -697,7 +705,7 @@ function AccountActivityLogTab({ userId }: { userId: Id<"users"> }) {
         </p>
       </div>
       {logs === undefined ? (
-        <div className="flex min-h-40 items-center justify-center">
+        <div className="min-h-40 flex items-center justify-center">
           <Spinner className="size-5" />
         </div>
       ) : logs.length === 0 ? (

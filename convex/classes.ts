@@ -3324,6 +3324,91 @@ export const adminListClasses = query({
   },
 });
 
+export const adminListAccountInstructorClasses = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await requireAdmin(ctx);
+    const targetUser = await ctx.db.get(userId);
+    if (!targetUser) {
+      return [];
+    }
+
+    const classes = await ctx.db.query("classes").collect();
+    const instructorClasses = classes
+      .filter((classItem) => classItem.assignedStaff?.includes(userId))
+      .sort(compareClassesBySchedule);
+    const today = todayValue();
+
+    return await Promise.all(
+      instructorClasses.map(async (classItem) => {
+        const [enrollments, visibleGroups] = await Promise.all([
+          ctx.db
+            .query("classEnrollments")
+            .withIndex("byClass", (q) => q.eq("classId", classItem._id))
+            .collect(),
+          Promise.all(
+            (classItem.visibleToGroupIds || []).map((groupId) =>
+              ctx.db.get(groupId),
+            ),
+          ),
+        ]);
+        const currentEnrolledCount = enrollments.filter(
+          (enrollment) =>
+            enrollment.status === "enrolled" &&
+            (!enrollment.startDate || enrollment.startDate <= today) &&
+            (!enrollment.endDate || enrollment.endDate >= today),
+        ).length;
+
+        return {
+          classItem,
+          visibleGroups: visibleGroups.filter((group) => group !== null),
+          currentEnrolledCount,
+        };
+      }),
+    );
+  },
+});
+
+export const adminListAccountActivityLog = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await requireAdmin(ctx);
+    const targetUser = await ctx.db.get(userId);
+    if (!targetUser) {
+      return [];
+    }
+
+    const [entityEvents, actorEvents] = await Promise.all([
+      ctx.db
+        .query("activityLog")
+        .withIndex("byEntity", (q) =>
+          q.eq("entityType", "user").eq("entityId", userId),
+        )
+        .order("desc")
+        .take(50),
+      ctx.db
+        .query("activityLog")
+        .withIndex("byActor", (q) => q.eq("actorId", userId))
+        .order("desc")
+        .take(50),
+    ]);
+
+    const eventsById = new Map(
+      [...entityEvents, ...actorEvents].map((event) => [event._id, event]),
+    );
+    const events = [...eventsById.values()]
+      .sort((left, right) => right._creationTime - left._creationTime)
+      .slice(0, 50);
+
+    return await Promise.all(
+      events.map(async (event) => ({
+        ...event,
+        actor: event.actorId ? await ctx.db.get(event.actorId) : null,
+      })),
+    );
+  },
+});
+
 export const adminListPendingEnrollments = query({
   args: {},
   handler: async (ctx) => {

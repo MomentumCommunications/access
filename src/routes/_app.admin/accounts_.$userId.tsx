@@ -11,7 +11,9 @@ import {
   AlertTriangle,
   ArrowLeft,
   Ban,
+  BookOpen,
   Copy,
+  History,
   HouseIcon,
   LucideMail,
   Mail,
@@ -24,7 +26,7 @@ import {
   User,
   UserPlus,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { BillingDateRangePicker } from "~/components/billing-date-range-picker";
 import { RoleGate } from "~/components/role-gate";
@@ -58,7 +60,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { formatAge, formatFullDate } from "~/lib/date-utils";
+import { formatAge, formatDateTime, formatFullDate } from "~/lib/date-utils";
 import { getAccountName } from "~/lib/account-name";
 import { RoleDropdown } from "~/components/role-controls";
 import { resolveUserRoles } from "~/lib/roles";
@@ -106,6 +108,9 @@ const tuitionReasonLabels = {
   surcharge: "Surcharge",
   other: "Other",
 } as const;
+
+const accountTabTriggerClass =
+  "data-[state=active]:border-primary relative h-10 flex-none rounded-none border-x-0 border-b-2 border-t-0 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent";
 
 function formatEmail(email?: string | string[]) {
   if (Array.isArray(email)) return email.join(", ");
@@ -335,40 +340,11 @@ function AdminAccountDetailPage() {
             </div>
             <Separator className="my-4 w-full" />
           </section>
-          <Tabs defaultValue="students" className="gap-4">
-            <TabsList className="text-muted-foreground h-auto w-full justify-start gap-6 overflow-x-auto rounded-none border-b bg-transparent p-0">
-              <TabsTrigger
-                value="students"
-                className="data-[state=active]:border-primary relative h-10 flex-none rounded-none border-x-0 border-b-2 border-t-0 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent"
-              >
-                <PersonStanding />
-                Students
-              </TabsTrigger>
-              <TabsTrigger
-                value="tuition"
-                className="data-[state=active]:border-primary relative h-10 flex-none rounded-none border-x-0 border-b-2 border-t-0 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent"
-              >
-                <Receipt />
-                Tuition
-              </TabsTrigger>
-              <TabsTrigger
-                value="household"
-                className="data-[state=active]:border-primary relative h-10 flex-none rounded-none border-x-0 border-b-2 border-t-0 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent"
-              >
-                <HouseIcon />
-                Household
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="students" className="space-y-4">
-              <ConnectedStudentsTab accountData={accountData} />
-            </TabsContent>
-            <TabsContent value="tuition" className="space-y-4">
-              <AccountTuitionSummaryTab userId={typedUserId} />
-            </TabsContent>
-            <TabsContent value="household" className="space-y-4">
-              <HouseholdTab userId={userId} />
-            </TabsContent>
-          </Tabs>
+          <AccountRoleTabs
+            accountData={accountData}
+            typedUserId={typedUserId}
+            userId={userId}
+          />
         </main>
       )}
       <AlertDialog
@@ -423,6 +399,102 @@ function AdminAccountDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
     </RoleGate>
+  );
+}
+
+type AccountTabValue = "students" | "tuition" | "household" | "classes" | "logs";
+
+function getDefaultAccountTab(accountData: AdminAccountData): AccountTabValue {
+  const roles = resolveUserRoles(accountData.account);
+  if (roles.includes("member")) return "students";
+  if (roles.includes("staff")) return "classes";
+  return "logs";
+}
+
+function AccountRoleTabs({
+  accountData,
+  typedUserId,
+  userId,
+}: {
+  accountData: AdminAccountData;
+  typedUserId: Id<"users">;
+  userId: string;
+}) {
+  const roles = resolveUserRoles(accountData.account);
+  const showMemberTabs = roles.includes("member");
+  const showStaffTabs = roles.includes("staff");
+  const defaultTab = getDefaultAccountTab(accountData);
+  const visibleTabs: AccountTabValue[] = [
+    ...(showMemberTabs
+      ? (["students", "tuition", "household"] satisfies AccountTabValue[])
+      : []),
+    ...(showStaffTabs ? (["classes"] satisfies AccountTabValue[]) : []),
+    "logs",
+  ];
+  const [selectedTab, setSelectedTab] = useState<AccountTabValue>(defaultTab);
+
+  useEffect(() => {
+    if (!visibleTabs.includes(selectedTab)) {
+      setSelectedTab(defaultTab);
+    }
+  }, [defaultTab, selectedTab, visibleTabs]);
+
+  return (
+    <Tabs
+      value={selectedTab}
+      onValueChange={(value) => setSelectedTab(value as AccountTabValue)}
+      className="gap-4"
+    >
+      <TabsList className="text-muted-foreground h-auto w-full justify-start gap-6 overflow-x-auto rounded-none border-b bg-transparent p-0">
+        {showMemberTabs ? (
+          <>
+            <TabsTrigger value="students" className={accountTabTriggerClass}>
+              <PersonStanding />
+              Students
+            </TabsTrigger>
+            <TabsTrigger value="tuition" className={accountTabTriggerClass}>
+              <Receipt />
+              Tuition
+            </TabsTrigger>
+            <TabsTrigger value="household" className={accountTabTriggerClass}>
+              <HouseIcon />
+              Household
+            </TabsTrigger>
+          </>
+        ) : null}
+        {showStaffTabs ? (
+          <TabsTrigger value="classes" className={accountTabTriggerClass}>
+            <BookOpen />
+            Classes
+          </TabsTrigger>
+        ) : null}
+        <TabsTrigger value="logs" className={accountTabTriggerClass}>
+          <History />
+          Logs
+        </TabsTrigger>
+      </TabsList>
+      {showMemberTabs ? (
+        <>
+          <TabsContent value="students" className="space-y-4">
+            <ConnectedStudentsTab accountData={accountData} />
+          </TabsContent>
+          <TabsContent value="tuition" className="space-y-4">
+            <AccountTuitionSummaryTab userId={typedUserId} />
+          </TabsContent>
+          <TabsContent value="household" className="space-y-4">
+            <HouseholdTab userId={userId} />
+          </TabsContent>
+        </>
+      ) : null}
+      {showStaffTabs ? (
+        <TabsContent value="classes" className="space-y-4">
+          <AccountInstructorClassesTab userId={typedUserId} />
+        </TabsContent>
+      ) : null}
+      <TabsContent value="logs" className="space-y-4">
+        <AccountActivityLogTab userId={typedUserId} />
+      </TabsContent>
+    </Tabs>
   );
 }
 
@@ -509,6 +581,166 @@ function ConnectedStudentsTab({
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function formatEventType(eventType: string) {
+  return eventType
+    .split("_")
+    .filter(Boolean)
+    .map((word) => word[0]?.toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function AccountInstructorClassesTab({ userId }: { userId: Id<"users"> }) {
+  const classes = useConvexQuery(api.classes.adminListAccountInstructorClasses, {
+    userId,
+  });
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h1 className="text-3xl font-bold">Classes</h1>
+        <p className="text-muted-foreground">
+          Classes where this account is assigned as an instructor.
+        </p>
+      </div>
+      {classes === undefined ? (
+        <div className="flex min-h-40 items-center justify-center">
+          <Spinner className="size-5" />
+        </div>
+      ) : classes.length === 0 ? (
+        <Card className="rounded-lg">
+          <CardHeader>
+            <CardTitle>No assigned classes</CardTitle>
+            <CardDescription>
+              This staff account is not marked as an instructor on any classes.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Class</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Schedule</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Groups</TableHead>
+                <TableHead className="text-right">Enrolled</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {classes.map((row) => (
+                <TableRow key={row.classItem._id}>
+                  <TableCell className="font-medium">
+                    <Button asChild variant="link" className="h-auto p-0">
+                      <Link
+                        to="/admin/classes/$classId"
+                        params={{ classId: row.classItem._id }}
+                      >
+                        {row.classItem.title}
+                      </Link>
+                    </Button>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{row.classItem.status}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {row.classItem.scheduleSummary || "Not set"}
+                  </TableCell>
+                  <TableCell>{row.classItem.location || "Not set"}</TableCell>
+                  <TableCell>
+                    {row.visibleGroups.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {row.visibleGroups.map((group) => (
+                          <Badge key={group._id} variant="secondary">
+                            {group.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">All groups</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {row.currentEnrolledCount}
+                    {row.classItem.capacity
+                      ? ` / ${row.classItem.capacity}`
+                      : ""}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AccountActivityLogTab({ userId }: { userId: Id<"users"> }) {
+  const logs = useConvexQuery(api.classes.adminListAccountActivityLog, {
+    userId,
+  });
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h1 className="text-3xl font-bold">Logs</h1>
+        <p className="text-muted-foreground">
+          Recent activity directly tied to this account or performed by it.
+        </p>
+      </div>
+      {logs === undefined ? (
+        <div className="flex min-h-40 items-center justify-center">
+          <Spinner className="size-5" />
+        </div>
+      ) : logs.length === 0 ? (
+        <Card className="rounded-lg">
+          <CardHeader>
+            <CardTitle>No activity yet</CardTitle>
+            <CardDescription>
+              This account does not have any matching activity log entries.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Time</TableHead>
+                <TableHead>Event</TableHead>
+                <TableHead>Summary</TableHead>
+                <TableHead>Actor</TableHead>
+                <TableHead>Entity</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {logs.map((event) => (
+                <TableRow key={event._id}>
+                  <TableCell className="whitespace-nowrap">
+                    {formatDateTime(event._creationTime)}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {formatEventType(event.eventType)}
+                  </TableCell>
+                  <TableCell className="min-w-72">{event.summary}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {event.actor ? getAccountName(event.actor) : "System"}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <Badge variant="outline">{event.entityType}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
     </section>

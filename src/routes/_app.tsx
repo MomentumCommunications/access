@@ -4,6 +4,7 @@ import { api } from "convex/_generated/api";
 import { memo, Suspense, useEffect, useRef } from "react";
 import { AppSidebar } from "~/components/app-sidebar";
 import { Header } from "~/components/header";
+import { MobileBottomNav } from "~/components/mobile-bottom-nav";
 import { SidebarSkeleton } from "~/components/SidebarSkeleton";
 import { SidebarDataProvider } from "~/contexts/SidebarDataContext";
 import { SidebarProvider } from "~/components/ui/sidebar";
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/_app")({
 
 const MemoizedAppSidebar = memo(AppSidebar);
 const MemoizedHeader = memo(Header);
+const MemoizedMobileBottomNav = memo(MobileBottomNav);
 
 function AppLayoutComponent() {
   const user = useConvexQuery(api.users.current, {});
@@ -79,10 +81,11 @@ function AppLayoutComponent() {
           <Suspense fallback={<SidebarSkeleton />}>
             <MemoizedAppSidebar />
           </Suspense>
-          <div className="flex flex-1 flex-col overscroll-contain">
+          <div className="flex flex-1 flex-col overscroll-contain pb-24 md:pb-0">
             <MemoizedHeader />
             <Outlet />
           </div>
+          <MemoizedMobileBottomNav />
         </SidebarDataProvider>
       </ActiveRoleProvider>
     </SidebarProvider>

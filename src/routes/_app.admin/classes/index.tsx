@@ -20,6 +20,7 @@ import { Spinner } from "~/components/ui/spinner";
 export const Route = createFileRoute("/_app/admin/classes/")({
   validateSearch: z.object({
     season: z.string().optional(),
+    group: z.string().optional(),
   }),
   component: AdminClassesPage,
 });
@@ -101,9 +102,10 @@ const columns: ColumnDef<ClassRow>[] = [
 
 function AdminClassesPage() {
   const navigate = useNavigate();
-  const { season: selectedSeason } = Route.useSearch();
+  const { season: selectedSeason, group: selectedGroup } = Route.useSearch();
   const classes = useConvexQuery(api.classes.adminListClasses, {});
   const seasons = useConvexQuery(api.classes.adminListSeasons, {});
+  const groups = useConvexQuery(api.classes.adminListStudentGroups, {});
   const now = new Date();
   const today = [
     now.getFullYear(),
@@ -112,9 +114,21 @@ function AdminClassesPage() {
   ].join("-");
   const availableSeasons =
     seasons?.filter(({ season }) => season.endDate >= today) || [];
-  const filteredClasses = selectedSeason
-    ? classes?.filter((classRow) => classRow.seasonId === selectedSeason)
-    : classes;
+  const filteredClasses = classes?.filter((classRow) => {
+    if (selectedSeason && classRow.seasonId !== selectedSeason) {
+      return false;
+    }
+
+    const visibleGroupIds = classRow.classItem.visibleToGroupIds || [];
+    if (selectedGroup === "none") {
+      return visibleGroupIds.length === 0;
+    }
+    if (selectedGroup) {
+      return visibleGroupIds.includes(selectedGroup as Id<"groups">);
+    }
+
+    return true;
+  });
 
   return (
     <RoleGate allow="admin">
@@ -133,7 +147,9 @@ function AdminClassesPage() {
             </Link>
           </Button>
         </div>
-        {classes === undefined || seasons === undefined ? (
+        {classes === undefined ||
+        seasons === undefined ||
+        groups === undefined ? (
           <div className="flex min-h-40 items-center justify-center">
             <Spinner className="size-5" />
           </div>
@@ -144,30 +160,57 @@ function AdminClassesPage() {
             filterColumn="title"
             filterPlaceholder="Filter classes..."
             toolbar={
-              <Select
-                value={selectedSeason || "all"}
-                onValueChange={(value) =>
-                  navigate({
-                    to: "/admin/classes",
-                    search: (previous) => ({
-                      ...previous,
-                      season: value === "all" ? undefined : value,
-                    }),
-                  })
-                }
-              >
-                <SelectTrigger className="w-40 shrink-0 sm:w-52">
-                  <SelectValue placeholder="Filter by season" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All seasons</SelectItem>
-                  {availableSeasons.map(({ season }) => (
-                    <SelectItem key={season._id} value={season._id}>
-                      {season.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex min-w-0 flex-1 gap-2 sm:flex-none">
+                <Select
+                  value={selectedSeason || "all"}
+                  onValueChange={(value) =>
+                    navigate({
+                      to: "/admin/classes",
+                      search: (previous) => ({
+                        ...previous,
+                        season: value === "all" ? undefined : value,
+                      }),
+                    })
+                  }
+                >
+                  <SelectTrigger className="min-w-0 flex-1 sm:w-52 sm:flex-none">
+                    <SelectValue placeholder="Filter by season" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All seasons</SelectItem>
+                    {availableSeasons.map(({ season }) => (
+                      <SelectItem key={season._id} value={season._id}>
+                        {season.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={selectedGroup || "all"}
+                  onValueChange={(value) =>
+                    navigate({
+                      to: "/admin/classes",
+                      search: (previous) => ({
+                        ...previous,
+                        group: value === "all" ? undefined : value,
+                      }),
+                    })
+                  }
+                >
+                  <SelectTrigger className="min-w-0 flex-1 sm:w-56 sm:flex-none">
+                    <SelectValue placeholder="Filter by group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All groups</SelectItem>
+                    {groups.map((group) => (
+                      <SelectItem key={group._id} value={group._id}>
+                        {group.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="none">No group restriction</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             }
           />
         )}

@@ -112,7 +112,7 @@ function AdminCard({
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex h-full flex-col items-start justify-end">
         <Button asChild variant="outline">
           <Link to={to}>
             {icon}

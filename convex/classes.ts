@@ -120,6 +120,9 @@ const enrollmentStatusValidator = v.union(
   v.literal("declined"),
 );
 
+const birthdayMonthValidator = v.number();
+const birthdayYearValidator = v.number();
+
 const pendingEnrollmentActionValidator = v.union(
   v.literal("enroll"),
   v.literal("waitlist"),
@@ -497,6 +500,90 @@ function studentDisplayName(student: Doc<"students">) {
     student.preferredName || `${student.firstName} ${student.lastName}`.trim()
   );
 }
+
+function parseBirthdayMonthDay(dateOfBirth?: string) {
+  const match = dateOfBirth?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+
+  const birthYear = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (
+    !Number.isInteger(birthYear) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31
+  ) {
+    return null;
+  }
+
+  return { birthYear, month, day };
+}
+
+function birthdayDateForYear(year: number, month: number, day: number) {
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const observedDay = Math.min(day, daysInMonth);
+  return `${year}-${String(month).padStart(2, "0")}-${String(observedDay).padStart(2, "0")}`;
+}
+
+export const listStudentBirthdays = query({
+  args: {
+    year: birthdayYearValidator,
+    month: birthdayMonthValidator,
+  },
+  handler: async (ctx, { year, month }) => {
+    await getCurrentUserOrThrow(ctx);
+
+    if (
+      !Number.isInteger(year) ||
+      year < 1900 ||
+      year > 2200 ||
+      !Number.isInteger(month) ||
+      month < 1 ||
+      month > 12
+    ) {
+      throw new Error("Invalid birthday month.");
+    }
+
+    const students = await ctx.db.query("students").collect();
+    const rows = await Promise.all(
+      students
+        .filter((student) => (student.status ?? "active") === "active")
+        .map(async (student) => {
+          const birthday = parseBirthdayMonthDay(student.dateOfBirth);
+          if (!birthday || birthday.month !== month) {
+            return null;
+          }
+
+          return {
+            studentId: student._id,
+            name: studentDisplayName(student),
+            firstName: student.firstName,
+            lastName: student.lastName,
+            dateOfBirth: student.dateOfBirth,
+            birthYear: birthday.birthYear,
+            birthdayDay: birthday.day,
+            birthdayDate: birthdayDateForYear(year, month, birthday.day),
+            photoUrl: student.photo ? await ctx.storage.getUrl(student.photo) : null,
+          };
+        }),
+    );
+
+    return rows
+      .filter((row) => row !== null)
+      .sort((a, b) => {
+        if (a.birthdayDay !== b.birthdayDay) {
+          return a.birthdayDay - b.birthdayDay;
+        }
+        return a.name.localeCompare(b.name);
+      });
+  },
+});
 
 async function getStudentPerSessionClasses(
   ctx: DbCtx,

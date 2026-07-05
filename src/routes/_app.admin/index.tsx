@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { RoleGate } from "~/components/role-gate";
+import { StudentBirthdaysWidget } from "~/components/student-birthdays-widget";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -72,6 +73,7 @@ function AdminHome() {
             icon={<CalendarDays />}
           />
         </div>
+        <StudentBirthdaysWidget />
       </main>
     </RoleGate>
   );

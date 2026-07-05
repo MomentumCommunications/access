@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarCheck, ClipboardList } from "lucide-react";
 import { RoleGate } from "~/components/role-gate";
+import { StudentBirthdaysWidget } from "~/components/student-birthdays-widget";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -61,6 +62,7 @@ function StaffHome() {
             </CardContent>
           </Card>
         </div>
+        <StudentBirthdaysWidget />
       </main>
     </RoleGate>
   );

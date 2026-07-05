@@ -6,7 +6,9 @@ import {
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
+import type { FunctionReturnType } from "convex/server";
 import {
+  AlertTriangle,
   ArrowLeft,
   Ban,
   Copy,
@@ -22,7 +24,9 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { BillingDateRangePicker } from "~/components/billing-date-range-picker";
 import { RoleGate } from "~/components/role-gate";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -42,6 +46,20 @@ import {
 } from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "~/components/ui/tabs";
 import { formatAge, formatFullDate } from "~/lib/date-utils";
 import { getAccountName } from "~/lib/account-name";
 import { RoleDropdown } from "~/components/role-controls";
@@ -77,9 +95,82 @@ export const Route = createFileRoute("/_app/admin/accounts_/$userId")({
   component: AdminAccountDetailPage,
 });
 
+type AdminAccountData = NonNullable<
+  FunctionReturnType<typeof api.classes.adminGetAccount>
+>;
+type AccountTuitionSummary = FunctionReturnType<
+  typeof api.billing.adminAccountTuitionSummary
+>;
+type AccountTuition = Extract<AccountTuitionSummary, { status: "ready" }>[
+  "tuition"
+];
+type AccountTuitionStudent = AccountTuition["students"][number];
+
+const tuitionReasonLabels = {
+  scholarship: "Scholarship",
+  goodwill: "Goodwill",
+  manual_correction: "Manual correction",
+  waiver: "Waiver",
+  surcharge: "Surcharge",
+  other: "Other",
+} as const;
+
 function formatEmail(email?: string | string[]) {
   if (Array.isArray(email)) return email.join(", ");
   return email || "Not set";
+}
+
+function dateValue(date: Date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function currentMonthPeriodDefaults() {
+  const today = new Date();
+  return {
+    start: dateValue(new Date(today.getFullYear(), today.getMonth(), 1)),
+    end: dateValue(new Date(today.getFullYear(), today.getMonth() + 1, 0)),
+  };
+}
+
+function formatCurrency(cents: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(cents / 100);
+}
+
+function formatHours(minutes: number) {
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 2,
+  }).format(minutes / 60);
+}
+
+function formatWeeklyHourRange(row: AccountTuitionStudent) {
+  const values = [
+    ...new Set(
+      row.segments
+        .map((segment) => segment.weeklyMinutes)
+        .filter((minutes) => minutes > 0),
+    ),
+  ].sort((left, right) => left - right);
+  if (values.length === 0) return "0";
+  if (values.length === 1) return formatHours(values[0]);
+  return `${formatHours(values[0])} - ${formatHours(values.at(-1)!)}`;
+}
+
+function tierLabels(row: AccountTuitionStudent) {
+  const labels = [
+    ...new Set(
+      row.segments.flatMap((segment) =>
+        segment.tierLabel ? [segment.tierLabel] : [],
+      ),
+    ),
+  ];
+  return labels.length > 0 ? labels.join(" / ") : "No class hours";
 }
 
 function AdminAccountDetailPage() {
@@ -247,100 +338,34 @@ function AdminAccountDetailPage() {
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-2 space-y-4">
+            <div className="flex flex-col gap-2 space-y-2 sm:flex-row sm:justify-end sm:space-y-4">
               <HouseholdDialog userId={userId} />
               <InviteDialog userId={userId} />
             </div>
             <Separator className="my-4 w-full" />
           </section>
-          <section className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h1 className="text-3xl font-bold">Connected students</h1>
-                <p className="text-muted-foreground">
-                  Student profiles linked to this account.
-                </p>
-              </div>
-              <Button asChild className="w-full sm:w-auto">
-                <Link
-                  to="/admin/accounts/$userId/students/create"
-                  params={{ userId: accountData.account._id }}
-                >
-                  <UserPlus />
-                  Add student
-                </Link>
-              </Button>
-            </div>
-            {accountData.students.length === 0 ? (
-              <Card className="rounded-lg">
-                <CardHeader>
-                  <CardTitle>No connected students</CardTitle>
-                  <CardDescription>
-                    This account is not linked to any student profiles.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2">
-                {accountData.students.map(
-                  ({ contact, student, studentPic }) => (
-                    <Card key={contact._id} className="rounded-lg">
-                      <CardHeader>
-                        <CardTitle>
-                          {student ? (
-                            <Button
-                              asChild
-                              variant="link"
-                              className="h-auto p-0"
-                            >
-                              <Link
-                                to="/admin/students/$studentId"
-                                params={{ studentId: student._id }}
-                              >
-                                <Avatar className="h-12 w-12 rounded-full">
-                                  <AvatarImage
-                                    src={studentPic || undefined}
-                                    alt={`${student.firstName} ${student.lastName}`}
-                                    className="h-full object-cover"
-                                  />
-                                  <AvatarFallback className="rounded-lg">
-                                    <User className="size-8" />
-                                  </AvatarFallback>
-                                </Avatar>
-                                <p className="text-lg font-bold">
-                                  {student.preferredName ||
-                                    `${student.firstName} ${student.lastName}`}
-                                </p>
-                              </Link>
-                            </Button>
-                          ) : (
-                            "Missing student"
-                          )}
-                        </CardTitle>
-                        <CardDescription>
-                          {contact.relationship || ""}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="rounded-md border p-3">
-                          <div className="text-muted-foreground">Birthday</div>
-                          <div className="font-medium">
-                            {formatFullDate(student?.dateOfBirth) || "Not set"}
-                          </div>
-                        </div>
-                        <div className="rounded-md border p-3">
-                          <div className="text-muted-foreground">Age</div>
-                          <div className="font-medium">
-                            {formatAge(student?.dateOfBirth)}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ),
-                )}
-              </div>
-            )}
-          </section>
+          <Tabs defaultValue="students" className="gap-4">
+            <TabsList className="h-auto w-full justify-start gap-6 overflow-x-auto rounded-none border-b bg-transparent p-0 text-muted-foreground">
+              <TabsTrigger
+                value="students"
+                className="relative h-10 flex-none rounded-none border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent"
+              >
+                Connected students
+              </TabsTrigger>
+              <TabsTrigger
+                value="tuition"
+                className="relative h-10 flex-none rounded-none border-x-0 border-t-0 border-b-2 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent"
+              >
+                Tuition
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="students" className="space-y-4">
+              <ConnectedStudentsTab accountData={accountData} />
+            </TabsContent>
+            <TabsContent value="tuition" className="space-y-4">
+              <AccountTuitionSummaryTab userId={typedUserId} />
+            </TabsContent>
+          </Tabs>
         </main>
       )}
       <AlertDialog
@@ -395,6 +420,387 @@ function AdminAccountDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
     </RoleGate>
+  );
+}
+
+function ConnectedStudentsTab({
+  accountData,
+}: {
+  accountData: AdminAccountData;
+}) {
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">Connected students</h1>
+          <p className="text-muted-foreground">
+            Student profiles linked to this account.
+          </p>
+        </div>
+        <Button asChild className="w-full sm:w-auto">
+          <Link
+            to="/admin/accounts/$userId/students/create"
+            params={{ userId: accountData.account._id }}
+          >
+            <UserPlus />
+            Add student
+          </Link>
+        </Button>
+      </div>
+      {accountData.students.length === 0 ? (
+        <Card className="rounded-lg">
+          <CardHeader>
+            <CardTitle>No connected students</CardTitle>
+            <CardDescription>
+              This account is not linked to any student profiles.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {accountData.students.map(({ contact, student, studentPic }) => (
+            <Card key={contact._id} className="rounded-lg">
+              <CardHeader>
+                <CardTitle>
+                  {student ? (
+                    <Button asChild variant="link" className="h-auto p-0">
+                      <Link
+                        to="/admin/students/$studentId"
+                        params={{ studentId: student._id }}
+                      >
+                        <Avatar className="h-12 w-12 rounded-full">
+                          <AvatarImage
+                            src={studentPic || undefined}
+                            alt={`${student.firstName} ${student.lastName}`}
+                            className="h-full object-cover"
+                          />
+                          <AvatarFallback className="rounded-lg">
+                            <User className="size-8" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <p className="text-lg font-bold">
+                          {student.preferredName ||
+                            `${student.firstName} ${student.lastName}`}
+                        </p>
+                      </Link>
+                    </Button>
+                  ) : (
+                    "Missing student"
+                  )}
+                </CardTitle>
+                <CardDescription>{contact.relationship || ""}</CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-2 text-sm">
+                <div className="rounded-md border p-3">
+                  <div className="text-muted-foreground">Birthday</div>
+                  <div className="font-medium">
+                    {formatFullDate(student?.dateOfBirth) || "Not set"}
+                  </div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-muted-foreground">Age</div>
+                  <div className="font-medium">
+                    {formatAge(student?.dateOfBirth)}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AccountTuitionSummaryTab({ userId }: { userId: Id<"users"> }) {
+  const defaults = currentMonthPeriodDefaults();
+  const [periodStart, setPeriodStart] = useState(defaults.start);
+  const [periodEnd, setPeriodEnd] = useState(defaults.end);
+  const validPeriod = !!periodStart && !!periodEnd && periodEnd >= periodStart;
+  const summary = useConvexQuery(
+    api.billing.adminAccountTuitionSummary,
+    validPeriod ? { userId, periodStart, periodEnd } : "skip",
+  );
+
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">Tuition</h1>
+          <p className="text-muted-foreground">
+            Account household tuition for the selected billing period.
+          </p>
+        </div>
+        <BillingDateRangePicker
+          id="account-tuition-period"
+          start={periodStart}
+          end={periodEnd}
+          onChange={(start, end) => {
+            setPeriodStart(start);
+            setPeriodEnd(end);
+          }}
+        />
+      </div>
+      {!validPeriod ? (
+        <p className="text-sm text-destructive">
+          End date must be on or after start date.
+        </p>
+      ) : null}
+      {summary === undefined ? (
+        <div className="flex min-h-40 items-center justify-center">
+          <Spinner className="size-5" />
+        </div>
+      ) : (
+        <AccountTuitionSummaryContent
+          summary={summary}
+          periodStart={periodStart}
+          periodEnd={periodEnd}
+        />
+      )}
+    </section>
+  );
+}
+
+function AccountTuitionSummaryContent({
+  summary,
+  periodStart,
+  periodEnd,
+}: {
+  summary: AccountTuitionSummary;
+  periodStart: string;
+  periodEnd: string;
+}) {
+  if (summary.status === "missing_household") {
+    return (
+      <Card className="rounded-lg">
+        <CardHeader>
+          <CardTitle>No household assigned</CardTitle>
+          <CardDescription>
+            Link this account to a household before reviewing household tuition.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (summary.status === "missing_household_record") {
+    return (
+      <Card className="rounded-lg">
+        <CardHeader>
+          <CardTitle>Household record missing</CardTitle>
+          <CardDescription>
+            This account is linked to a household record that no longer exists.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (summary.pricingSchema === null) {
+    return (
+      <Card className="rounded-lg">
+        <CardHeader>
+          <CardTitle>No active pricing schema</CardTitle>
+          <CardDescription>
+            Save and activate a pricing schema before calculating tuition.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (summary.status === "ready_no_tuition") {
+    return (
+      <Card className="rounded-lg">
+        <CardHeader>
+          <CardTitle>No tuition results</CardTitle>
+          <CardDescription>
+            {summary.household.name} has no regular class tuition for{" "}
+            {periodStart} through {periodEnd}.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <AccountTuitionCard
+      tuition={summary.tuition}
+      pricingSchema={summary.pricingSchema}
+    />
+  );
+}
+
+function AccountTuitionCard({
+  tuition,
+  pricingSchema,
+}: {
+  tuition: AccountTuition;
+  pricingSchema: Extract<AccountTuitionSummary, { status: "ready" }>["pricingSchema"];
+}) {
+  const linkageWarning = tuition.students.find(
+    (student) => student.householdLinkWarning,
+  )?.householdLinkWarning;
+
+  return (
+    <Card className="rounded-lg">
+      <CardHeader className="gap-3 border-b">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle>{tuition.householdName}</CardTitle>
+            <CardDescription>
+              {tuition.students.length}{" "}
+              {tuition.students.length === 1 ? "student" : "students"}
+              {pricingSchema ? (
+                <>
+                  {" "}
+                  · Using {pricingSchema.name} version {pricingSchema.version}
+                </>
+              ) : null}
+            </CardDescription>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {tuition.householdLinkSource !== "household" ? (
+              <Badge variant="outline">Household link needed</Badge>
+            ) : null}
+            {tuition.siblingDiscountCandidate ? (
+              <Badge variant="secondary">Sibling discount candidate</Badge>
+            ) : null}
+            {tuition.hasIncompleteTuition ? (
+              <Badge variant="destructive">
+                <AlertTriangle className="size-3" />
+                Incomplete pricing
+              </Badge>
+            ) : null}
+          </div>
+        </div>
+        {linkageWarning ? (
+          <p className="text-sm text-amber-700 dark:text-amber-400">
+            {linkageWarning}
+          </p>
+        ) : null}
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table className="min-w-[760px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Student</TableHead>
+              <TableHead>Weekly hours</TableHead>
+              <TableHead>Pricing tier</TableHead>
+              <TableHead>Treatment</TableHead>
+              <TableHead className="text-right">Base tuition</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {tuition.students.map((student) => (
+              <TableRow key={student.student._id}>
+                <TableCell>
+                  <Button asChild variant="link" className="h-auto p-0">
+                    <Link
+                      to="/admin/students/$studentId"
+                      params={{ studentId: student.student._id }}
+                    >
+                      {student.student.firstName} {student.student.lastName}
+                    </Link>
+                  </Button>
+                </TableCell>
+                <TableCell>{formatWeeklyHourRange(student)}</TableCell>
+                <TableCell>{tierLabels(student)}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant={student.isProrated ? "secondary" : "outline"}
+                  >
+                    {student.isProrated ? "Prorated" : "Full period"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  {student.baseTuitionCents === undefined ? (
+                    <span className="text-destructive">
+                      {student.warning || "Unable to calculate"}
+                    </span>
+                  ) : (
+                    <div>
+                      <span className="font-medium">
+                        {formatCurrency(student.baseTuitionCents)}
+                      </span>
+                      {student.studentBillingAdjustments.map((adjustment) => (
+                        <div
+                          key={adjustment.id}
+                          className="text-xs text-muted-foreground"
+                        >
+                          {tuitionReasonLabels[adjustment.reasonCode]}:{" "}
+                          {adjustment.applicable
+                            ? formatCurrency(adjustment.amountCents)
+                            : "No applicable subtotal"}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <div className="grid gap-4 border-t p-4 md:grid-cols-[1fr_auto]">
+          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            <Badge variant="outline">
+              Scholarships: manual adjustments only
+            </Badge>
+            <Badge variant="outline">Packages: not evaluated</Badge>
+            {tuition.adjustments.length === 0 ? (
+              <Badge variant="outline">Sibling discount: none applied</Badge>
+            ) : null}
+          </div>
+          <div className="min-w-56 space-y-2 text-right">
+            <div className="flex justify-between gap-6 text-sm">
+              <span className="text-muted-foreground">Base subtotal</span>
+              <span>{formatCurrency(tuition.subtotalBaseTuitionCents)}</span>
+            </div>
+            {tuition.adjustments.map((adjustment, index) => (
+              <div
+                key={`${adjustment.type}-${adjustment.studentId || index}`}
+                className="flex justify-between gap-6 text-sm"
+              >
+                <span className="text-muted-foreground">
+                  {adjustment.label}
+                </span>
+                <span>{formatCurrency(adjustment.amountCents)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between gap-6 border-t pt-2 text-sm font-medium">
+              <span className="text-muted-foreground">After pricing rules</span>
+              <span>
+                {formatCurrency(tuition.totalBeforeManualAdjustmentsCents)}
+              </span>
+            </div>
+            {tuition.billingAdjustments
+              .filter((adjustment) => adjustment.status === "active")
+              .map((adjustment) => (
+                <div
+                  key={adjustment._id}
+                  className="flex justify-between gap-6 text-sm"
+                >
+                  <span className="text-muted-foreground">
+                    {tuitionReasonLabels[adjustment.reasonCode]}
+                  </span>
+                  <span>
+                    {formatCurrency(adjustment.appliedAmountCents || 0)}
+                  </span>
+                </div>
+              ))}
+            <div className="flex justify-between gap-6 border-t pt-2 text-lg font-semibold">
+              <span>Reviewed total</span>
+              <span>{formatCurrency(tuition.totalTuitionCents)}</span>
+            </div>
+            {tuition.hasIncompleteTuition ? (
+              <div className="text-xs text-destructive">
+                Total excludes unpriced students
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -477,7 +883,7 @@ function HouseholdDialog({ userId }: { userId: string }) {
     <Dialog>
       <form>
         <DialogTrigger asChild>
-          <Button variant="outline">
+          <Button variant="outline" className="w-full sm:w-min">
             <HousePlus className="size-4" />
             {householdData === undefined || households === undefined ? (
               <Spinner className="size-4" />

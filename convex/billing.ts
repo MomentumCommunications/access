@@ -704,6 +704,71 @@ export const adminPeriodTuitionReview = query({
   },
 });
 
+export const adminAccountTuitionSummary = query({
+  args: {
+    userId: v.id("users"),
+    periodStart: v.string(),
+    periodEnd: v.string(),
+  },
+  handler: async (ctx, { userId, periodStart, periodEnd }) => {
+    await requireAdmin(ctx);
+    validateIsoDate(periodStart, "periodStart");
+    validateIsoDate(periodEnd, "periodEnd");
+    if (periodEnd < periodStart) {
+      throw new Error("periodEnd must be on or after periodStart.");
+    }
+
+    const memberships = (
+      await ctx.db
+        .query("householdMembers")
+        .withIndex("byUser", (q) => q.eq("userId", userId))
+        .collect()
+    ).sort(
+      (left, right) =>
+        left._creationTime - right._creationTime ||
+        left.householdId.localeCompare(right.householdId),
+    );
+    const membership = memberships[0];
+    if (!membership) {
+      return { status: "missing_household" as const };
+    }
+
+    const household = await ctx.db.get(membership.householdId);
+    if (!household) {
+      return { status: "missing_household_record" as const };
+    }
+
+    const review = await getPeriodTuitionReview(ctx, periodStart, periodEnd);
+    const householdTuition = selectHouseholdTuitionBreakdown(
+      review.households,
+      household._id,
+    );
+
+    if (!householdTuition) {
+      return {
+        status: "ready_no_tuition" as const,
+        household: {
+          _id: household._id,
+          name: household.name,
+        },
+        pricingSchema: review.pricingSchema,
+        excludedEnrollments: review.excludedEnrollments,
+      };
+    }
+
+    return {
+      status: "ready" as const,
+      household: {
+        _id: household._id,
+        name: household.name,
+      },
+      pricingSchema: review.pricingSchema,
+      excludedEnrollments: review.excludedEnrollments,
+      tuition: householdTuition,
+    };
+  },
+});
+
 export const currentHouseholdTuitionPlan = query({
   args: {
     month: v.optional(v.string()),

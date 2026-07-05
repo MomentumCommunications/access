@@ -3363,6 +3363,21 @@ export const adminListPendingEnrollments = query({
   },
 });
 
+export const adminPendingEnrollmentSummary = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const pending = await ctx.db
+      .query("classEnrollments")
+      .withIndex("byStatus", (q) => q.eq("status", "pending"))
+      .collect();
+
+    return {
+      pendingCount: pending.length,
+    };
+  },
+});
+
 export const adminApplyPendingEnrollmentAction = mutation({
   args: {
     enrollments: v.array(v.id("classEnrollments")),

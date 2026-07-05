@@ -1,12 +1,12 @@
+import { useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  BookOpen,
-  CalendarDays,
   BarChart3,
+  ClipboardCheck,
   ListChecks,
   PersonStanding,
-  Users,
 } from "lucide-react";
+import { api } from "../../../convex/_generated/api";
 import type { ReactNode } from "react";
 import { RoleGate } from "~/components/role-gate";
 import { StudentBirthdaysWidget } from "~/components/student-birthdays-widget";
@@ -35,6 +35,7 @@ function AdminHome() {
           </p>
         </div>
         <PushNotificationPrompt />
+        <PendingEnrollmentsCard />
         <div className="grid gap-4 md:grid-cols-3">
           <AdminCard
             title="Attendance"
@@ -43,22 +44,10 @@ function AdminHome() {
             icon={<ListChecks />}
           />
           <AdminCard
-            title="Accounts"
-            description="Review users and update access roles."
-            to="/admin/accounts"
-            icon={<Users />}
-          />
-          <AdminCard
             title="Students"
             description="Manage student profiles."
             to="/admin/students"
             icon={<PersonStanding />}
-          />
-          <AdminCard
-            title="Classes"
-            description="Create classes and manage enrollments."
-            to="/admin/classes"
-            icon={<BookOpen />}
           />
           <AdminCard
             title="Reports"
@@ -66,16 +55,37 @@ function AdminHome() {
             to="/admin/reports"
             icon={<BarChart3 />}
           />
-          <AdminCard
-            title="Scheduling"
-            description="Manage holidays and generated session rules."
-            to="/admin/scheduling"
-            icon={<CalendarDays />}
-          />
         </div>
         <StudentBirthdaysWidget />
       </main>
     </RoleGate>
+  );
+}
+
+function PendingEnrollmentsCard() {
+  const summary = useConvexQuery(api.classes.adminPendingEnrollmentSummary, {});
+  const pendingCount = summary?.pendingCount ?? 0;
+
+  return (
+    <Card className="rounded-lg">
+      <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <CardTitle>Pending enrollments</CardTitle>
+          <CardDescription>Requests waiting for admin review.</CardDescription>
+        </div>
+        <div className="text-4xl font-bold tabular-nums">
+          {summary === undefined ? "…" : pendingCount}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Button asChild>
+          <Link to="/admin/classes/enrollments">
+            <ClipboardCheck />
+            Review requests
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

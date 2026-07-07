@@ -11,6 +11,7 @@ import {
   Home,
   LayoutDashboard,
   LogIn,
+  MessageCircle,
   CreditCard,
   ReceiptText,
   Users,
@@ -411,6 +412,19 @@ const AppSidebarComponent = memo(() => {
                     <Link to="/settings">
                       <Cog />
                       <span>Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActivePath(pathname, "/contact")}
+                    tooltip="Contact"
+                    onClick={closeMobileSidebar}
+                  >
+                    <Link to="/contact">
+                      <MessageCircle />
+                      <span>Contact</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

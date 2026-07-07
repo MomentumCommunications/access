@@ -28,6 +28,7 @@ import { Route as AppSearchRouteImport } from './routes/_app.search'
 import { Route as AppPaymentsRouteImport } from './routes/_app.payments'
 import { Route as AppHomeRouteImport } from './routes/_app.home'
 import { Route as AppHelpRouteImport } from './routes/_app.help'
+import { Route as AppContactRouteImport } from './routes/_app.contact'
 import { Route as AppAccountRouteImport } from './routes/_app.account'
 import { Route as AppStudentsIndexRouteImport } from './routes/_app.students/index'
 import { Route as AppStaffIndexRouteImport } from './routes/_app.staff/index'
@@ -176,6 +177,11 @@ const AppHomeRoute = AppHomeRouteImport.update({
 const AppHelpRoute = AppHelpRouteImport.update({
   id: '/help',
   path: '/help',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppContactRoute = AppContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAccountRoute = AppAccountRouteImport.update({
@@ -479,6 +485,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/account': typeof AppAccountRoute
+  '/contact': typeof AppContactRoute
   '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
   '/payments': typeof AppPaymentsRoute
@@ -553,6 +560,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/account': typeof AppAccountRoute
+  '/contact': typeof AppContactRoute
   '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
   '/payments': typeof AppPaymentsRoute
@@ -630,6 +638,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/_app/account': typeof AppAccountRoute
+  '/_app/contact': typeof AppContactRoute
   '/_app/help': typeof AppHelpRoute
   '/_app/home': typeof AppHomeRoute
   '/_app/payments': typeof AppPaymentsRoute
@@ -707,6 +716,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/account'
+    | '/contact'
     | '/help'
     | '/home'
     | '/payments'
@@ -781,6 +791,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/account'
+    | '/contact'
     | '/help'
     | '/home'
     | '/payments'
@@ -857,6 +868,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/_app/account'
+    | '/_app/contact'
     | '/_app/help'
     | '/_app/home'
     | '/_app/payments'
@@ -1069,6 +1081,13 @@ declare module '@tanstack/react-router' {
       path: '/help'
       fullPath: '/help'
       preLoaderRoute: typeof AppHelpRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/contact': {
+      id: '/_app/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof AppContactRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/account': {
@@ -1461,6 +1480,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAccountRoute: typeof AppAccountRoute
+  AppContactRoute: typeof AppContactRoute
   AppHelpRoute: typeof AppHelpRoute
   AppHomeRoute: typeof AppHomeRoute
   AppPaymentsRoute: typeof AppPaymentsRoute
@@ -1525,6 +1545,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAccountRoute: AppAccountRoute,
+  AppContactRoute: AppContactRoute,
   AppHelpRoute: AppHelpRoute,
   AppHomeRoute: AppHomeRoute,
   AppPaymentsRoute: AppPaymentsRoute,

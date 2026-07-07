@@ -14,6 +14,7 @@ import {
   Check,
   ChevronDown,
   Clock3,
+  Info,
   LockKeyhole,
   MapPin,
   Users,
@@ -91,6 +92,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "~/components/ui/sheet";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 
 export const Route = createFileRoute("/_app/classes/")({
   validateSearch: z.object({
@@ -473,6 +475,21 @@ function ClassesPage() {
           />
         </div>
       </div>
+
+      <Alert className="mb-4">
+        <Info className="size-5" />
+        <AlertTitle>Age limits can be flexible</AlertTitle>
+        <AlertDescription>
+          <p>
+            Your student may fit in a class outside of their age range. If you
+            believe this is the case send us a message with the link below and
+            we&apos;ll get back to you.
+          </p>
+          <Button asChild>
+            <a href="/contact?topic=enrollment">Contact us</a>
+          </Button>
+        </AlertDescription>
+      </Alert>
 
       {loading ? (
         <div className="min-h-40 flex items-center justify-center">

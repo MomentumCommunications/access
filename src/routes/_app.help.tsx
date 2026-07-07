@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Button } from "~/components/ui/button";
 import {
   Card,
   CardContent,
@@ -18,19 +19,18 @@ function HelpRoute() {
         <CardHeader>
           <CardTitle>Help</CardTitle>
           <CardDescription>
-            Access Momentum is currently focused on bulletins, account
-            settings, directory access, and group information.
+            Access Momentum is currently focused on bulletins, account settings,
+            directory access, and group information.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 text-sm text-muted-foreground">
-          <p>
-            Chat and direct messaging are temporarily unavailable while the new
-            chat experience is being prepared.
-          </p>
+        <CardContent className="text-muted-foreground space-y-4 text-sm">
           <p>
             For help with account access or portal content, contact your system
-            administrator.
+            administrator. You can report a bug with the link below.
           </p>
+          <Button asChild variant="outline">
+            <a href="/contact?topic=bug_report">Report a bug</a>
+          </Button>
         </CardContent>
       </Card>
       <Card id="install-app" className="scroll-mt-4">
@@ -41,9 +41,9 @@ function HelpRoute() {
             browsers.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6 text-sm text-muted-foreground">
+        <CardContent className="text-muted-foreground space-y-6 text-sm">
           <section className="space-y-2">
-            <h2 className="text-base font-semibold text-foreground">
+            <h2 className="text-foreground text-base font-semibold">
               iPhone or iPad
             </h2>
             <ol className="list-decimal space-y-1 pl-5">
@@ -58,9 +58,7 @@ function HelpRoute() {
           </section>
 
           <section className="space-y-2">
-            <h2 className="text-base font-semibold text-foreground">
-              Android
-            </h2>
+            <h2 className="text-foreground text-base font-semibold">Android</h2>
             <ol className="list-decimal space-y-1 pl-5">
               <li>Open Access Momentum in Chrome.</li>
               <li>
@@ -76,7 +74,7 @@ function HelpRoute() {
           </section>
 
           <section className="space-y-2">
-            <h2 className="text-base font-semibold text-foreground">
+            <h2 className="text-foreground text-base font-semibold">
               After installing
             </h2>
             <p>

@@ -148,9 +148,8 @@ function ClassesPage() {
     students?.map((row) => row.student._id) || [],
   );
   const selectedStudentRow =
-    students?.find(
-      (row) => row.student._id === selectedStudentIdFromAccess,
-    ) || students?.[0];
+    students?.find((row) => row.student._id === selectedStudentIdFromAccess) ||
+    students?.[0];
   const selectedStudentId = selectedStudentRow?.student._id;
   const selectedStudentIsManaged =
     selectedStudentRow?.selfServiceEnrollmentAllowed === false;
@@ -176,9 +175,8 @@ function ClassesPage() {
   );
   const [saving, setSaving] = useState(false);
   const [useSpecificDates, setUseSpecificDates] = useState(false);
-  const [enrollmentStartDate, setEnrollmentStartDate] = useState(
-    todayDateValue,
-  );
+  const [enrollmentStartDate, setEnrollmentStartDate] =
+    useState(todayDateValue);
   const [enrollmentEndDate, setEnrollmentEndDate] = useState("");
   const [saveFeedback, setSaveFeedback] = useState<{
     tone: "success" | "error";
@@ -194,13 +192,11 @@ function ClassesPage() {
     normalizedRequest.sessionSelections.length > 0;
   useBlocker({
     shouldBlockFn: () =>
-      hasUnsavedSelections &&
-      !window.confirm(unsavedSelectionMessage),
+      hasUnsavedSelections && !window.confirm(unsavedSelectionMessage),
     enableBeforeUnload: hasUnsavedSelections,
     disabled: !hasUnsavedSelections,
   });
-  const hasRecurringSelections =
-    normalizedRequest.recurringClassIds.length > 0;
+  const hasRecurringSelections = normalizedRequest.recurringClassIds.length > 0;
   const specificDateError = useMemo(() => {
     if (!useSpecificDates) return null;
     try {
@@ -479,7 +475,7 @@ function ClassesPage() {
       </div>
 
       {loading ? (
-        <div className="flex min-h-40 items-center justify-center">
+        <div className="min-h-40 flex items-center justify-center">
           <Spinner className="size-5" />
         </div>
       ) : !students.length ? (
@@ -500,7 +496,7 @@ function ClassesPage() {
         <Card className="rounded-lg">
           <CardHeader>
             <div className="flex items-start gap-3">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
+              <div className="size-10 bg-muted flex shrink-0 items-center justify-center rounded-full">
                 <LockKeyhole className="size-5 text-muted-foreground" />
               </div>
               <div className="space-y-1.5">
@@ -514,7 +510,7 @@ function ClassesPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               You can still choose another student above to browse and request
               classes for them.
             </p>
@@ -674,11 +670,11 @@ function EnrollmentClassCard({
       </CardHeader>
       <CardContent className="space-y-4 px-5">
         {classItem.description ? (
-          <p className="line-clamp-2 text-sm text-muted-foreground">
+          <p className="text-muted-foreground line-clamp-2 text-sm">
             {classItem.description}
           </p>
         ) : null}
-        <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+        <div className="text-muted-foreground flex flex-wrap gap-x-5 gap-y-2 text-sm">
           {classItem.location ? (
             <span className="flex items-center gap-1.5">
               <MapPin className="size-4" />
@@ -759,7 +755,7 @@ function RecurringSelectionAction({
   }
 
   return (
-    <p className="text-sm text-muted-foreground">{statusExplanation(status)}</p>
+    <p className="text-muted-foreground text-sm">{statusExplanation(status)}</p>
   );
 }
 
@@ -809,7 +805,7 @@ function PerSessionChoices({
 
   if (!row.canManage || !row.ageEligible) {
     return (
-      <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+      <p className="bg-muted text-muted-foreground rounded-md p-3 text-sm">
         {statusExplanation(!row.canManage ? "managed" : "ineligible")}
       </p>
     );
@@ -817,7 +813,7 @@ function PerSessionChoices({
 
   if (!resolvedClassEnrollmentOpen(classItem.enrollmentOpen)) {
     return (
-      <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">
+      <p className="bg-muted text-muted-foreground rounded-md p-3 text-sm">
         {statusExplanation("closed")}
       </p>
     );
@@ -825,7 +821,7 @@ function PerSessionChoices({
 
   if (row.sessions.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-sm">
         No upcoming sessions are available.
       </p>
     );
@@ -868,7 +864,7 @@ function PerSessionChoices({
         return (
           <label
             key={session._id}
-            className="flex min-h-14 items-center justify-between gap-3 rounded-md border p-3"
+            className="min-h-14 flex items-center justify-between gap-3 rounded-md border p-3"
           >
             <span className="flex min-w-0 items-center gap-3">
               <Checkbox
@@ -889,7 +885,7 @@ function PerSessionChoices({
                 <span className="block text-sm font-medium">
                   {formatMDYYYY(session.date)}
                 </span>
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span className="text-muted-foreground flex items-center gap-1 text-xs">
                   <Clock3 className="size-3" />
                   {formatTimeRange(session.startTime, session.endTime) ||
                     "Time TBD"}
@@ -1016,9 +1012,9 @@ function ReviewContent({
                 {row.sessions.map((session) => (
                   <p
                     key={session.sessionId}
-                    className="flex items-start gap-2 text-xs text-muted-foreground"
+                    className="text-muted-foreground flex items-start gap-2 text-xs"
                   >
-                    <CalendarDays className="mt-0.5 size-3 shrink-0" />
+                    <CalendarDays className="size-3 mt-0.5 shrink-0" />
                     {session.label}
                   </p>
                 ))}
@@ -1035,7 +1031,7 @@ function ReviewContent({
               <Label htmlFor="specific-enrollment-dates">
                 Use specific enrollment dates
               </Label>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 Applies only to regular tuition classes.
               </p>
             </div>
@@ -1072,12 +1068,12 @@ function ReviewContent({
                     onEnrollmentEndDateChange(event.target.value)
                   }
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Leave blank for open-ended enrollment.
                 </p>
               </div>
               {specificDateError ? (
-                <p className="text-sm text-destructive sm:col-span-2">
+                <p className="text-destructive text-sm sm:col-span-2">
                   {specificDateError}
                 </p>
               ) : null}
@@ -1114,15 +1110,15 @@ function EstimateSummary({
   estimate: SelectionEstimate | undefined;
 }) {
   return (
-    <section className="space-y-3 rounded-md bg-muted p-3">
+    <section className="bg-muted space-y-3 rounded-md p-3">
       <div>
         <h3 className="text-sm font-semibold">Estimated billing plan</h3>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-xs">
           Recurring tuition is monthly. Selected session charges are one-time.
         </p>
       </div>
       {estimate === undefined ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <Spinner className="size-4" />
           Calculating estimate...
         </div>
@@ -1159,11 +1155,11 @@ function EstimateSummary({
           </div>
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           {estimate.warning || "Pricing estimate is temporarily unavailable."}
         </p>
       )}
-      <p className="text-xs text-muted-foreground">
+      <p className="text-muted-foreground text-xs">
         {enrollmentEstimateBillingNote}
       </p>
     </section>
@@ -1213,7 +1209,7 @@ function ReviewSection({
             >
               <span>{row.title}</span>
               {row.detail ? (
-                <span className="text-right text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-right text-xs">
                   {row.detail}
                 </span>
               ) : null}
@@ -1221,7 +1217,7 @@ function ReviewSection({
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">{emptyText}</p>
+        <p className="text-muted-foreground text-sm">{emptyText}</p>
       )}
     </section>
   );

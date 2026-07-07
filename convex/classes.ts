@@ -501,6 +501,15 @@ function studentDisplayName(student: Doc<"students">) {
   );
 }
 
+function accountDisplayName(user: Doc<"users">) {
+  return (
+    [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+    user.name ||
+    user.displayName ||
+    "Account"
+  );
+}
+
 function parseBirthdayMonthDay(dateOfBirth?: string) {
   const match = dateOfBirth?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) {
@@ -2729,6 +2738,40 @@ export const adminSetUserRoles = mutation({
       roles,
       role: highestUserRole(roles),
     });
+  },
+});
+
+export const adminUpdateAccountNotes = mutation({
+  args: {
+    user: v.id("users"),
+    notes: v.string(),
+  },
+  handler: async (ctx, { user, notes }) => {
+    const actor = await requireAdmin(ctx);
+    const account = await ctx.db.get(user);
+    if (!account) throw new Error("Account not found.");
+
+    const cleanedNotes = notes.trim();
+    if (cleanedNotes.length > 5000) {
+      throw new Error("Notes must be 5000 characters or fewer.");
+    }
+
+    await ctx.db.patch(user, {
+      notes: cleanedNotes || undefined,
+    });
+
+    await recordActivityEvent(ctx, {
+      entityType: "user",
+      entityId: user,
+      actorId: actor._id,
+      eventType: "account_notes_updated",
+      summary: `Updated ${accountDisplayName(account)}'s account notes.`,
+      metadata: {
+        hasNotes: cleanedNotes.length > 0,
+      },
+    });
+
+    return { notes: cleanedNotes || undefined };
   },
 });
 

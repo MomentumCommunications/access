@@ -17,6 +17,7 @@ import {
   HouseIcon,
   LucideMail,
   Mail,
+  NotebookText,
   Pencil,
   PersonStanding,
   PhoneIcon,
@@ -51,6 +52,7 @@ import {
 } from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
+import { Textarea } from "~/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -407,13 +409,14 @@ type AccountTabValue =
   | "tuition"
   | "household"
   | "classes"
+  | "notes"
   | "logs";
 
 function getDefaultAccountTab(accountData: AdminAccountData): AccountTabValue {
   const roles = resolveUserRoles(accountData.account);
   if (roles.includes("member")) return "students";
   if (roles.includes("staff")) return "classes";
-  return "logs";
+  return "notes";
 }
 
 function AccountRoleTabs({
@@ -434,6 +437,7 @@ function AccountRoleTabs({
       ? (["students", "tuition", "household"] satisfies AccountTabValue[])
       : []),
     ...(showStaffTabs ? (["classes"] satisfies AccountTabValue[]) : []),
+    "notes",
     "logs",
   ];
   const [selectedTab, setSelectedTab] = useState<AccountTabValue>(defaultTab);
@@ -473,6 +477,10 @@ function AccountRoleTabs({
             Classes
           </TabsTrigger>
         ) : null}
+        <TabsTrigger value="notes" className={accountTabTriggerClass}>
+          <NotebookText />
+          Notes
+        </TabsTrigger>
         <TabsTrigger value="logs" className={accountTabTriggerClass}>
           <History />
           Logs
@@ -496,6 +504,9 @@ function AccountRoleTabs({
           <AccountInstructorClassesTab userId={typedUserId} />
         </TabsContent>
       ) : null}
+      <TabsContent value="notes" className="space-y-4">
+        <AccountNotesTab account={accountData.account} />
+      </TabsContent>
       <TabsContent value="logs" className="space-y-4">
         <AccountActivityLogTab userId={typedUserId} />
       </TabsContent>
@@ -687,6 +698,118 @@ function AccountInstructorClassesTab({ userId }: { userId: Id<"users"> }) {
           </Table>
         </div>
       )}
+    </section>
+  );
+}
+
+function AccountNotesTab({
+  account,
+}: {
+  account: AdminAccountData["account"];
+}) {
+  const updateNotes = useConvexMutation(api.classes.adminUpdateAccountNotes);
+  const savedNotes = account.notes || "";
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftNotes, setDraftNotes] = useState(savedNotes);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setDraftNotes(savedNotes);
+    }
+  }, [isEditing, savedNotes]);
+
+  function startEditing() {
+    setDraftNotes(savedNotes);
+    setIsEditing(true);
+  }
+
+  function cancelEditing() {
+    setDraftNotes(savedNotes);
+    setIsEditing(false);
+  }
+
+  async function saveNotes() {
+    setIsSaving(true);
+    try {
+      await updateNotes({
+        user: account._id,
+        notes: draftNotes,
+      });
+      toast.success("Account notes updated.");
+      setIsEditing(false);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to update account notes.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold">Notes</h1>
+          <p className="text-muted-foreground">
+            Internal admin notes for this account.
+          </p>
+        </div>
+        {!isEditing ? (
+          <Button onClick={startEditing}>
+            <Pencil />
+            Edit
+          </Button>
+        ) : null}
+      </div>
+      <Card className="rounded-lg">
+        <CardContent className="pt-6">
+          {isEditing ? (
+            <div className="space-y-4">
+              <Textarea
+                value={draftNotes}
+                onChange={(event) => setDraftNotes(event.target.value)}
+                className="min-h-64 resize-y"
+                maxLength={5000}
+                placeholder="Add internal notes about this account..."
+              />
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-muted-foreground text-sm">
+                  {draftNotes.length.toLocaleString()} / 5,000 characters
+                </p>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSaving}
+                    onClick={cancelEditing}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={() => void saveNotes()}
+                  >
+                    {isSaving ? "Saving..." : "Save notes"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : savedNotes ? (
+            <p className="whitespace-pre-wrap text-sm leading-6">
+              {savedNotes}
+            </p>
+          ) : (
+            <div className="text-muted-foreground rounded-md border border-dashed p-6 text-sm">
+              No notes have been added for this account yet.
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </section>
   );
 }

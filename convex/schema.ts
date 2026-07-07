@@ -18,6 +18,7 @@ export default defineSchema({
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
     address: v.optional(v.string()),
+    notes: v.optional(v.string()),
     isAnonymous: v.optional(v.boolean()),
     status: v.optional(v.union(v.literal("active"), v.literal("inactive"))),
     role: v.optional(
@@ -86,14 +87,8 @@ export default defineSchema({
     invitedEmail: v.string(),
     tokenHash: v.string(),
     inviterUserId: v.id("users"),
-    inviterContext: v.union(
-      v.literal("admin"),
-      v.literal("household_member"),
-    ),
-    purpose: v.union(
-      v.literal("account_claim"),
-      v.literal("household_join"),
-    ),
+    inviterContext: v.union(v.literal("admin"), v.literal("household_member")),
+    purpose: v.union(v.literal("account_claim"), v.literal("household_join")),
     householdId: v.optional(v.id("households")),
     status: v.union(
       v.literal("pending"),

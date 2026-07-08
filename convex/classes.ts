@@ -3210,6 +3210,81 @@ export const adminUpdateStudent = mutation({
   },
 });
 
+export const adminSetStudentStatus = mutation({
+  args: {
+    student: v.id("students"),
+    status: studentStatusValidator,
+  },
+  handler: async (ctx, { student, status }) => {
+    const actor = await requireAdmin(ctx);
+    const existing = await ctx.db.get(student);
+    if (!existing) {
+      throw new Error("Student not found.");
+    }
+
+    if (existing.status === status) {
+      return { status };
+    }
+
+    if (requiresStudentStatusConfirmation(existing.status, status)) {
+      await cleanupStudentForInactiveStatus(ctx, {
+        actorUserId: actor._id,
+        student: existing,
+      });
+    }
+
+    await ctx.db.patch(student, { status });
+    await recordActivityEvent(ctx, {
+      entityType: "student",
+      entityId: student,
+      actorId: actor._id,
+      eventType: "student_status_updated",
+      summary: `Marked ${studentDisplayName(existing)} ${status}.`,
+      metadata: {
+        previousStatus: existing.status,
+        status,
+      },
+    });
+
+    return { status };
+  },
+});
+
+export const adminUpdateStudentNotes = mutation({
+  args: {
+    student: v.id("students"),
+    notes: v.string(),
+  },
+  handler: async (ctx, { student, notes }) => {
+    const actor = await requireAdmin(ctx);
+    const existing = await ctx.db.get(student);
+    if (!existing) {
+      throw new Error("Student not found.");
+    }
+
+    const cleanedNotes = notes.trim();
+    if (cleanedNotes.length > 5000) {
+      throw new Error("Notes must be 5000 characters or fewer.");
+    }
+
+    await ctx.db.patch(student, {
+      notes: cleanedNotes || undefined,
+    });
+    await recordActivityEvent(ctx, {
+      entityType: "student",
+      entityId: student,
+      actorId: actor._id,
+      eventType: "student_notes_updated",
+      summary: `Updated ${studentDisplayName(existing)}'s student notes.`,
+      metadata: {
+        hasNotes: cleanedNotes.length > 0,
+      },
+    });
+
+    return { notes: cleanedNotes || undefined };
+  },
+});
+
 export const adminEnrollStudentInClass = mutation({
   args: {
     student: v.id("students"),

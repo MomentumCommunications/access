@@ -291,7 +291,7 @@ function AdminStudentDetailPage() {
                     <p className="text-muted-foreground">
                       {studentData.student.preferredName
                         ? `Preferred name: ${studentData.student.preferredName}`
-                        : "No preferred name"}
+                        : ""}
                     </p>
                   </div>
                 </div>
@@ -366,7 +366,7 @@ function AdminStudentDetailPage() {
                   </div>
                   <div className="font-medium">
                     {weeklyClassMinutes === undefined ? (
-                      <Spinner className="inline size-3.5" />
+                      <Spinner className="size-3.5 inline" />
                     ) : (
                       formatWeeklyHours(studentWeeklyMinutes)
                     )}
@@ -375,21 +375,25 @@ function AdminStudentDetailPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <div className="text-muted-foreground">School</div>
-                  <div className="font-medium">
-                    {studentData.student.school || "Not set"}
+                {studentData.student.school && (
+                  <div>
+                    <div className="text-muted-foreground">School</div>
+                    <div className="font-medium">
+                      {studentData.student.school || "Not set"}
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Allergies</div>
-                  <div className="font-medium">
-                    {studentData.student.allergies || "Not set"}
+                )}
+                {studentData.student.allergies && (
+                  <div>
+                    <div className="text-muted-foreground">Allergies</div>
+                    <div className="font-medium">
+                      {studentData.student.allergies || "Not set"}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
-            <Separator className="my-4 w-full" />
+            <Separator className="my-2 w-full" />
           </section>
 
           <StudentDetailTabs studentData={studentData} />
@@ -433,11 +437,7 @@ function AdminStudentDetailPage() {
   );
 }
 
-function StudentDetailTabs({
-  studentData,
-}: {
-  studentData: AdminStudentData;
-}) {
+function StudentDetailTabs({ studentData }: { studentData: AdminStudentData }) {
   const [selectedTab, setSelectedTab] = useState<StudentTabValue>("contacts");
 
   return (
@@ -507,9 +507,7 @@ function StudentContactsTab({
       .map((account) => ({
         value: account._id,
         label: getAccountName(account),
-        email: Array.isArray(account.email)
-          ? account.email[0]
-          : account.email,
+        email: Array.isArray(account.email) ? account.email[0] : account.email,
       }))
       .sort(
         (left, right) =>
@@ -564,7 +562,10 @@ function StudentContactsTab({
             Accounts and contact records connected to this student.
           </p>
         </div>
-        <Dialog open={connectDialogOpen} onOpenChange={handleConnectDialogChange}>
+        <Dialog
+          open={connectDialogOpen}
+          onOpenChange={handleConnectDialogChange}
+        >
           <DialogTrigger asChild>
             <Button>
               <UserPlus />
@@ -607,7 +608,9 @@ function StudentContactsTab({
                           ? "No available accounts"
                           : "Search accounts"
                     }
-                    disabled={accounts === undefined || accountOptions.length === 0}
+                    disabled={
+                      accounts === undefined || accountOptions.length === 0
+                    }
                     showClear
                   />
                   <ComboboxContent>
@@ -624,7 +627,7 @@ function StudentContactsTab({
                                 {option?.label || value}
                               </div>
                               {option?.email ? (
-                                <div className="truncate text-xs text-muted-foreground">
+                                <div className="text-muted-foreground truncate text-xs">
                                   {option.email}
                                 </div>
                               ) : null}
@@ -677,8 +680,15 @@ function StudentContactsTab({
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={!selectedAccount || connectingAccount}>
-                  {connectingAccount ? <Spinner className="size-4" /> : <UserPlus />}
+                <Button
+                  type="submit"
+                  disabled={!selectedAccount || connectingAccount}
+                >
+                  {connectingAccount ? (
+                    <Spinner className="size-4" />
+                  ) : (
+                    <UserPlus />
+                  )}
                   Connect account
                 </Button>
               </DialogFooter>
@@ -696,7 +706,9 @@ function StudentContactsTab({
                   <CardTitle className="truncate text-base">
                     {contact.user
                       ? getAccountName(contact.user)
-                      : contact.name || contact.inviteEmail || "Unnamed contact"}
+                      : contact.name ||
+                        contact.inviteEmail ||
+                        "Unnamed contact"}
                   </CardTitle>
                   <CardDescription>
                     {contact.relationship || "Relationship not set"}
@@ -725,7 +737,7 @@ function StudentContactsTab({
                   </AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="text-muted-foreground flex items-center gap-2">
                     <Mail className="size-4 shrink-0" />
                     <span className="truncate">
                       {contact.user
@@ -750,7 +762,7 @@ function StudentContactsTab({
                   </Link>
                 </Button>
               ) : (
-                <div className="rounded-md border border-dashed p-2 text-xs text-muted-foreground">
+                <div className="text-muted-foreground rounded-md border border-dashed p-2 text-xs">
                   Contact record is not connected to an account yet.
                 </div>
               )}
@@ -778,7 +790,9 @@ function StudentEnrollmentsTab({
   studentData: AdminStudentData;
 }) {
   const classes = useConvexQuery(api.classes.adminListClasses, {});
-  const enrollStudent = useConvexMutation(api.classes.adminEnrollStudentInClass);
+  const enrollStudent = useConvexMutation(
+    api.classes.adminEnrollStudentInClass,
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedClass, setSelectedClass] = useState("");
   const [status, setStatus] = useState<EnrollmentStatus>("enrolled");
@@ -875,7 +889,9 @@ function StudentEnrollmentsTab({
                   <ComboboxInput
                     className="w-full"
                     placeholder={
-                      classes === undefined ? "Loading classes..." : "Select class"
+                      classes === undefined
+                        ? "Loading classes..."
+                        : "Select class"
                     }
                     disabled={classes === undefined}
                     showClear

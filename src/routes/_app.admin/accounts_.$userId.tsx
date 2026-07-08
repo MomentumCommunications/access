@@ -340,7 +340,7 @@ function AdminAccountDetailPage() {
             <div className="flex flex-col gap-2 space-y-2 sm:flex-row sm:justify-end sm:space-y-4">
               <InviteDialog userId={userId} />
             </div>
-            <Separator className="my-4 w-full" />
+            <Separator className="my-2 w-full" />
           </section>
           <AccountRoleTabs
             accountData={accountData}

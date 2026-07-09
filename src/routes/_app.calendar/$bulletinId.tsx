@@ -24,6 +24,7 @@ type Bulletin = {
   date?: string;
   endDate?: string;
   author?: string;
+  audience?: "all";
   group?: string[];
   groups?: Id<"groups">[];
   hidden?: boolean;
@@ -127,6 +128,14 @@ function GroupBadges({
 
     return bulletin.group || [];
   }, [bulletin, groups]);
+
+  if (bulletin.audience === "all") {
+    return (
+      <div className="flex flex-wrap gap-1">
+        <Badge className="font-bold">ALL USERS</Badge>
+      </div>
+    );
+  }
 
   if (groupNames.length === 0) {
     return null;

@@ -39,6 +39,7 @@ export const Route = createFileRoute("/_app/admin/bulletins/create")({
 const formSchema = z.object({
   post: z.string().min(2).max(50),
   body: z.string().min(2).max(2000),
+  audienceAll: z.boolean(),
   groups: z.array(z.string()), // Group IDs now
   date: z.string(),
   endDate: z.string().optional(),
@@ -179,6 +180,7 @@ function RouteComponent() {
     defaultValues: {
       post: "",
       body: "",
+      audienceAll: false,
       groups: [],
       date: "",
       endDate: undefined,
@@ -248,6 +250,7 @@ function RouteComponent() {
       body,
       team: groupNames, // Keep old format for now
       date,
+      audience: values.audienceAll ? "all" : undefined,
       groups: values.groups as Id<"groups">[], // Pass group IDs to new field
       ...(endDate ? { endDate } : {}),
     });
@@ -376,7 +379,32 @@ function RouteComponent() {
             name="groups"
             render={() => (
               <FormItem>
-                <FormLabel>Group(s)</FormLabel>
+                <FormLabel>Audience</FormLabel>
+                <FormField
+                  control={form.control}
+                  name="audienceAll"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start gap-2 rounded-md border p-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked === true);
+                            if (checked) form.setValue("groups", []);
+                          }}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-sm font-normal">
+                          Show this event to everyone
+                        </FormLabel>
+                        <p className="text-muted-foreground text-xs">
+                          Ignore group filtering for this calendar event.
+                        </p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
                 {groups?.map((group) => (
                   <FormField
                     key={group._id}
@@ -389,6 +417,7 @@ function RouteComponent() {
                       >
                         <FormControl>
                           <Checkbox
+                            disabled={form.watch("audienceAll")}
                             checked={field.value?.includes(group._id)}
                             onCheckedChange={(checked) => {
                               // Ensure field.value is always an array

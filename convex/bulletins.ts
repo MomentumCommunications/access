@@ -39,16 +39,19 @@ export const createBulletin = mutation({
     endDate: v.optional(v.string()),
     body: v.string(),
     image: v.optional(v.string()),
+    audience: v.optional(v.literal("all")),
     groups: v.optional(v.array(v.id("groups"))),
   },
   handler: async (ctx, args) => {
     await requireBulletinAdmin(ctx);
+    const audienceAll = args.audience === "all";
     const newBulletinId = await ctx.db.insert("bulletin", {
       title: args.title,
       body: args.body,
       pinned: false,
-      group: args.team, // Keep old field for backward compatibility
-      groups: args.groups, // New field with group IDs
+      audience: args.audience,
+      group: audienceAll ? [] : args.team, // Keep old field for backward compatibility
+      groups: audienceAll ? [] : args.groups, // New field with group IDs
       date: args.date,
       endDate: args.endDate,
       image: args.image,
@@ -104,6 +107,7 @@ export const getMyBulletins = query({
         pinned: bulletin.pinned,
         group: bulletin.group,
         groups: bulletin.groups,
+        audience: bulletin.audience,
         date: bulletin.date,
         endDate: bulletin.endDate,
         image: bulletin.image,
@@ -131,6 +135,7 @@ export const getAllBulletins = query({
         pinned: b.pinned,
         group: b.group,
         groups: b.groups,
+        audience: b.audience,
         date: b.date,
         endDate: b.endDate,
         image: b.image,
@@ -173,15 +178,18 @@ export const editBulletin = mutation({
     endDate: v.optional(v.string()),
     group: v.array(v.string()),
     groups: v.optional(v.array(v.id("groups"))),
+    audience: v.optional(v.literal("all")),
   },
   handler: async (ctx, args) => {
     await requireBulletinAdmin(ctx);
+    const audienceAll = args.audience === "all";
     const updates = {
       title: args.title,
       body: args.body,
       date: args.date,
-      group: args.group, // Keep old field for backward compatibility
-      groups: args.groups, // New field with group IDs
+      audience: args.audience,
+      group: audienceAll ? [] : args.group, // Keep old field for backward compatibility
+      groups: audienceAll ? [] : args.groups, // New field with group IDs
     };
 
     if (args.endDate !== undefined) {

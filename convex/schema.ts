@@ -186,6 +186,7 @@ export default defineSchema({
     date: v.optional(v.string()),
     endDate: v.optional(v.string()),
     author: v.optional(v.string()),
+    audience: v.optional(v.literal("all")),
     group: v.optional(v.array(v.string())),
     groups: v.optional(v.array(v.id("groups"))),
     hidden: v.optional(v.boolean()),

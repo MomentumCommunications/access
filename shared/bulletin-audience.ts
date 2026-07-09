@@ -1,4 +1,5 @@
 export type BulletinAudience = {
+  audience?: "all";
   groups?: readonly string[];
   group?: readonly string[];
   hidden?: boolean;
@@ -17,6 +18,7 @@ export function isBulletinVisibleToAudience(
   groupNames: readonly string[],
 ) {
   if (bulletin.hidden) return false;
+  if (bulletin.audience === "all") return true;
 
   if (bulletin.groups?.length) {
     return bulletin.groups.some((groupId) => groupIds.includes(groupId));

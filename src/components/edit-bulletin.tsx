@@ -51,6 +51,7 @@ type Bulletin = {
   date?: string;
   endDate?: string;
   author?: string;
+  audience?: "all";
   group?: string[];
   groups?: Id<"groups">[];
   hidden?: boolean;
@@ -111,6 +112,7 @@ export function EditBulletin({ bulletin }: { bulletin: Bulletin }) {
 const formSchema = z.object({
   post: z.string().min(2).max(50),
   body: z.string().min(2).max(4000),
+  audienceAll: z.boolean(),
   group: z.array(z.string()), // Group IDs now
   date: z.string(),
   endDate: z.string().optional(),
@@ -258,6 +260,7 @@ function EditBulletinForm({ bulletin }: { bulletin: Bulletin }) {
     defaultValues: {
       post: bulletin.title,
       body: bulletin.body,
+      audienceAll: bulletin.audience === "all",
       group: [],
       date: bulletin.date ?? "",
       endDate: bulletin.endDate,
@@ -322,6 +325,7 @@ function EditBulletinForm({ bulletin }: { bulletin: Bulletin }) {
       form.reset({
         post: bulletin.title,
         body: bulletin.body,
+        audienceAll: bulletin.audience === "all",
         group: groupIds,
         date: bulletin.date ?? "",
         endDate: bulletin.endDate,
@@ -347,6 +351,7 @@ function EditBulletinForm({ bulletin }: { bulletin: Bulletin }) {
       body,
       group: groupNames, // Keep old format for backward compatibility
       groups: groupIds, // Pass group IDs to new field
+      audience: values.audienceAll ? "all" : undefined,
       date,
       endDate,
     });
@@ -455,7 +460,32 @@ function EditBulletinForm({ bulletin }: { bulletin: Bulletin }) {
             name="group"
             render={() => (
               <FormItem>
-                <FormLabel>Group</FormLabel>
+                <FormLabel>Audience</FormLabel>
+                <FormField
+                  control={form.control}
+                  name="audienceAll"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start gap-2 rounded-md border p-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked === true);
+                            if (checked) form.setValue("group", []);
+                          }}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-sm font-normal">
+                          Show this event to everyone
+                        </FormLabel>
+                        <p className="text-muted-foreground text-xs">
+                          Ignore group filtering for this calendar event.
+                        </p>
+                      </div>
+                    </FormItem>
+                  )}
+                />
                 {groups?.map((group) => (
                   <FormField
                     key={group._id}
@@ -468,6 +498,7 @@ function EditBulletinForm({ bulletin }: { bulletin: Bulletin }) {
                       >
                         <FormControl>
                           <Checkbox
+                            disabled={form.watch("audienceAll")}
                             checked={field.value?.includes(group._id)}
                             onCheckedChange={(checked) => {
                               // Ensure field.value is always an array

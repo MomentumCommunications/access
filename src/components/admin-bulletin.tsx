@@ -47,6 +47,7 @@ type Bulletin = {
   date: string;
   endDate?: string;
   author?: string;
+  audience?: "all";
   group: string[];
   groups: Id<"groups">[];
   hidden: boolean;
@@ -70,6 +71,10 @@ function GroupBadges({
     // Fallback to old group field
     return bulletin.group || [];
   }, [bulletin, groups]);
+
+  if (bulletin.audience === "all") {
+    return <Badge className="font-bold">ALL USERS</Badge>;
+  }
 
   // Show ALL badge if all groups are selected
   if (groupNames.length === groups.length && groups.length > 0) {

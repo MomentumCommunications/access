@@ -92,6 +92,34 @@ export function DataTable<TData, TValue>({
     );
   }, [table]);
 
+  useEffect(() => {
+    function isEditableTarget(target: EventTarget | null) {
+      if (!(target instanceof HTMLElement)) return false;
+      return Boolean(
+        target.closest(
+          'input, textarea, select, [contenteditable=""], [contenteditable="true"]',
+        ),
+      );
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (
+        event.key.toLowerCase() !== "x" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        isEditableTarget(event.target)
+      ) {
+        return;
+      }
+
+      table.setPageSize(100);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [table]);
+
   return (
     <div className="min-w-0 max-w-full space-y-3">
       <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
@@ -183,17 +211,14 @@ export function DataTable<TData, TValue>({
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <label
-            htmlFor={pageSizeId}
-            className="text-sm text-muted-foreground"
-          >
+          <label htmlFor={pageSizeId} className="text-muted-foreground text-sm">
             Rows per page
           </label>
           <select
             id={pageSizeId}
             value={`${table.getState().pagination.pageSize}`}
             onChange={(event) => table.setPageSize(Number(event.target.value))}
-            className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-20 rounded-md border px-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+            className="border-input bg-background focus-visible:border-ring focus-visible:ring-ring/50 shadow-xs h-8 w-20 rounded-md border px-2 text-sm outline-none focus-visible:ring-[3px]"
           >
             {[20, 50, 100].map((pageSize) => (
               <option key={pageSize} value={`${pageSize}`}>

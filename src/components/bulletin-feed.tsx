@@ -9,6 +9,8 @@ import {
 } from "~/components/ui/accordion";
 import { Markdown } from "./markdown-wrapper";
 import { formatBulletinDate, getBulletinSortDate } from "~/lib/bulletin-date";
+import { Button } from "./ui/button";
+import { Link } from "@tanstack/react-router";
 
 export function BulletinFeed() {
   const {
@@ -86,9 +88,20 @@ export function BulletinFeed() {
               )}
               <div className="flex flex-col gap-2">
                 {bulletin.date && (
-                  <p className="align-baseline">
-                    {formatBulletinDate(bulletin)}
-                  </p>
+                  <div className="flex flex-row justify-between">
+                    <p className="align-baseline">
+                      {formatBulletinDate(bulletin)}
+                    </p>
+                    <Button asChild variant="link" size="sm">
+                      <Link
+                        to="/calendar/$bulletinId"
+                        params={{ bulletinId: bulletin._id }}
+                        className={"text-sm"}
+                      >
+                        View
+                      </Link>
+                    </Button>
+                  </div>
                 )}
                 <p className="text-xl font-bold">{bulletin.title}</p>
                 {bulletin.subtitle && (

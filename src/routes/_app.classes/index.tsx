@@ -341,7 +341,7 @@ function ClassesPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl p-4 pb-24 lg:p-8">
+    <main className="mx-auto grid w-full max-w-5xl gap-4 p-4 pb-44 lg:grid-cols-[1fr_22rem] lg:p-8 lg:pb-8">
       <div className="mb-5">
         <h1 className="text-3xl font-bold">Classes</h1>
         <p className="text-muted-foreground">
@@ -579,7 +579,7 @@ function ClassesPage() {
       )}
 
       {!loading && students.length > 0 && !selectedStudentIsManaged ? (
-        <div className="fixed inset-x-4 bottom-4 z-40 lg:hidden">
+        <div className="fixed inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-40 lg:hidden">
           <Sheet>
             <SheetTrigger asChild>
               <Button className="h-11 w-full shadow-lg">

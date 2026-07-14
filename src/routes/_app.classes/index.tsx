@@ -341,7 +341,7 @@ function ClassesPage() {
   }
 
   return (
-    <main className="mx-auto grid w-full max-w-5xl gap-4 p-4 pb-44 lg:grid-cols-[1fr_22rem] lg:p-8 lg:pb-8">
+    <main className="mx-auto w-full max-w-5xl space-y-4 p-4 pb-44 lg:p-8 lg:pb-8">
       <div className="mb-5">
         <h1 className="text-3xl font-bold">Classes</h1>
         <p className="text-muted-foreground">

@@ -4,7 +4,7 @@ import {
 } from "./tuition-pricing.ts";
 
 export const enrollmentEstimateBillingNote =
-  "Estimated total. Final billing may vary due to prorations, discounts, scholarships, or staff-reviewed adjustments.";
+  "Estimated total. Final billing may vary due to prorations, discounts, or staff-reviewed adjustments.";
 
 export type EnrollmentEstimateInput = {
   currentWeeklyMinutes: number;
@@ -140,8 +140,7 @@ function isValidDateValue(value?: string): value is string {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);
   return (
-    !Number.isNaN(date.getTime()) &&
-    date.toISOString().slice(0, 10) === value
+    !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
   );
 }
 

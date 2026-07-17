@@ -1,21 +1,82 @@
 "use node";
 
 import { v } from "convex/values";
+import { makeFunctionReference } from "convex/server";
 import type Stripe from "stripe";
 import { internal } from "./_generated/api";
-import { action } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { action, type ActionCtx } from "./_generated/server";
 import { getStripeClient } from "./lib/stripe";
 import {
   dispatchBillingRunItemToStripe,
+  resolveStripeInvoiceRecovery,
   type PaymentMethodReadiness,
   type StripeCollectionMethod,
 } from "../shared/stripe-invoice-dispatch";
+
+const prepareBillingRunItemRecoveryRef = makeFunctionReference<
+  "query",
+  { billingRunItemId: Id<"billingRunItems"> },
+  {
+    billingRunItemId: Id<"billingRunItems">;
+    householdName: string;
+    status: "draft" | "dispatch_failed" | "dispatched";
+    stripeInvoiceId?: string;
+  }
+>("billing:prepareBillingRunItemRecovery");
+
+const clearBillingRunItemRecoveryStripeStateRef = makeFunctionReference<
+  "mutation",
+  {
+    billingRunItemId: Id<"billingRunItems">;
+    stripeInvoiceId: string;
+  },
+  null
+>("billing:clearBillingRunItemRecoveryStripeState");
+
+const regenerateBillingRunItemRef = makeFunctionReference<
+  "mutation",
+  { billingRunItemId: Id<"billingRunItems"> },
+  { billingRunItemId: Id<"billingRunItems"> }
+>("billing:regenerateBillingRunItem");
+
+const deleteBillingRunItemRef = makeFunctionReference<
+  "mutation",
+  { billingRunItemId: Id<"billingRunItems"> },
+  { billingRunItemId: Id<"billingRunItems"> }
+>("billing:deleteBillingRunItem");
 
 function stripeFailureMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
   }
   return "Stripe draft invoice dispatch failed.";
+}
+
+async function discardRecoveryStripeDraft(
+  ctx: ActionCtx,
+  billingRunItemId: Id<"billingRunItems">,
+) {
+  const prepared = await ctx.runQuery(
+    prepareBillingRunItemRecoveryRef,
+    { billingRunItemId },
+  );
+  if (prepared.status === "dispatched") {
+    throw new Error("Dispatched billing run items are immutable.");
+  }
+  if (!prepared.stripeInvoiceId) return;
+  const stripe = getStripeClient();
+  const invoice = await stripe.invoices.retrieve(prepared.stripeInvoiceId);
+  const recovery = resolveStripeInvoiceRecovery(invoice.status);
+  if (!recovery.allowed) throw new Error(recovery.reason);
+  await stripe.invoices.del(prepared.stripeInvoiceId);
+  await ctx.runMutation(
+    clearBillingRunItemRecoveryStripeStateRef,
+    {
+      billingRunItemId,
+      stripeInvoiceId: prepared.stripeInvoiceId,
+    },
+  );
 }
 
 async function getPaymentMethodReadiness(
@@ -188,6 +249,83 @@ export const adminDispatchBillingRunItems = action({
       alreadyDispatchedCount: results.filter(
         (result) => result.status === "already_dispatched",
       ).length,
+      results,
+    };
+  },
+});
+
+export const adminRegenerateBillingRunItems = action({
+  args: {
+    billingRunItemIds: v.array(v.id("billingRunItems")),
+  },
+  handler: async (ctx, { billingRunItemIds }) => {
+    const uniqueIds = [...new Set(billingRunItemIds)];
+    if (uniqueIds.length === 0) {
+      throw new Error("Select at least one billing item to regenerate.");
+    }
+    const results = [];
+    for (const billingRunItemId of uniqueIds) {
+      try {
+        await discardRecoveryStripeDraft(ctx, billingRunItemId);
+        await ctx.runMutation(regenerateBillingRunItemRef, {
+          billingRunItemId,
+        });
+        results.push({
+          billingRunItemId,
+          status: "regenerated" as const,
+        });
+      } catch (error) {
+        results.push({
+          billingRunItemId,
+          status: "failed" as const,
+          reason: stripeFailureMessage(error),
+        });
+      }
+    }
+    return {
+      regeneratedCount: results.filter(
+        (result) => result.status === "regenerated",
+      ).length,
+      failedCount: results.filter((result) => result.status === "failed")
+        .length,
+      results,
+    };
+  },
+});
+
+export const adminDeleteBillingRunItems = action({
+  args: {
+    billingRunItemIds: v.array(v.id("billingRunItems")),
+  },
+  handler: async (ctx, { billingRunItemIds }) => {
+    const uniqueIds = [...new Set(billingRunItemIds)];
+    if (uniqueIds.length === 0) {
+      throw new Error("Select at least one billing item to delete.");
+    }
+    const results = [];
+    for (const billingRunItemId of uniqueIds) {
+      try {
+        await discardRecoveryStripeDraft(ctx, billingRunItemId);
+        await ctx.runMutation(deleteBillingRunItemRef, {
+          billingRunItemId,
+        });
+        results.push({
+          billingRunItemId,
+          status: "deleted" as const,
+        });
+      } catch (error) {
+        results.push({
+          billingRunItemId,
+          status: "failed" as const,
+          reason: stripeFailureMessage(error),
+        });
+      }
+    }
+    return {
+      deletedCount: results.filter((result) => result.status === "deleted")
+        .length,
+      failedCount: results.filter((result) => result.status === "failed")
+        .length,
       results,
     };
   },

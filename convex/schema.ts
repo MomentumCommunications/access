@@ -592,6 +592,7 @@ export default defineSchema({
     autopayEnabledSnapshot: v.optional(v.boolean()),
     dispatchFailureReason: v.optional(v.string()),
     dispatchFailureAt: v.optional(v.number()),
+    adminNote: v.optional(v.string()),
   })
     .index("byRun", ["billingRunId"])
     .index("byRunStatus", ["billingRunId", "status"])

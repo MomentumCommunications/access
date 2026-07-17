@@ -9,6 +9,7 @@ import {
   resolveBillingRunSourceAdjustments,
   pendingBillingRunItems,
   resolveBillingRunGeneration,
+  selectMissingBillingRunBundles,
   selectBillingRunItemsForDispatch,
 } from "../shared/billing-runs.ts";
 
@@ -338,6 +339,64 @@ describe("billing run duplicate generation", () => {
     assert.equal(billingRunSourcesOverlap("tuition", "both"), true);
     assert.equal(billingRunSourcesOverlap("charges", "both"), true);
     assert.equal(billingRunSourcesOverlap("both", "both"), true);
+  });
+});
+
+describe("supplemental billing run generation", () => {
+  const bundles = [
+    { householdId: "household-a" },
+    { householdId: "household-b" },
+  ];
+
+  it("adds only households not represented for the requested source", () => {
+    assert.deepEqual(
+      selectMissingBillingRunBundles(
+        bundles,
+        [
+          {
+            householdId: "household-a",
+            includeTuition: true,
+            includeCharges: false,
+          },
+        ],
+        "tuition",
+      ),
+      [{ householdId: "household-b" }],
+    );
+  });
+
+  it("allows a separate non-overlapping source lane", () => {
+    assert.deepEqual(
+      selectMissingBillingRunBundles(
+        bundles,
+        [
+          {
+            householdId: "household-a",
+            includeTuition: true,
+            includeCharges: false,
+          },
+        ],
+        "charges",
+      ),
+      bundles,
+    );
+  });
+
+  it("does not create an automatic supplemental item after dispatch coverage", () => {
+    assert.deepEqual(
+      selectMissingBillingRunBundles(
+        [{ householdId: "household-a" }],
+        [
+          {
+            householdId: "household-a",
+            includeTuition: true,
+            includeCharges: true,
+          },
+        ],
+        "both",
+      ),
+      [],
+    );
   });
 });
 

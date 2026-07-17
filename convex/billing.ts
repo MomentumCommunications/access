@@ -1,7 +1,13 @@
 import { v } from "convex/values";
+import { fromZonedTime } from "date-fns-tz";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { mutation, query } from "./_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
 import {
   calculateWeeklyClassMinuteSegments,
   calculateWeeklyClassMinutes,
@@ -57,6 +63,8 @@ import {
   calculateBillingRunItemTotal,
   resolveBillingRunSourceAdjustments,
   resolveBillingRunGeneration,
+  selectMissingBillingRunBundles,
+  type BillingRunBundle,
   type BillingRunSourceMode,
 } from "../shared/billing-runs";
 import { recordActivityEvent } from "./lib/activityLog";
@@ -1550,6 +1558,115 @@ function sourceModeIncludes(
   return sourceMode === "both" || sourceMode === source;
 }
 
+function nextIsoDate(value: string) {
+  const date = new Date(`${value}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+type BillingRunPeriodInput = {
+  periodStart: string;
+  periodEnd: string;
+  startsAtOrAfter: number;
+  startsBefore: number;
+  sourceMode: BillingRunSourceMode;
+};
+
+async function buildCurrentBillingRunBundles(
+  ctx: BillingCtx,
+  args: BillingRunPeriodInput,
+) {
+  const [tuitionReview, chargesReview] = await Promise.all([
+    sourceModeIncludes(args.sourceMode, "tuition")
+      ? getPeriodTuitionReview(ctx, args.periodStart, args.periodEnd)
+      : null,
+    sourceModeIncludes(args.sourceMode, "charges")
+      ? getPeriodChargesReview(ctx, args)
+      : null,
+  ]);
+  const tuitionHouseholds =
+    tuitionReview?.households.map((household) => ({
+      householdId: household.householdId,
+      householdName: household.householdName,
+      householdLinkSource: household.householdLinkSource,
+      totalTuitionCents: household.totalTuitionCents,
+      studentCount: household.students.length,
+      hasIncompleteTuition: household.hasIncompleteTuition,
+      students: household.students.map((student) => ({
+        studentId: student.studentId,
+        studentName: student.studentName,
+        baseTuitionCents: student.rawBaseTuitionCents,
+      })),
+      siblingDiscount: tuitionReview.siblingDiscount,
+      householdTuitionAdjustmentTotalCents: household.billingAdjustments
+        .filter((adjustment) => adjustment.status === "active")
+        .reduce(
+          (total, adjustment) =>
+            total + (adjustment.appliedAmountCents || 0),
+          0,
+        ),
+    })) || [];
+  const privateChargeSources =
+    chargesReview?.privateCharges.map((charge) => ({
+      householdId:
+        charge.household.householdId || `student:${charge.student._id}`,
+      householdName:
+        charge.household.householdName ||
+        `${charge.student.firstName} ${charge.student.lastName} (unlinked)`,
+      householdLinkSource:
+        charge.household.householdLinkSource || "student_fallback",
+      sourceType: "private" as const,
+      sourceId: charge.participation._id,
+      amountCents: charge.pricing.amountCents,
+      studentId: charge.student._id,
+      studentName: `${charge.student.firstName} ${charge.student.lastName}`,
+    })) || [];
+  const perSessionChargeSources =
+    chargesReview?.perSessionCharges.map((charge) => ({
+      householdId:
+        charge.household.householdId || `student:${charge.student._id}`,
+      householdName:
+        charge.household.householdName ||
+        `${charge.student.firstName} ${charge.student.lastName} (unlinked)`,
+      householdLinkSource:
+        charge.household.householdLinkSource || "student_fallback",
+      sourceType: "per_session" as const,
+      sourceId: `${charge.studentId}:${charge.classId}`,
+      amountCents: charge.aggregateAmountCents,
+      studentId: charge.studentId,
+      studentName: `${charge.student.firstName} ${charge.student.lastName}`,
+    })) || [];
+  return buildBillingRunBundles({
+    sourceMode: args.sourceMode,
+    tuitionHouseholds,
+    charges: [...privateChargeSources, ...perSessionChargeSources],
+  });
+}
+
+async function resolveBillingRunBundleSnapshot(
+  ctx: BillingCtx,
+  bundle: BillingRunBundle,
+  periodStart: string,
+  periodEnd: string,
+) {
+  const recurringAdjustments = (
+    await getRecurringStudentAdjustments(ctx, periodStart, periodEnd)
+  ).map(billingAdjustmentLike);
+  const resolvedSources = resolveBillingRunSourceAdjustments({
+    periodStart,
+    periodEnd,
+    components: bundle.sourceComponents,
+    adjustments: recurringAdjustments,
+  });
+  return {
+    ...buildBillingRunItemSnapshot(bundle, periodStart, periodEnd),
+    tuitionSubtotalCents: resolvedSources.tuitionSubtotalCents,
+    chargesSubtotalCents: resolvedSources.chargesSubtotalCents,
+    subtotalBeforeRunAdjustmentsCents:
+      resolvedSources.subtotalAfterSourceAdjustmentsCents,
+  };
+}
+
 export const adminGenerateBillingRun = mutation({
   args: {
     periodStart: v.string(),
@@ -1606,72 +1723,7 @@ export const adminGenerateBillingRun = mutation({
       );
     }
 
-    const [tuitionReview, chargesReview] = await Promise.all([
-      sourceModeIncludes(args.sourceMode, "tuition")
-        ? getPeriodTuitionReview(ctx, args.periodStart, args.periodEnd)
-        : null,
-      sourceModeIncludes(args.sourceMode, "charges")
-        ? getPeriodChargesReview(ctx, args)
-        : null,
-    ]);
-    const tuitionHouseholds =
-      tuitionReview?.households.map((household) => ({
-        householdId: household.householdId,
-        householdName: household.householdName,
-        householdLinkSource: household.householdLinkSource,
-        totalTuitionCents: household.totalTuitionCents,
-        studentCount: household.students.length,
-        hasIncompleteTuition: household.hasIncompleteTuition,
-        students: household.students.map((student) => ({
-          studentId: student.studentId,
-          studentName: student.studentName,
-          baseTuitionCents: student.rawBaseTuitionCents,
-        })),
-        siblingDiscount: tuitionReview.siblingDiscount,
-        householdTuitionAdjustmentTotalCents:
-          household.billingAdjustments
-            .filter((adjustment) => adjustment.status === "active")
-            .reduce(
-              (total, adjustment) =>
-                total + (adjustment.appliedAmountCents || 0),
-              0,
-            ),
-      })) || [];
-    const privateChargeSources =
-      chargesReview?.privateCharges.map((charge) => ({
-        householdId:
-          charge.household.householdId || `student:${charge.student._id}`,
-        householdName:
-          charge.household.householdName ||
-          `${charge.student.firstName} ${charge.student.lastName} (unlinked)`,
-        householdLinkSource:
-          charge.household.householdLinkSource || "student_fallback",
-        sourceType: "private" as const,
-        sourceId: charge.participation._id,
-        amountCents: charge.pricing.amountCents,
-        studentId: charge.student._id,
-        studentName: `${charge.student.firstName} ${charge.student.lastName}`,
-      })) || [];
-    const perSessionChargeSources =
-      chargesReview?.perSessionCharges.map((charge) => ({
-        householdId:
-          charge.household.householdId || `student:${charge.student._id}`,
-        householdName:
-          charge.household.householdName ||
-          `${charge.student.firstName} ${charge.student.lastName} (unlinked)`,
-        householdLinkSource:
-          charge.household.householdLinkSource || "student_fallback",
-        sourceType: "per_session" as const,
-        sourceId: `${charge.studentId}:${charge.classId}`,
-        amountCents: charge.aggregateAmountCents,
-        studentId: charge.studentId,
-        studentName: `${charge.student.firstName} ${charge.student.lastName}`,
-      })) || [];
-    const bundles = buildBillingRunBundles({
-      sourceMode: args.sourceMode,
-      tuitionHouseholds,
-      charges: [...privateChargeSources, ...perSessionChargeSources],
-    });
+    const bundles = await buildCurrentBillingRunBundles(ctx, args);
     if (bundles.length === 0) {
       return {
         outcome: "empty" as const,
@@ -1680,13 +1732,6 @@ export const adminGenerateBillingRun = mutation({
     }
 
     const now = Date.now();
-    const recurringAdjustments = (
-      await getRecurringStudentAdjustments(
-        ctx,
-        args.periodStart,
-        args.periodEnd,
-      )
-    ).map(billingAdjustmentLike);
     const billingRunId = await ctx.db.insert("billingRuns", {
       periodStart: args.periodStart,
       periodEnd: args.periodEnd,
@@ -1697,23 +1742,14 @@ export const adminGenerateBillingRun = mutation({
       updatedAt: now,
     });
     for (const bundle of bundles) {
-      const resolvedSources = resolveBillingRunSourceAdjustments({
-        periodStart: args.periodStart,
-        periodEnd: args.periodEnd,
-        components: bundle.sourceComponents,
-        adjustments: recurringAdjustments,
-      });
       await ctx.db.insert("billingRunItems", {
         billingRunId,
-        ...buildBillingRunItemSnapshot(
+        ...(await resolveBillingRunBundleSnapshot(
+          ctx,
           bundle,
           args.periodStart,
           args.periodEnd,
-        ),
-        tuitionSubtotalCents: resolvedSources.tuitionSubtotalCents,
-        chargesSubtotalCents: resolvedSources.chargesSubtotalCents,
-        subtotalBeforeRunAdjustmentsCents:
-          resolvedSources.subtotalAfterSourceAdjustmentsCents,
+        )),
         status: "draft",
         createdAt: now,
         updatedAt: now,
@@ -1737,6 +1773,339 @@ export const adminGenerateBillingRun = mutation({
       billingRunId,
       itemCount: bundles.length,
     };
+  },
+});
+
+export const adminGenerateMissingBillingRunItems = mutation({
+  args: {
+    periodStart: v.string(),
+    periodEnd: v.string(),
+    startsAtOrAfter: v.number(),
+    startsBefore: v.number(),
+    sourceMode: billingRunSourceModeValidator,
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireAdmin(ctx);
+    validateIsoDate(args.periodStart, "periodStart");
+    validateIsoDate(args.periodEnd, "periodEnd");
+    if (args.periodEnd < args.periodStart) {
+      throw new Error("periodEnd must be on or after periodStart.");
+    }
+    if (args.startsBefore <= args.startsAtOrAfter) {
+      throw new Error("Billing range end must be after its start.");
+    }
+
+    const periodRuns = await ctx.db
+      .query("billingRuns")
+      .withIndex("byPeriodMode", (q) =>
+        q
+          .eq("periodStart", args.periodStart)
+          .eq("periodEnd", args.periodEnd),
+      )
+      .collect();
+    const existingItems = (
+      await Promise.all(
+        periodRuns.map((run) =>
+          ctx.db
+            .query("billingRunItems")
+            .withIndex("byRun", (q) => q.eq("billingRunId", run._id))
+            .collect(),
+        ),
+      )
+    ).flat();
+    const currentBundles = await buildCurrentBillingRunBundles(ctx, args);
+    const missingBundles = selectMissingBillingRunBundles(
+      currentBundles,
+      existingItems,
+      args.sourceMode,
+    );
+    if (missingBundles.length === 0) {
+      return {
+        outcome: "empty" as const,
+        itemCount: 0,
+        skippedCount: currentBundles.length,
+      };
+    }
+
+    const now = Date.now();
+    const existingDraft = periodRuns
+      .filter(
+        (run) =>
+          run.status === "draft" && run.sourceMode === args.sourceMode,
+      )
+      .sort(
+        (left, right) =>
+          right.createdAt - left.createdAt ||
+          left._id.localeCompare(right._id),
+      )[0];
+    const billingRunId =
+      existingDraft?._id ??
+      (await ctx.db.insert("billingRuns", {
+        periodStart: args.periodStart,
+        periodEnd: args.periodEnd,
+        sourceMode: args.sourceMode,
+        status: "draft",
+        createdBy: actor._id,
+        createdAt: now,
+        updatedAt: now,
+      }));
+
+    for (const bundle of missingBundles) {
+      await ctx.db.insert("billingRunItems", {
+        billingRunId,
+        ...(await resolveBillingRunBundleSnapshot(
+          ctx,
+          bundle,
+          args.periodStart,
+          args.periodEnd,
+        )),
+        status: "draft",
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    await ctx.db.patch(billingRunId, { status: "draft", updatedAt: now });
+    await recordActivityEvent(ctx, {
+      entityType: "billing_run",
+      entityId: billingRunId,
+      actorId: actor._id,
+      eventType: "billing_run_missing_items_generated",
+      summary: `Added ${missingBundles.length} missing household billing item${missingBundles.length === 1 ? "" : "s"}.`,
+      metadata: {
+        periodStart: args.periodStart,
+        periodEnd: args.periodEnd,
+        sourceMode: args.sourceMode,
+        itemCount: missingBundles.length,
+        skippedCount: currentBundles.length - missingBundles.length,
+      },
+    });
+    return {
+      outcome: existingDraft ? ("updated" as const) : ("created" as const),
+      billingRunId,
+      itemCount: missingBundles.length,
+      skippedCount: currentBundles.length - missingBundles.length,
+    };
+  },
+});
+
+export const adminUpdateBillingRunItemNote = mutation({
+  args: {
+    billingRunItemId: v.id("billingRunItems"),
+    note: v.string(),
+  },
+  handler: async (ctx, { billingRunItemId, note }) => {
+    const actor = await requireAdmin(ctx);
+    const item = await ctx.db.get(billingRunItemId);
+    if (!item) throw new Error("Billing run item not found.");
+    const cleaned = note.trim();
+    if (cleaned.length > 2000) {
+      throw new Error("Billing item notes must be 2000 characters or fewer.");
+    }
+    await ctx.db.patch(item._id, {
+      adminNote: cleaned || undefined,
+      updatedAt: Date.now(),
+    });
+    await recordActivityEvent(ctx, {
+      entityType: "billing_run_item",
+      entityId: item._id,
+      actorId: actor._id,
+      eventType: "billing_run_item_note_updated",
+      summary: `Updated the billing note for ${item.householdName}.`,
+      metadata: {
+        billingRunId: item.billingRunId,
+        householdId: item.householdId,
+        cleared: !cleaned,
+      },
+    });
+    return { note: cleaned || undefined };
+  },
+});
+
+export const prepareBillingRunItemRecovery = internalQuery({
+  args: { billingRunItemId: v.id("billingRunItems") },
+  handler: async (ctx, { billingRunItemId }) => {
+    await requireAdmin(ctx);
+    const item = await ctx.db.get(billingRunItemId);
+    if (!item) throw new Error("Billing run item not found.");
+    return {
+      billingRunItemId: item._id,
+      householdName: item.householdName,
+      status: item.status,
+      stripeInvoiceId: item.stripeInvoiceId,
+    };
+  },
+});
+
+export const clearBillingRunItemRecoveryStripeState = internalMutation({
+  args: {
+    billingRunItemId: v.id("billingRunItems"),
+    stripeInvoiceId: v.string(),
+  },
+  handler: async (ctx, { billingRunItemId, stripeInvoiceId }) => {
+    const actor = await requireAdmin(ctx);
+    const item = await ctx.db.get(billingRunItemId);
+    if (!item) throw new Error("Billing run item not found.");
+    if (item.status === "dispatched") {
+      throw new Error("Dispatched billing run items are immutable.");
+    }
+    if (item.stripeInvoiceId !== stripeInvoiceId) {
+      throw new Error("The billing item Stripe invoice changed during recovery.");
+    }
+    await ctx.db.patch(item._id, {
+      stripeInvoiceId: undefined,
+      stripeCustomerId: undefined,
+      collectionMethod: undefined,
+      autopayEnabledSnapshot: undefined,
+      dispatchFailureReason: undefined,
+      dispatchFailureAt: undefined,
+      updatedAt: Date.now(),
+    });
+    await recordActivityEvent(ctx, {
+      entityType: "billing_run_item",
+      entityId: item._id,
+      actorId: actor._id,
+      eventType: "billing_run_item_stripe_draft_discarded",
+      summary: `Discarded the linked Stripe draft invoice for ${item.householdName}.`,
+      metadata: {
+        billingRunId: item.billingRunId,
+        householdId: item.householdId,
+        stripeInvoiceId,
+      },
+    });
+  },
+});
+
+export const regenerateBillingRunItem = internalMutation({
+  args: { billingRunItemId: v.id("billingRunItems") },
+  handler: async (ctx, { billingRunItemId }) => {
+    const actor = await requireAdmin(ctx);
+    const item = await ctx.db.get(billingRunItemId);
+    if (!item) throw new Error("Billing run item not found.");
+    if (item.status === "dispatched") {
+      throw new Error("Dispatched billing run items cannot be regenerated.");
+    }
+    if (item.stripeInvoiceId) {
+      throw new Error(
+        "The linked Stripe invoice must be discarded before regeneration.",
+      );
+    }
+    if (!item.includeTuition && !item.includeCharges) {
+      throw new Error("The billing item does not contain a recoverable source.");
+    }
+    const sourceMode: BillingRunSourceMode =
+      item.includeTuition && item.includeCharges
+        ? "both"
+        : item.includeTuition
+          ? "tuition"
+          : "charges";
+    const startsAtOrAfter = fromZonedTime(
+      `${item.periodStart}T00:00:00`,
+      "America/New_York",
+    ).getTime();
+    const startsBefore = fromZonedTime(
+      `${nextIsoDate(item.periodEnd)}T00:00:00`,
+      "America/New_York",
+    ).getTime();
+    const bundles = await buildCurrentBillingRunBundles(ctx, {
+      periodStart: item.periodStart,
+      periodEnd: item.periodEnd,
+      startsAtOrAfter,
+      startsBefore,
+      sourceMode,
+    });
+    const bundle = bundles.find(
+      (candidate) => candidate.householdId === item.householdId,
+    );
+    if (!bundle) {
+      throw new Error(
+        "This household no longer has billable sources for the item. Delete it instead.",
+      );
+    }
+    const now = Date.now();
+    await ctx.db.patch(item._id, {
+      ...(await resolveBillingRunBundleSnapshot(
+        ctx,
+        bundle,
+        item.periodStart,
+        item.periodEnd,
+      )),
+      status: "draft",
+      dispatchedBy: undefined,
+      dispatchedAt: undefined,
+      dispatchedAdjustmentTotalCents: undefined,
+      dispatchedFinalTotalCents: undefined,
+      dispatchedTuitionSubtotalCents: undefined,
+      dispatchedChargesSubtotalCents: undefined,
+      dispatchedSourceAdjustments: undefined,
+      stripeCustomerId: undefined,
+      stripeInvoiceId: undefined,
+      collectionMethod: undefined,
+      autopayEnabledSnapshot: undefined,
+      dispatchFailureReason: undefined,
+      dispatchFailureAt: undefined,
+      updatedAt: now,
+    });
+    await ctx.db.patch(item.billingRunId, {
+      status: "draft",
+      dispatchedAt: undefined,
+      updatedAt: now,
+    });
+    await recordActivityEvent(ctx, {
+      entityType: "billing_run_item",
+      entityId: item._id,
+      actorId: actor._id,
+      eventType: "billing_run_item_regenerated",
+      summary: `Regenerated billing sources for ${item.householdName}.`,
+      metadata: {
+        billingRunId: item.billingRunId,
+        householdId: item.householdId,
+        sourceMode,
+      },
+    });
+    return { billingRunItemId: item._id };
+  },
+});
+
+export const deleteBillingRunItem = internalMutation({
+  args: { billingRunItemId: v.id("billingRunItems") },
+  handler: async (ctx, { billingRunItemId }) => {
+    const actor = await requireAdmin(ctx);
+    const item = await ctx.db.get(billingRunItemId);
+    if (!item) throw new Error("Billing run item not found.");
+    if (item.status === "dispatched") {
+      throw new Error("Dispatched billing run items cannot be deleted.");
+    }
+    if (item.stripeInvoiceId) {
+      throw new Error(
+        "The linked Stripe invoice must be discarded before deletion.",
+      );
+    }
+    const adjustments = await getBillingRunItemAdjustments(ctx, item);
+    for (const adjustment of adjustments) {
+      await ctx.db.delete(adjustment._id);
+    }
+    await ctx.db.delete(item._id);
+    const remaining = await ctx.db
+      .query("billingRunItems")
+      .withIndex("byRun", (q) => q.eq("billingRunId", item.billingRunId))
+      .collect();
+    if (remaining.length === 0) {
+      const run = await ctx.db.get(item.billingRunId);
+      if (run?.status === "draft") await ctx.db.delete(run._id);
+    }
+    await recordActivityEvent(ctx, {
+      entityType: "billing_run_item",
+      entityId: item._id,
+      actorId: actor._id,
+      eventType: "billing_run_item_deleted",
+      summary: `Deleted the pending billing item for ${item.householdName}.`,
+      metadata: {
+        billingRunId: item.billingRunId,
+        householdId: item.householdId,
+        adjustmentCount: adjustments.length,
+      },
+    });
+    return { billingRunItemId: item._id };
   },
 });
 

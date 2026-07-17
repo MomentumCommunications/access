@@ -5,6 +5,7 @@ import {
   dispatchBillingRunItemToStripe,
   resolveHouseholdStripeBillingTarget,
   resolveInvoiceCollectionMethod,
+  resolveStripeInvoiceRecovery,
 } from "../shared/stripe-invoice-dispatch.ts";
 
 const payer = {
@@ -16,6 +17,21 @@ const payer = {
   autopayEnabled: true,
   createdAt: 1,
 };
+
+describe("Stripe invoice recovery", () => {
+  it("allows draft invoices to be discarded", () => {
+    assert.deepEqual(resolveStripeInvoiceRecovery("draft"), {
+      allowed: true,
+    });
+  });
+
+  it("blocks invoices that have advanced beyond draft", () => {
+    const result = resolveStripeInvoiceRecovery("open");
+    assert.equal(result.allowed, false);
+    if (result.allowed) return;
+    assert.match(result.reason, /open/);
+  });
+});
 
 describe("Stripe billing target resolution", () => {
   it("resolves the active primary payer, Stripe customer, and autopay policy", () => {

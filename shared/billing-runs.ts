@@ -121,6 +121,37 @@ export function billingRunSourcesOverlap(
   );
 }
 
+export function billingRunItemOverlapsSource(
+  item: { includeTuition: boolean; includeCharges: boolean },
+  sourceMode: BillingRunSourceMode,
+) {
+  return (
+    (item.includeTuition && includesTuition(sourceMode)) ||
+    (item.includeCharges && includesCharges(sourceMode))
+  );
+}
+
+export function selectMissingBillingRunBundles<
+  TBundle extends { householdId: string },
+>(
+  bundles: TBundle[],
+  existingItems: {
+    householdId: string;
+    includeTuition: boolean;
+    includeCharges: boolean;
+  }[],
+  sourceMode: BillingRunSourceMode,
+) {
+  return bundles.filter(
+    (bundle) =>
+      !existingItems.some(
+        (item) =>
+          item.householdId === bundle.householdId &&
+          billingRunItemOverlapsSource(item, sourceMode),
+      ),
+  );
+}
+
 export function buildBillingRunBundles({
   sourceMode,
   tuitionHouseholds,

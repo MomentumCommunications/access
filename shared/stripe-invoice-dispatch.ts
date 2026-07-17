@@ -272,6 +272,16 @@ export function billingRunInvoiceLineIdempotencyKey(
   return `access-billing-run-item-${itemId}-line-${lineKey}-v1`;
 }
 
+export function resolveStripeInvoiceRecovery(status?: string | null) {
+  if (status === "draft") {
+    return { allowed: true as const };
+  }
+  return {
+    allowed: false as const,
+    reason: `The linked Stripe invoice is ${status || "in an unknown state"} and can no longer be discarded automatically.`,
+  };
+}
+
 export async function dispatchBillingRunItemToStripe({
   item,
   target,

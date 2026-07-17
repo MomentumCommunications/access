@@ -10,10 +10,13 @@ import {
   Ban,
   CircleAlert,
   CheckCircle2,
+  FilePenLine,
   Pencil,
   Plus,
   ReceiptText,
+  RefreshCw,
   Send,
+  Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { toast } from "sonner";
@@ -156,10 +159,24 @@ function BillingRunsAdminPage() {
   const [endDate, setEndDate] = useState(defaults.end);
   const [sourceMode, setSourceMode] = useState<SourceMode>("both");
   const [includeDispatched, setIncludeDispatched] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<
+    Set<BillingRunItem["_id"]>
+  >(new Set());
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isAddingMissing, setIsAddingMissing] = useState(false);
   const [dispatchRun, setDispatchRun] = useState<BillingRun | null>(null);
   const [isDispatching, setIsDispatching] = useState(false);
+  const [recoveryRequest, setRecoveryRequest] = useState<{
+    type: "regenerate" | "delete";
+    run: BillingRun;
+  } | null>(null);
+  const [isRecovering, setIsRecovering] = useState(false);
+  const [recoveryErrors, setRecoveryErrors] = useState<
+    Map<BillingRunItem["_id"], string>
+  >(new Map());
+  const [noteItem, setNoteItem] = useState<BillingRunItem | null>(null);
+  const [noteValue, setNoteValue] = useState("");
+  const [isSavingNote, setIsSavingNote] = useState(false);
   const [adjustmentItem, setAdjustmentItem] = useState<BillingRunItem | null>(
     null,
   );
@@ -186,8 +203,20 @@ function BillingRunsAdminPage() {
       : "skip",
   );
   const generateRun = useConvexMutation(api.billing.adminGenerateBillingRun);
+  const generateMissing = useConvexMutation(
+    api.billing.adminGenerateMissingBillingRunItems,
+  );
   const dispatchItems = useConvexAction(
     api.billingDispatch.adminDispatchBillingRunItems,
+  );
+  const regenerateItems = useConvexAction(
+    api.billingDispatch.adminRegenerateBillingRunItems,
+  );
+  const deleteItems = useConvexAction(
+    api.billingDispatch.adminDeleteBillingRunItems,
+  );
+  const updateItemNote = useConvexMutation(
+    api.billing.adminUpdateBillingRunItemNote,
   );
   const createAdjustment = useConvexMutation(
     api.billing.adminCreateBillingAdjustment,
@@ -264,6 +293,41 @@ function BillingRunsAdminPage() {
     }
   }
 
+  async function handleAddMissing() {
+    if (!validPeriod) return;
+    setIsAddingMissing(true);
+    try {
+      const result = await generateMissing({
+        periodStart: startDate,
+        periodEnd: endDate,
+        startsAtOrAfter: startTimestamp(startDate),
+        startsBefore: endExclusiveTimestamp(endDate),
+        sourceMode,
+      });
+      if (result.itemCount > 0) {
+        toast.success(
+          `Added ${result.itemCount} missing household ${
+            result.itemCount === 1 ? "bundle" : "bundles"
+          }.`,
+        );
+      } else {
+        toast.info(
+          result.skippedCount > 0
+            ? "Every currently billable household is already represented for these sources."
+            : "No billable household items were found for this period.",
+        );
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to add missing households.",
+      );
+    } finally {
+      setIsAddingMissing(false);
+    }
+  }
+
   async function handleDispatch() {
     if (!dispatchRun) return;
     const itemIds = dispatchRun.items
@@ -302,6 +366,97 @@ function BillingRunsAdminPage() {
       );
     } finally {
       setIsDispatching(false);
+    }
+  }
+
+  async function handleRecovery() {
+    if (!recoveryRequest) return;
+    const billingRunItemIds = recoveryRequest.run.items
+      .filter(
+        (item) =>
+          item.status !== "dispatched" && selectedIds.has(item._id),
+      )
+      .map((item) => item._id);
+    if (billingRunItemIds.length === 0) return;
+    setIsRecovering(true);
+    try {
+      const result =
+        recoveryRequest.type === "regenerate"
+          ? await regenerateItems({ billingRunItemIds })
+          : await deleteItems({ billingRunItemIds });
+      const successCount =
+        "regeneratedCount" in result
+          ? result.regeneratedCount
+          : result.deletedCount;
+      if (successCount > 0) {
+        toast.success(
+          `${recoveryRequest.type === "regenerate" ? "Regenerated" : "Deleted"} ${successCount} billing ${
+            successCount === 1 ? "item" : "items"
+          }.`,
+        );
+      }
+      if (result.failedCount > 0) {
+        const firstFailure = result.results.find(
+          (row: { status: string; reason?: string }) =>
+            row.status === "failed",
+        );
+        toast.error(
+          `${result.failedCount} ${
+            result.failedCount === 1 ? "item was" : "items were"
+          } not recovered. ${firstFailure?.reason || "Review the affected items."}`,
+        );
+      }
+      setRecoveryErrors((current) => {
+        const next = new Map(current);
+        for (const itemId of billingRunItemIds) next.delete(itemId);
+        for (const row of result.results as Array<{
+          billingRunItemId: BillingRunItem["_id"];
+          status: string;
+          reason?: string;
+        }>) {
+          if (row.status === "failed") {
+            next.set(row.billingRunItemId, row.reason || "Recovery failed.");
+          }
+        }
+        return next;
+      });
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        for (const itemId of billingRunItemIds) next.delete(itemId);
+        return next;
+      });
+      setRecoveryRequest(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to recover items.",
+      );
+    } finally {
+      setIsRecovering(false);
+    }
+  }
+
+  function openItemNote(item: BillingRunItem) {
+    setNoteItem(item);
+    setNoteValue(item.adminNote || "");
+  }
+
+  async function handleSaveItemNote(event: FormEvent) {
+    event.preventDefault();
+    if (!noteItem) return;
+    setIsSavingNote(true);
+    try {
+      await updateItemNote({
+        billingRunItemId: noteItem._id,
+        note: noteValue,
+      });
+      toast.success("Billing note updated.");
+      setNoteItem(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to save note.",
+      );
+    } finally {
+      setIsSavingNote(false);
     }
   }
 
@@ -393,8 +548,8 @@ function BillingRunsAdminPage() {
           <CardTitle>Generate billing bundles</CardTitle>
           <CardDescription>
             A generated draft snapshots the current reviewed tuition and charge
-            totals. Repeating the same generation reopens that draft instead of
-            creating duplicates.
+            totals. Add missing households later without rebilling households
+            already represented for the selected sources.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-[auto_1fr_auto] lg:items-end">
@@ -412,7 +567,6 @@ function BillingRunsAdminPage() {
             <select
               id="run-source"
               value={sourceMode}
-              defaultValue="charges"
               onChange={(event) =>
                 setSourceMode(event.target.value as SourceMode)
               }
@@ -420,15 +574,26 @@ function BillingRunsAdminPage() {
             >
               <option value="tuition">Tuitions</option>
               <option value="charges">Charges</option>
+              <option value="both">Tuition and charges</option>
             </select>
           </div>
-          <Button
-            onClick={handleGenerate}
-            disabled={!validPeriod || isGenerating}
-          >
-            {isGenerating ? <Spinner /> : <ReceiptText />}
-            Generate
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={handleGenerate}
+              disabled={!validPeriod || isGenerating || isAddingMissing}
+            >
+              {isGenerating ? <Spinner /> : <ReceiptText />}
+              Generate
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleAddMissing}
+              disabled={!validPeriod || isGenerating || isAddingMissing}
+            >
+              {isAddingMissing ? <Spinner /> : <Plus />}
+              Add missing households
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -464,14 +629,27 @@ function BillingRunsAdminPage() {
         </Card>
       ) : (
         runs.map((run) => {
-          const selectedCount = run.items.filter(
+          const selectedPendingCount = run.items.filter(
             (item) => item.status !== "dispatched" && selectedIds.has(item._id),
           ).length;
-          const draftItems = run.items.filter(
+          const pendingItems = run.items.filter(
+            (item) => item.status !== "dispatched",
+          );
+          const dispatchableItems = run.items.filter(
             (item) => item.status !== "dispatched" && !item.requiresAdminReview,
           );
+          const selectedDispatchableCount = dispatchableItems.filter((item) =>
+            selectedIds.has(item._id),
+          ).length;
+          const selectedReviewCount = run.items.filter(
+            (item) =>
+              item.status !== "dispatched" &&
+              item.requiresAdminReview &&
+              selectedIds.has(item._id),
+          ).length;
           const allSelected =
-            draftItems.length > 0 && selectedCount === draftItems.length;
+            pendingItems.length > 0 &&
+            selectedPendingCount === pendingItems.length;
           return (
             <Card key={run._id} className="rounded-lg">
               <CardHeader className="gap-3 border-b">
@@ -501,7 +679,7 @@ function BillingRunsAdminPage() {
                     </span>
                   </div>
                 </div>
-                {draftItems.length > 0 ? (
+                {pendingItems.length > 0 ? (
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <Checkbox
@@ -510,7 +688,7 @@ function BillingRunsAdminPage() {
                         onCheckedChange={(checked) => {
                           setSelectedIds((current) => {
                             const next = new Set(current);
-                            for (const item of draftItems) {
+                            for (const item of pendingItems) {
                               if (checked) next.add(item._id);
                               else next.delete(item._id);
                             }
@@ -519,16 +697,46 @@ function BillingRunsAdminPage() {
                         }}
                       />
                       <Label htmlFor={`select-run-${run._id}`}>
-                        Select all pending
+                        Select all pending ({selectedPendingCount}/
+                        {pendingItems.length})
                       </Label>
                     </div>
-                    <Button
-                      onClick={() => setDispatchRun(run)}
-                      disabled={selectedCount === 0}
-                    >
-                      <Send />
-                      Dispatch selected ({selectedCount})
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {selectedReviewCount > 0 ? (
+                        <span className="text-muted-foreground text-xs">
+                          {selectedReviewCount} selected need regeneration
+                        </span>
+                      ) : null}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setRecoveryRequest({ type: "regenerate", run })
+                        }
+                        disabled={selectedPendingCount === 0}
+                      >
+                        <RefreshCw />
+                        Regenerate ({selectedPendingCount})
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() =>
+                          setRecoveryRequest({ type: "delete", run })
+                        }
+                        disabled={selectedPendingCount === 0}
+                      >
+                        <Trash2 />
+                        Delete ({selectedPendingCount})
+                      </Button>
+                      <Button
+                        onClick={() => setDispatchRun(run)}
+                        disabled={selectedDispatchableCount === 0}
+                      >
+                        <Send />
+                        Dispatch ({selectedDispatchableCount})
+                      </Button>
+                    </div>
                   </div>
                 ) : null}
               </CardHeader>
@@ -545,7 +753,7 @@ function BillingRunsAdminPage() {
                         selectedIds.has(item._id)
                       }
                       disabled={
-                        item.status === "dispatched" || item.requiresAdminReview
+                        item.status === "dispatched"
                       }
                       onCheckedChange={(checked) => {
                         setSelectedIds((current) => {
@@ -600,6 +808,11 @@ function BillingRunsAdminPage() {
                           {item.dispatchFailureReason}
                         </p>
                       ) : null}
+                      {recoveryErrors.get(item._id) ? (
+                        <p className="text-destructive mt-2 text-xs">
+                          Recovery: {recoveryErrors.get(item._id)}
+                        </p>
+                      ) : null}
                       {item.stripeInvoiceId ? (
                         <p className="text-muted-foreground mt-2 font-mono text-xs">
                           {item.stripeInvoiceId}
@@ -612,6 +825,26 @@ function BillingRunsAdminPage() {
                             : "Invoice by email"}
                         </p>
                       ) : null}
+                      <div className="mt-3 border-t pt-3">
+                        {item.adminNote ? (
+                          <p className="text-muted-foreground whitespace-pre-wrap text-xs">
+                            {item.adminNote}
+                          </p>
+                        ) : (
+                          <p className="text-muted-foreground text-xs">
+                            No internal billing note.
+                          </p>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="mt-1 h-7 px-2"
+                          onClick={() => openItemNote(item)}
+                        >
+                          <FilePenLine />
+                          {item.adminNote ? "Edit note" : "Add note"}
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       {item.sourceAdjustments.length > 0 ? (
@@ -756,6 +989,51 @@ function BillingRunsAdminPage() {
       )}
 
       <Dialog
+        open={noteItem !== null}
+        onOpenChange={(open) => {
+          if (!open) setNoteItem(null);
+        }}
+      >
+        <DialogContent>
+          <form onSubmit={handleSaveItemNote}>
+            <DialogHeader>
+              <DialogTitle>Internal billing note</DialogTitle>
+              <DialogDescription>
+                Record manual Stripe invoices or other billing follow-up for{" "}
+                {noteItem?.householdName}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Textarea
+                value={noteValue}
+                onChange={(event) => setNoteValue(event.target.value)}
+                rows={6}
+                maxLength={2000}
+                placeholder="Example: Additional September class invoiced manually in Stripe..."
+              />
+              <p className="text-muted-foreground mt-2 text-xs">
+                {noteValue.length}/2000
+              </p>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setNoteItem(null)}
+                disabled={isSavingNote}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSavingNote}>
+                {isSavingNote ? <Spinner /> : <FilePenLine />}
+                Save note
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={adjustmentItem !== null}
         onOpenChange={(open) => {
           if (!open) {
@@ -886,6 +1164,55 @@ function BillingRunsAdminPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={recoveryRequest !== null}
+        onOpenChange={(open) => {
+          if (!open) setRecoveryRequest(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {recoveryRequest?.type === "delete"
+                ? "Delete selected billing items?"
+                : "Regenerate selected billing items?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {recoveryRequest?.type === "delete"
+                ? "Pending items and their final adjustments will be deleted. Use Add missing households afterward to rebuild currently billable items."
+                : "Current authoritative tuition and charges will replace the selected snapshots. Final run adjustments and item IDs will be preserved."}{" "}
+              Any linked Stripe invoice must still be a draft; it will be
+              discarded before recovery.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRecovering}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isRecovering}
+              onClick={handleRecovery}
+              className={
+                recoveryRequest?.type === "delete"
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : undefined
+              }
+            >
+              {isRecovering ? (
+                <Spinner />
+              ) : recoveryRequest?.type === "delete" ? (
+                <Trash2 />
+              ) : (
+                <RefreshCw />
+              )}
+              {recoveryRequest?.type === "delete"
+                ? "Delete items"
+                : "Regenerate items"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={dispatchRun !== null}

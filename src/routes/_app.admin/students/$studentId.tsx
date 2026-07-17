@@ -1067,7 +1067,7 @@ function StudentNotesTab({
         <div>
           <h1 className="text-3xl font-bold">Notes</h1>
           <p className="text-muted-foreground">
-            Internal admin notes for this student.
+            Shared with account holder for this student.
           </p>
         </div>
         {!isEditing ? (

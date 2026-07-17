@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
+import { Badge } from "~/components/ui/badge";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
   Combobox,
@@ -30,7 +31,15 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "~/components/ui/combobox";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Card, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -42,11 +51,17 @@ import {
 } from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
 import { Separator } from "~/components/ui/separator";
-import { ScrollArea } from "~/components/ui/scroll-area";
 import { Switch } from "~/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
 import { hasUserRole } from "~/lib/roles";
-import { ArrowUpDown } from "lucide-react";
+import {
+  ArrowUpDown,
+  CalendarDays,
+  GraduationCap,
+  Pencil,
+  Plus,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_app/admin/classes/$classId")({
   component: AdminClassDetailPage,
@@ -71,6 +86,9 @@ type AdminClassData = NonNullable<
 >;
 type EnrollmentRow = AdminClassData["enrollments"][number];
 type SessionSignupRow = AdminClassData["sessionSignups"][number];
+
+const classTabTriggerClass =
+  "data-[state=active]:border-primary relative h-10 flex-none rounded-none border-x-0 border-b-2 border-t-0 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent";
 
 function AdminClassDetailPage() {
   const { classId } = Route.useParams();
@@ -114,6 +132,10 @@ function AdminClassDetailPage() {
     "pending" | "enrolled" | "waitlisted"
   >("enrolled");
   const [enrollmentOpenSaving, setEnrollmentOpenSaving] = useState(false);
+  const [addStudentOpen, setAddStudentOpen] = useState(false);
+  const [addSessionOpen, setAddSessionOpen] = useState(false);
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [isAddingSession, setIsAddingSession] = useState(false);
   const [enrollmentStatusFilter, setEnrollmentStatusFilter] =
     useState<EnrollmentStatusFilter>("enrolled");
   const classMode = resolvedClassEnrollmentMode(
@@ -313,60 +335,84 @@ function AdminClassDetailPage() {
   async function handleCreateSession(event: FormEvent) {
     event.preventDefault();
     if (!classData) return;
-    await createSession({
-      classId: classId as Id<"classes">,
-      date: sessionDate,
-      startTime: sessionStart || undefined,
-      endTime: sessionEnd || undefined,
-      location: classData.classItem.location || undefined,
-      assignedStaff:
-        sessionAssignedStaff === "none"
-          ? undefined
-          : [sessionAssignedStaff as Id<"users">],
-      substitute:
-        sessionSubstitute === "none"
-          ? undefined
-          : (sessionSubstitute as Id<"users">),
-      status: sessionStatus,
-    });
-    setSessionDate("");
-    setSessionStart("");
-    setSessionEnd("");
-    setSessionAssignedStaff("none");
-    setSessionSubstitute("none");
-    setSessionStatus("scheduled");
+    setIsAddingSession(true);
+    try {
+      await createSession({
+        classId: classId as Id<"classes">,
+        date: sessionDate,
+        startTime: sessionStart || undefined,
+        endTime: sessionEnd || undefined,
+        location: classData.classItem.location || undefined,
+        assignedStaff:
+          sessionAssignedStaff === "none"
+            ? undefined
+            : [sessionAssignedStaff as Id<"users">],
+        substitute:
+          sessionSubstitute === "none"
+            ? undefined
+            : (sessionSubstitute as Id<"users">),
+        status: sessionStatus,
+      });
+      setSessionDate("");
+      setSessionStart("");
+      setSessionEnd("");
+      setSessionAssignedStaff("none");
+      setSessionSubstitute("none");
+      setSessionStatus("scheduled");
+      setAddSessionOpen(false);
+      toast.success("Session added.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to add session.",
+      );
+    } finally {
+      setIsAddingSession(false);
+    }
   }
 
   async function handleAddStudent(event: FormEvent) {
     event.preventDefault();
-    if (classMode === "per_session") {
-      await setStudentSessionSignups({
+    setIsAddingStudent(true);
+    try {
+      if (classMode === "per_session") {
+        await setStudentSessionSignups({
+          classId: classId as Id<"classes">,
+          student: selectedStudent as Id<"students">,
+          sessions: selectedSessionIds as Id<"sessions">[],
+          status: sessionSignupStatus,
+        });
+        setSelectedStudent("");
+        setSelectedSessionIds([]);
+        setSessionSignupStatus("enrolled");
+        setAddStudentOpen(false);
+        toast.success("Student session selections updated.");
+        return;
+      }
+      await enrollStudent({
         classId: classId as Id<"classes">,
         student: selectedStudent as Id<"students">,
-        sessions: selectedSessionIds as Id<"sessions">[],
-        status: sessionSignupStatus,
+        status: newEnrollmentStatus,
+        startDate: enrollmentStartDate || undefined,
+        endDate: enrollmentEndDate || undefined,
+        prorateTuition:
+          newEnrollmentStatus === "enrolled"
+            ? billingTreatment === "prorate"
+            : undefined,
       });
       setSelectedStudent("");
-      setSelectedSessionIds([]);
-      setSessionSignupStatus("enrolled");
-      return;
+      setNewEnrollmentStatus("enrolled");
+      setEnrollmentStartDate(todayValue());
+      setEnrollmentEndDate("");
+      setBillingTreatment("");
+      setAddStudentOpen(false);
+      toast.success("Student added to class.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to add student.",
+      );
+    } finally {
+      setIsAddingStudent(false);
     }
-    await enrollStudent({
-      classId: classId as Id<"classes">,
-      student: selectedStudent as Id<"students">,
-      status: newEnrollmentStatus,
-      startDate: enrollmentStartDate || undefined,
-      endDate: enrollmentEndDate || undefined,
-      prorateTuition:
-        newEnrollmentStatus === "enrolled"
-          ? billingTreatment === "prorate"
-          : undefined,
-    });
-    setSelectedStudent("");
-    setNewEnrollmentStatus("enrolled");
-    setEnrollmentStartDate(todayValue());
-    setEnrollmentEndDate("");
-    setBillingTreatment("");
   }
 
   async function handleEnrollmentOpenChange(nextOpen: boolean) {
@@ -407,526 +453,626 @@ function AdminClassDetailPage() {
           </Card>
         </main>
       ) : (
-        <main className="mx-auto grid w-full max-w-7xl min-w-0 gap-4 p-4 lg:grid-cols-[24rem_1fr] lg:p-8">
-          <div className="lg:col-span-2">
-            <h1 className="text-3xl font-bold">{classData.classItem.title}</h1>
-            <Separator className="my-4" />
-          </div>
-          <section className="min-w-0 space-y-4">
-            <Card className="rounded-lg">
-              <CardHeader>
-                <CardTitle>Class details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div>
-                  <div className="text-muted-foreground">Status</div>
-                  <div className="font-medium capitalize">
+        <main className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-4 p-4 lg:p-8">
+          <section className="min-w-0 space-y-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="truncate text-3xl font-bold">
+                    {classData.classItem.title}
+                  </h1>
+                  <Badge variant="secondary" className="capitalize">
                     {classData.classItem.status}
-                  </div>
+                  </Badge>
                 </div>
-                <div>
-                  <div className="text-muted-foreground">Schedule</div>
-                  <div className="font-medium">
-                    {classData.classItem.scheduleSummary || "Not set"}
-                  </div>
+                {classData.classItem.description ? (
+                  <p className="text-muted-foreground max-w-3xl">
+                    {classData.classItem.description}
+                  </p>
+                ) : null}
+              </div>
+              <Button asChild className="shrink-0">
+                <Link to="/admin/classes/$classId/edit" params={{ classId }}>
+                  <Pencil />
+                  Edit class
+                </Link>
+              </Button>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-1">
+                <div className="text-muted-foreground">Schedule</div>
+                <div className="font-medium">
+                  {classData.classItem.scheduleSummary || "Not set"}
                 </div>
-                <div>
-                  <div className="text-muted-foreground">Dates</div>
-                  <div className="font-medium">
-                    {[
-                      formatMDYYYY(classData.classItem.startDate),
-                      formatMDYYYY(classData.classItem.endDate),
-                    ]
-                      .filter(Boolean)
-                      .join(" - ") || "Not set"}
-                  </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-muted-foreground">Dates</div>
+                <div className="font-medium">
+                  {[
+                    formatMDYYYY(classData.classItem.startDate),
+                    formatMDYYYY(classData.classItem.endDate),
+                  ]
+                    .filter(Boolean)
+                    .join(" – ") || "Not set"}
                 </div>
-                <div>
-                  <div className="text-muted-foreground">Time</div>
-                  <div className="font-medium">
-                    {[
-                      classData.classItem.startTime,
-                      classData.classItem.endTime,
-                    ]
-                      .filter(Boolean)
-                      .join(" - ") || "Not set"}
-                  </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-muted-foreground">Time</div>
+                <div className="font-medium">
+                  {formatTimeRange(
+                    classData.classItem.startTime,
+                    classData.classItem.endTime,
+                  ) || "Not set"}
                 </div>
-                <div>
-                  <div className="text-muted-foreground">Location</div>
-                  <div className="font-medium">
-                    {classData.classItem.location || "Not set"}
-                  </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-muted-foreground">Location</div>
+                <div className="font-medium">
+                  {classData.classItem.location || "Not set"}
                 </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-muted-foreground">Enrollment</div>
+                <div className="font-medium">
+                  {
+                    classData.enrollments.filter(
+                      (enrollment) => enrollment.status === "enrolled",
+                    ).length
+                  }
+                  {classData.classItem.capacity
+                    ? ` / ${classData.classItem.capacity}`
+                    : ""}{" "}
+                  enrolled
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-muted-foreground">Signup mode</div>
+                <div className="font-medium">
+                  {classMode === "per_session"
+                    ? `Per session · ${new Intl.NumberFormat("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                      }).format(
+                        (classData.classItem.perSessionPriceCents || 0) / 100,
+                      )}`
+                    : "Standard tuition"}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border p-3">
+              <div>
+                <div className="font-medium">Self-service enrollment</div>
+                <div className="text-muted-foreground text-sm">
+                  {enrollmentOpen
+                    ? "Open to customer enrollment requests"
+                    : "Closed to customer enrollment requests"}
+                </div>
+              </div>
+              <Switch
+                checked={enrollmentOpen}
+                disabled={enrollmentOpenSaving}
+                onCheckedChange={handleEnrollmentOpenChange}
+                aria-label="Self-service enrollment"
+              />
+            </div>
+            <Separator />
+          </section>
+
+          <Tabs defaultValue="enrollments" className="min-w-0 gap-4">
+            <TabsList className="text-muted-foreground h-auto w-full justify-start gap-6 overflow-x-auto rounded-none border-b bg-transparent p-0">
+              <TabsTrigger
+                value="enrollments"
+                className={classTabTriggerClass}
+              >
+                <GraduationCap />
+                {classMode === "per_session"
+                  ? "Session signups"
+                  : "Enrollments"}
+              </TabsTrigger>
+              <TabsTrigger value="sessions" className={classTabTriggerClass}>
+                <CalendarDays />
+                Sessions
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="enrollments" className="min-w-0 space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <div className="text-muted-foreground">Signup mode</div>
-                  <div className="font-medium">
+                  <h2 className="text-2xl font-bold">
                     {classMode === "per_session"
-                      ? `Per session · ${new Intl.NumberFormat("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                        }).format(
-                          (classData.classItem.perSessionPriceCents || 0) / 100,
-                        )}`
-                      : "Standard · all sessions"}
-                  </div>
+                      ? "Session signups"
+                      : "Enrollments"}
+                  </h2>
+                  <p className="text-muted-foreground">
+                    {classMode === "per_session"
+                      ? "Students registered for individual class dates."
+                      : "Students connected to this class and their current status."}
+                  </p>
                 </div>
-                <div className="rounded-md border p-3">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="font-medium">Self-service enrollment</div>
-                      <div className="text-muted-foreground">
-                        {enrollmentOpen
-                          ? "Open to customer enrollment requests"
-                          : "Closed to customer enrollment requests"}
-                      </div>
-                    </div>
-                    <Switch
-                      checked={enrollmentOpen}
-                      disabled={enrollmentOpenSaving}
-                      onCheckedChange={handleEnrollmentOpenChange}
-                      aria-label="Self-service enrollment"
-                    />
-                  </div>
-                </div>
-                <Button asChild className="w-full">
-                  <Link to="/admin/classes/$classId/edit" params={{ classId }}>
-                    Edit Class
-                  </Link>
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={() => setAddStudentOpen(true)}
+                >
+                  <Plus />
+                  Add student
                 </Button>
-              </CardContent>
-            </Card>
-            <Card className="rounded-lg">
-              <CardHeader>
-                <CardTitle>Add student</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-3" onSubmit={handleAddStudent}>
-                  <div className="space-y-1">
-                    <Label>Student</Label>
-                    <Combobox
-                      items={studentOptions.map((option) => option.value)}
-                      value={selectedStudent || null}
-                      onValueChange={(value) => setSelectedStudent(value || "")}
-                      itemToStringLabel={(value) =>
-                        studentOptions.find((option) => option.value === value)
-                          ?.label || ""
+              </div>
+              {classMode === "per_session" ? (
+                <DataTable
+                  columns={sessionSignupColumns}
+                  data={classData.sessionSignups}
+                  filterColumn="student"
+                  filterPlaceholder="Filter students..."
+                />
+              ) : (
+                <DataTable
+                  columns={enrollmentColumns}
+                  data={filteredEnrollments}
+                  filterColumn="student"
+                  filterPlaceholder="Filter students..."
+                  toolbar={
+                    <Select
+                      value={enrollmentStatusFilter}
+                      onValueChange={(value) =>
+                        setEnrollmentStatusFilter(
+                          value as EnrollmentStatusFilter,
+                        )
                       }
                     >
-                      <ComboboxInput
-                        className="w-full"
-                        placeholder="Select student"
-                        showClear
-                      />
-                      <ComboboxContent>
-                        <ComboboxEmpty>No students found.</ComboboxEmpty>
-                        <ComboboxList>
-                          {(value: string) => (
-                            <ComboboxItem key={value} value={value}>
-                              {studentOptions.find(
-                                (option) => option.value === value,
-                              )?.label || value}
-                            </ComboboxItem>
-                          )}
-                        </ComboboxList>
-                      </ComboboxContent>
-                    </Combobox>
-                  </div>
-                  {classMode === "per_session" ? (
-                    <>
-                      <div className="space-y-1">
-                        <Label>Status</Label>
-                        <Select
-                          value={sessionSignupStatus}
-                          onValueChange={(value) =>
-                            setSessionSignupStatus(
-                              value as typeof sessionSignupStatus,
-                            )
-                          }
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="enrolled">Enrolled</SelectItem>
-                            <SelectItem value="waitlisted">
-                              Waitlisted
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            id="admin-select-all-sessions"
-                            checked={
-                              availableSignupSessions.length > 0 &&
-                              selectedSessionIds.length ===
-                                availableSignupSessions.length
-                            }
-                            onCheckedChange={(checked) =>
-                              setSelectedSessionIds(
-                                checked
-                                  ? availableSignupSessions.map(
-                                      (session) => session._id,
-                                    )
-                                  : [],
-                              )
-                            }
-                          />
-                          <Label htmlFor="admin-select-all-sessions">
-                            Select all sessions
-                          </Label>
-                        </div>
-                        <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border p-2">
-                          {availableSignupSessions.map((session) => (
-                            <label
-                              key={session._id}
-                              className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-muted"
-                            >
-                              <span className="flex items-center gap-2">
-                                <Checkbox
-                                  checked={selectedSessionIds.includes(
-                                    session._id,
-                                  )}
-                                  onCheckedChange={(checked) =>
-                                    setSelectedSessionIds((current) =>
-                                      checked
-                                        ? [
-                                            ...new Set([
-                                              ...current,
-                                              session._id,
-                                            ]),
-                                          ]
-                                        : current.filter(
-                                            (sessionId) =>
-                                              sessionId !== session._id,
-                                          ),
-                                    )
-                                  }
-                                />
-                                {formatMDYYYY(session.date)}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {formatTimeRange(
-                                  session.startTime,
-                                  session.endTime,
-                                ) || "Time TBD"}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="space-y-1">
-                        <Label>Status</Label>
-                        <Select
-                          value={newEnrollmentStatus}
-                          onValueChange={(value) => {
-                            setNewEnrollmentStatus(value as EnrollmentStatus);
-                            if (value !== "enrolled") {
-                              setBillingTreatment("");
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="enrolled">Enrolled</SelectItem>
-                            <SelectItem value="waitlisted">
-                              Waitlisted
-                            </SelectItem>
-                            <SelectItem value="dropped">Dropped</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      {newEnrollmentStatus === "enrolled" ? (
-                        <div className="space-y-1">
-                          <Label>Tuition treatment</Label>
-                          <Select
-                            value={billingTreatment}
-                            onValueChange={(value) =>
-                              setBillingTreatment(value as BillingTreatment)
-                            }
+                      <SelectTrigger className="w-full shrink-0 sm:w-44">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="enrolled">Enrolled</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="waitlisted">Waitlisted</SelectItem>
+                        <SelectItem value="dropped">Dropped</SelectItem>
+                        <SelectItem value="declined">Declined</SelectItem>
+                        <SelectItem value="all">All</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  }
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="sessions" className="min-w-0 space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-bold">Sessions</h2>
+                  <p className="text-muted-foreground">
+                    Generated and manually added class dates.
+                  </p>
+                </div>
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={() => setAddSessionOpen(true)}
+                >
+                  <Plus />
+                  Add session
+                </Button>
+              </div>
+              {classData.sessions.length === 0 ? (
+                <div className="text-muted-foreground rounded-lg border p-8 text-center">
+                  No sessions scheduled.
+                </div>
+              ) : (
+                <div className="divide-y rounded-lg border">
+                  {classData.sessions.map((session) => (
+                    <div
+                      key={session._id}
+                      className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <Button asChild variant="link" className="h-auto p-0">
+                          <Link
+                            to="/admin/classes/$classId/$sessionId"
+                            params={{ classId, sessionId: session._id }}
                           >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Choose billing treatment" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="prorate">
-                                Prorate for enrollment dates
-                              </SelectItem>
-                              <SelectItem value="full">
-                                Charge the full billing period
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
+                            {formatMDYYYY(session.date)}
+                          </Link>
+                        </Button>
+                        <div className="text-muted-foreground text-sm">
+                          {formatTimeRange(
+                            session.startTime,
+                            session.endTime,
+                          ) || "Time TBD"}
+                          {session.location ? ` · ${session.location}` : ""}
                         </div>
-                      ) : null}
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <div className="space-y-1">
-                          <Label htmlFor="enrollment-start-date">
-                            Start date
-                          </Label>
-                          <Input
-                            id="enrollment-start-date"
-                            type="date"
-                            required
-                            value={enrollmentStartDate}
-                            onChange={(event) =>
-                              setEnrollmentStartDate(event.target.value)
-                            }
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label htmlFor="enrollment-end-date">End date</Label>
-                          <Input
-                            id="enrollment-end-date"
-                            type="date"
-                            required={newEnrollmentStatus === "dropped"}
-                            min={enrollmentStartDate}
-                            value={enrollmentEndDate}
-                            onChange={(event) =>
-                              setEnrollmentEndDate(event.target.value)
-                            }
-                          />
+                        <div className="text-muted-foreground text-xs capitalize">
+                          {session.source}
+                          {!session.active ? " · inactive" : ""}
+                          {session.status !== "scheduled"
+                            ? ` · ${session.status}`
+                            : ""}
                         </div>
                       </div>
-                    </>
-                  )}
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    className="w-full"
-                    disabled={
-                      !selectedStudent ||
-                      (classMode === "per_session"
-                        ? selectedSessionIds.length === 0
-                        : newEnrollmentStatus === "enrolled" &&
-                          !billingTreatment)
-                    }
-                  >
-                    Add Student
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-            <Card className="rounded-lg">
-              <CardHeader>
-                <CardTitle>Add session</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-3" onSubmit={handleCreateSession}>
-                  <div className="space-y-1">
-                    <Label htmlFor="session-date">Date</Label>
-                    <Input
-                      id="session-date"
-                      type="date"
-                      required
-                      value={sessionDate}
-                      onChange={(event) => setSessionDate(event.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="session-start">Start</Label>
-                      <Input
-                        id="session-start"
-                        type="time"
-                        value={sessionStart}
-                        onChange={(event) =>
-                          setSessionStart(event.target.value)
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setSessionActive({
+                            session: session._id,
+                            active: !session.active,
+                          })
                         }
-                      />
+                      >
+                        {session.active ? "Deactivate" : "Reactivate"}
+                      </Button>
                     </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="session-end">End</Label>
-                      <Input
-                        id="session-end"
-                        type="time"
-                        value={sessionEnd}
-                        onChange={(event) => setSessionEnd(event.target.value)}
-                      />
-                    </div>
-                  </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </main>
+      )}
+
+      <Dialog
+        open={addStudentOpen}
+        onOpenChange={(open) => {
+          if (!isAddingStudent) setAddStudentOpen(open);
+        }}
+      >
+        <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto p-4 sm:max-w-xl sm:p-6">
+          <form className="space-y-4" onSubmit={handleAddStudent}>
+            <DialogHeader>
+              <DialogTitle>Add student</DialogTitle>
+              <DialogDescription>
+                {classMode === "per_session"
+                  ? "Choose a student and the individual sessions they should attend."
+                  : "Create an enrollment for this class."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-1">
+              <Label>Student</Label>
+              <Combobox
+                items={studentOptions.map((option) => option.value)}
+                value={selectedStudent || null}
+                onValueChange={(value) => setSelectedStudent(value || "")}
+                itemToStringLabel={(value) =>
+                  studentOptions.find((option) => option.value === value)
+                    ?.label || ""
+                }
+              >
+                <ComboboxInput
+                  className="w-full"
+                  placeholder="Select student"
+                  showClear
+                />
+                <ComboboxContent>
+                  <ComboboxEmpty>No students found.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(value: string) => (
+                      <ComboboxItem key={value} value={value}>
+                        {studentOptions.find(
+                          (option) => option.value === value,
+                        )?.label || value}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </div>
+            {classMode === "per_session" ? (
+              <>
+                <div className="space-y-1">
+                  <Label>Status</Label>
                   <Select
-                    value={sessionStatus}
+                    value={sessionSignupStatus}
                     onValueChange={(value) =>
-                      setSessionStatus(value as SessionStatus)
+                      setSessionSignupStatus(
+                        value as typeof sessionSignupStatus,
+                      )
                     }
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="scheduled">Scheduled</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="enrolled">Enrolled</SelectItem>
+                      <SelectItem value="waitlisted">Waitlisted</SelectItem>
                     </SelectContent>
                   </Select>
-                  <div className="space-y-1">
-                    <Label>Session staff</Label>
-                    <Select
-                      value={sessionAssignedStaff}
-                      onValueChange={setSessionAssignedStaff}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Use class staff</SelectItem>
-                        {accounts
-                          ?.filter((account) => hasUserRole(account, "staff"))
-                          .map((account) => (
-                            <SelectItem key={account._id} value={account._id}>
-                              {account.name || account.email || "Unnamed"}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="admin-select-all-sessions"
+                      checked={
+                        availableSignupSessions.length > 0 &&
+                        selectedSessionIds.length ===
+                          availableSignupSessions.length
+                      }
+                      onCheckedChange={(checked) =>
+                        setSelectedSessionIds(
+                          checked
+                            ? availableSignupSessions.map(
+                                (session) => session._id,
+                              )
+                            : [],
+                        )
+                      }
+                    />
+                    <Label htmlFor="admin-select-all-sessions">
+                      Select all available sessions
+                    </Label>
                   </div>
-                  <div className="space-y-1">
-                    <Label>Substitute</Label>
-                    <Select
-                      value={sessionSubstitute}
-                      onValueChange={setSessionSubstitute}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {accounts
-                          ?.filter((account) => hasUserRole(account, "staff"))
-                          .map((account) => (
-                            <SelectItem key={account._id} value={account._id}>
-                              {account.name || account.email || "Unnamed"}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button type="submit" variant="outline" className="w-full">
-                    Add Session
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </section>
-          <section className="min-w-0 space-y-4">
-            <Card className="rounded-lg">
-              <CardHeader>
-                <CardTitle>
-                  {classMode === "per_session"
-                    ? "Session signups"
-                    : "Enrollments"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {classMode === "per_session" ? (
-                  <DataTable
-                    columns={sessionSignupColumns}
-                    data={classData.sessionSignups}
-                    filterColumn="student"
-                    filterPlaceholder="Filter students..."
-                  />
-                ) : (
-                  <DataTable
-                    columns={enrollmentColumns}
-                    data={filteredEnrollments}
-                    filterColumn="student"
-                    filterPlaceholder="Filter students..."
-                    toolbar={
-                      <Select
-                        value={enrollmentStatusFilter}
-                        onValueChange={(value) =>
-                          setEnrollmentStatusFilter(
-                            value as EnrollmentStatusFilter,
-                          )
-                        }
-                      >
-                        <SelectTrigger className="w-full shrink-0 sm:w-44">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="enrolled">Enrolled</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="waitlisted">Waitlisted</SelectItem>
-                          <SelectItem value="dropped">Dropped</SelectItem>
-                          <SelectItem value="declined">Declined</SelectItem>
-                          <SelectItem value="all">All</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    }
-                  />
-                )}
-              </CardContent>
-            </Card>
-            <Card className="rounded-lg">
-              <CardHeader>
-                <CardTitle>Sessions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <ScrollArea className="h-[800px]">
-                  {classData.sessions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No sessions scheduled.
-                    </p>
-                  ) : (
-                    classData.sessions.map((session) => (
-                      <div
-                        key={session._id}
-                        className="flex flex-col gap-2 rounded-md border p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div>
-                          <Button asChild variant="link" className="p-0">
-                            <Link
-                              to="/admin/classes/$classId/$sessionId"
-                              params={{ classId, sessionId: session._id }}
-                            >
-                              <div className="font-medium">
-                                {formatMDYYYY(session.date)}
-                              </div>
-                            </Link>
-                          </Button>
-                          <div className="text-muted-foreground">
+                  <div className="max-h-64 space-y-1 overflow-y-auto rounded-md border p-2">
+                    {availableSignupSessions.length === 0 ? (
+                      <p className="text-muted-foreground p-3 text-center text-sm">
+                        No upcoming sessions are available.
+                      </p>
+                    ) : (
+                      availableSignupSessions.map((session) => (
+                        <label
+                          key={session._id}
+                          className="hover:bg-muted flex items-center justify-between gap-3 rounded-md px-2 py-2"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Checkbox
+                              checked={selectedSessionIds.includes(session._id)}
+                              onCheckedChange={(checked) =>
+                                setSelectedSessionIds((current) =>
+                                  checked
+                                    ? [
+                                        ...new Set([
+                                          ...current,
+                                          session._id,
+                                        ]),
+                                      ]
+                                    : current.filter(
+                                        (sessionId) =>
+                                          sessionId !== session._id,
+                                      ),
+                                )
+                              }
+                            />
+                            {formatMDYYYY(session.date)}
+                          </span>
+                          <span className="text-muted-foreground text-xs">
                             {formatTimeRange(
                               session.startTime,
                               session.endTime,
                             ) || "Time TBD"}
-                          </div>
-                          <div className="text-xs capitalize text-muted-foreground">
-                            {session.source}
-                            {!session.active ? " · inactive" : ""}
-                          </div>
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setSessionActive({
-                              session: session._id,
-                              active: !session.active,
-                            })
-                          }
-                        >
-                          {session.active ? "Deactivate" : "Reactivate"}
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </section>
-        </main>
-      )}
+                          </span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  <Label>Status</Label>
+                  <Select
+                    value={newEnrollmentStatus}
+                    onValueChange={(value) => {
+                      setNewEnrollmentStatus(value as EnrollmentStatus);
+                      if (value !== "enrolled") setBillingTreatment("");
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="enrolled">Enrolled</SelectItem>
+                      <SelectItem value="waitlisted">Waitlisted</SelectItem>
+                      <SelectItem value="dropped">Dropped</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {newEnrollmentStatus === "enrolled" ? (
+                  <div className="space-y-1">
+                    <Label>Tuition treatment</Label>
+                    <Select
+                      value={billingTreatment}
+                      onValueChange={(value) =>
+                        setBillingTreatment(value as BillingTreatment)
+                      }
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Choose billing treatment" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="prorate">
+                          Prorate for enrollment dates
+                        </SelectItem>
+                        <SelectItem value="full">
+                          Charge the full billing period
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="enrollment-start-date">Start date</Label>
+                    <Input
+                      id="enrollment-start-date"
+                      type="date"
+                      required
+                      value={enrollmentStartDate}
+                      onChange={(event) =>
+                        setEnrollmentStartDate(event.target.value)
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="enrollment-end-date">End date</Label>
+                    <Input
+                      id="enrollment-end-date"
+                      type="date"
+                      required={newEnrollmentStatus === "dropped"}
+                      min={enrollmentStartDate}
+                      value={enrollmentEndDate}
+                      onChange={(event) =>
+                        setEnrollmentEndDate(event.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isAddingStudent}
+                onClick={() => setAddStudentOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  isAddingStudent ||
+                  !selectedStudent ||
+                  (classMode === "per_session"
+                    ? selectedSessionIds.length === 0
+                    : newEnrollmentStatus === "enrolled" &&
+                      !billingTreatment)
+                }
+              >
+                {isAddingStudent ? <Spinner /> : <Plus />}
+                Add student
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={addSessionOpen}
+        onOpenChange={(open) => {
+          if (!isAddingSession) setAddSessionOpen(open);
+        }}
+      >
+        <DialogContent className="max-h-[calc(100svh-2rem)] overflow-y-auto p-4 sm:max-w-lg sm:p-6">
+          <form className="space-y-4" onSubmit={handleCreateSession}>
+            <DialogHeader>
+              <DialogTitle>Add session</DialogTitle>
+              <DialogDescription>
+                Add a manual session without changing the class recurrence.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-1">
+              <Label htmlFor="session-date">Date</Label>
+              <Input
+                id="session-date"
+                type="date"
+                required
+                value={sessionDate}
+                onChange={(event) => setSessionDate(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="session-start">Start</Label>
+                <Input
+                  id="session-start"
+                  type="time"
+                  value={sessionStart}
+                  onChange={(event) => setSessionStart(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="session-end">End</Label>
+                <Input
+                  id="session-end"
+                  type="time"
+                  value={sessionEnd}
+                  onChange={(event) => setSessionEnd(event.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Status</Label>
+              <Select
+                value={sessionStatus}
+                onValueChange={(value) =>
+                  setSessionStatus(value as SessionStatus)
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Session staff</Label>
+              <Select
+                value={sessionAssignedStaff}
+                onValueChange={setSessionAssignedStaff}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Use class staff</SelectItem>
+                  {accounts
+                    ?.filter((account) => hasUserRole(account, "staff"))
+                    .map((account) => (
+                      <SelectItem key={account._id} value={account._id}>
+                        {account.name || account.email || "Unnamed"}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Substitute</Label>
+              <Select
+                value={sessionSubstitute}
+                onValueChange={setSessionSubstitute}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {accounts
+                    ?.filter((account) => hasUserRole(account, "staff"))
+                    .map((account) => (
+                      <SelectItem key={account._id} value={account._id}>
+                        {account.name || account.email || "Unnamed"}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isAddingSession}
+                onClick={() => setAddSessionOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isAddingSession || !sessionDate}
+              >
+                {isAddingSession ? <Spinner /> : <Plus />}
+                Add session
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog
         open={!!enrollmentToActivate}
         onOpenChange={(open) => {

@@ -26,7 +26,8 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import { formatAge, formatFullDate, formatTimeRange } from "~/lib/date-utils";
+import { formatAge, formatTimeRange } from "~/lib/date-utils";
+import { format } from "date-fns";
 
 export const Route = createFileRoute("/_app/students/")({
   component: StudentsPage,
@@ -54,7 +55,7 @@ function StudentsPage() {
       </div>
 
       {students === undefined ? (
-        <div className="flex min-h-40 items-center justify-center">
+        <div className="min-h-40 flex items-center justify-center">
           <Spinner className="size-5" />
         </div>
       ) : visibleStudents.length === 0 ? (
@@ -80,10 +81,10 @@ function StudentsPage() {
               `${student.firstName} ${student.lastName}`;
 
             return (
-              <Card key={student._id} className="rounded-lg h-min">
+              <Card key={student._id} className="h-min rounded-lg">
                 <CardHeader>
                   <div className="flex items-start gap-3">
-                    <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+                    <div className="size-14 bg-muted flex shrink-0 items-center justify-center overflow-hidden rounded-lg border">
                       {row.photoUrl ? (
                         <img
                           src={row.photoUrl}
@@ -91,7 +92,7 @@ function StudentsPage() {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <span className="text-sm font-semibold text-muted-foreground">
+                        <span className="text-muted-foreground text-sm font-semibold">
                           {student.firstName.slice(0, 1)}
                           {student.lastName.slice(0, 1)}
                         </span>
@@ -124,9 +125,9 @@ function StudentsPage() {
                     <div className="flex justify-between gap-4">
                       <dt className="text-muted-foreground">Birthday</dt>
                       <dd className="font-medium">
-                        {(student.dateOfBirth &&
-                          formatFullDate(student.dateOfBirth)) ||
-                          "Not set"}
+                        {student.dateOfBirth
+                          ? format(student.dateOfBirth, "MMMM d, yyyy")
+                          : "Not set"}
                       </dd>
                     </div>
                   </dl>
@@ -137,7 +138,7 @@ function StudentsPage() {
                       <AccordionContent>
                         {row.classes.length === 0 &&
                         row.perSessionClasses.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-muted-foreground text-sm">
                             No classes connected yet.
                           </p>
                         ) : (
@@ -168,7 +169,9 @@ function StudentsPage() {
                               )}
                               {row.perSessionClasses.map(
                                 ({ classItem, selectedCount }) => (
-                                  <TableRow key={`per-session-${classItem._id}`}>
+                                  <TableRow
+                                    key={`per-session-${classItem._id}`}
+                                  >
                                     <TableCell className="font-medium">
                                       <div className="flex flex-wrap items-center gap-2">
                                         {classItem.title}
@@ -192,10 +195,7 @@ function StudentsPage() {
                     </AccordionItem>
                   </Accordion>
                   <Button asChild className="w-full">
-                    <Link
-                      to="/classes"
-                      search={{ student: student._id }}
-                    >
+                    <Link to="/classes" search={{ student: student._id }}>
                       <BookOpen />
                       Enroll this student in classes
                     </Link>

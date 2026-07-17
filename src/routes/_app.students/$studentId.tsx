@@ -2,6 +2,7 @@ import { useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
+import { format } from "date-fns";
 import { BookOpen, Pencil } from "lucide-react";
 import { PerSessionClassCard } from "~/components/per-session-class-card";
 import { Button } from "~/components/ui/button";
@@ -21,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import { formatAge, formatFullDate } from "~/lib/date-utils";
+import { formatAge } from "~/lib/date-utils";
 
 export const Route = createFileRoute("/_app/students/$studentId")({
   component: StudentDetailPage,
@@ -84,7 +85,7 @@ function StudentDetailPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
-            <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border bg-muted">
+            <div className="bg-muted flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border">
               {studentData.photoUrl ? (
                 <img
                   src={studentData.photoUrl}
@@ -92,7 +93,7 @@ function StudentDetailPage() {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <span className="text-5xl font-semibold text-muted-foreground">
+                <span className="text-muted-foreground text-5xl font-semibold">
                   {student.firstName.slice(0, 1)}
                   {student.lastName.slice(0, 1)}
                 </span>
@@ -106,19 +107,15 @@ function StudentDetailPage() {
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Birthday</dt>
                 <dd className="font-medium">
-                  {formatFullDate(student.dateOfBirth) || "Not set"}
+                  {student.dateOfBirth
+                    ? format(student.dateOfBirth, "MMMM d, yyyy")
+                    : "Not set"}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Age</dt>
                 <dd className="font-medium">
                   {formatAge(student.dateOfBirth)}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Relationship</dt>
-                <dd className="font-medium">
-                  {studentData.contact?.relationship || "Not set"}
                 </dd>
               </div>
             </dl>
@@ -149,7 +146,7 @@ function StudentDetailPage() {
         <Card className="rounded-lg">
           <CardContent className="pt-6">
             {studentData.enrollments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 No classes connected yet.
               </p>
             ) : (

@@ -32,11 +32,9 @@ function userDisplayName(user: {
   firstName?: string;
   lastName?: string;
   name?: string;
-  displayName?: string;
 }) {
   return (
     [user.firstName, user.lastName].filter(Boolean).join(" ") ||
-    user.displayName ||
     user.name ||
     "Unknown user"
   );

@@ -117,7 +117,6 @@ async function ensureStripeCustomer(
       stripeCustomerId: user.stripeCustomerId,
       firstName: user.firstName,
       lastName: user.lastName,
-      displayName: user.displayName,
       name: user.name,
       email: user.email,
       phone: user.phone,

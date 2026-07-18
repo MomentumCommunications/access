@@ -502,10 +502,11 @@ function studentDisplayName(student: Doc<"students">) {
 }
 
 function accountDisplayName(user: Doc<"users">) {
+  const email = Array.isArray(user.email) ? user.email[0] : user.email;
   return (
     [user.firstName, user.lastName].filter(Boolean).join(" ") ||
     user.name ||
-    user.displayName ||
+    email ||
     "Account"
   );
 }
@@ -874,14 +875,12 @@ async function getEnrollmentRowsWithStudentContacts(
             return left.contact.isPrimary ? -1 : 1;
           }
           const leftName =
-            left.user?.displayName ||
-            left.user?.name ||
+            (left.user ? accountDisplayName(left.user) : undefined) ||
             left.contact.name ||
             left.contact.inviteEmail ||
             "";
           const rightName =
-            right.user?.displayName ||
-            right.user?.name ||
+            (right.user ? accountDisplayName(right.user) : undefined) ||
             right.contact.name ||
             right.contact.inviteEmail ||
             "";
@@ -1079,7 +1078,6 @@ export const searchApplication = query({
         ? (await ctx.db.query("users").collect())
             .filter((account) =>
               includesSearch(
-                account.displayName,
                 account.name,
                 account.firstName,
                 account.lastName,
@@ -1089,31 +1087,12 @@ export const searchApplication = query({
               ),
             )
             .sort((a, b) =>
-              (
-                a.displayName ||
-                [a.firstName, a.lastName].filter(Boolean).join(" ") ||
-                a.name ||
-                accountEmail(a) ||
-                ""
-              ).localeCompare(
-                b.displayName ||
-                  [b.firstName, b.lastName].filter(Boolean).join(" ") ||
-                  b.name ||
-                  accountEmail(b) ||
-                  "",
-              ),
+              accountDisplayName(a).localeCompare(accountDisplayName(b)),
             )
             .slice(0, 10)
             .map((account) => ({
               id: account._id,
-              title:
-                account.displayName ||
-                [account.firstName, account.lastName]
-                  .filter(Boolean)
-                  .join(" ") ||
-                account.name ||
-                accountEmail(account) ||
-                "Unnamed account",
+              title: accountDisplayName(account),
               subtitle: [
                 accountEmail(account),
                 resolveUserRoles(account).join(", "),

@@ -245,7 +245,7 @@ function AdminAccountDetailPage() {
                   <Avatar className="h-16 w-16 rounded-full">
                     <AvatarImage
                       src={accountData.account.image}
-                      alt={accountData.account.name || ""}
+                      alt={getAccountName(accountData.account)}
                       className="h-full object-cover"
                     />
                     <AvatarFallback className="rounded-lg">

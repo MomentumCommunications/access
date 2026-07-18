@@ -1,5 +1,4 @@
 type AccountName = {
-  displayName?: string;
   firstName?: string;
   lastName?: string;
   name?: string;

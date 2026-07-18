@@ -80,7 +80,6 @@ import {
 } from "../shared/tuition-plan";
 
 function accountName(account: {
-  displayName?: string;
   firstName?: string;
   lastName?: string;
   name?: string;
@@ -90,7 +89,7 @@ function accountName(account: {
     .filter(Boolean)
     .join(" ");
   const email = Array.isArray(account.email) ? account.email[0] : account.email;
-  return fullName || account.displayName || account.name || email || "Unnamed";
+  return fullName || account.name || email || "Unnamed";
 }
 
 function validateIsoDate(value: string, label: string) {

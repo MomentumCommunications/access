@@ -29,6 +29,7 @@ import {
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { hasUserRole } from "~/lib/roles";
+import { getAccountName } from "~/lib/account-name";
 
 const weekdaySchema = z.enum([
   "sunday",
@@ -776,11 +777,7 @@ export function ClassForm(props: ClassFormProps) {
                     ?.filter((account) => hasUserRole(account, "staff"))
                     .map((account) => (
                       <SelectItem key={account._id} value={account._id}>
-                        {account.name ||
-                          (Array.isArray(account.email)
-                            ? account.email[0]
-                            : account.email) ||
-                          "Unnamed"}
+                        {getAccountName(account)}
                       </SelectItem>
                     ))}
                 </SelectContent>

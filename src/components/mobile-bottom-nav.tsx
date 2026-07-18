@@ -17,6 +17,7 @@ import {
 import type { ComponentType } from "react";
 import { useActiveRole } from "~/contexts/ActiveRoleContext";
 import { useSidebarDataContext } from "~/contexts/SidebarDataContext";
+import { getAccountName } from "~/lib/account-name";
 import type { UserRole } from "~/lib/roles";
 import { cn } from "~/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -53,7 +54,7 @@ export function MobileBottomNav() {
   const { convexUser } = useSidebarDataContext();
   const { pathname } = useLocation();
   const navItems = MOBILE_NAV_ITEMS[activeRole];
-  const name = formatUserName(convexUser);
+  const name = convexUser ? getAccountName(convexUser) : "Account";
   const initials = getInitials(name);
 
   return (
@@ -135,21 +136,4 @@ function getInitials(name?: string | null) {
       .slice(0, 2)
       .toUpperCase() || ""
   );
-}
-
-function formatUserName(
-  user?:
-    | {
-        firstName?: string;
-        lastName?: string;
-        displayName?: string;
-        name?: string;
-      }
-    | null,
-) {
-  const fullName = [user?.firstName, user?.lastName]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-  return fullName || user?.displayName || user?.name || "Account";
 }

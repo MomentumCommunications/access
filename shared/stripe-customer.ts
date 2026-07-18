@@ -3,7 +3,6 @@ export type StripeCustomerUser = {
   stripeCustomerId?: string;
   firstName?: string;
   lastName?: string;
-  displayName?: string;
   name?: string;
   email?: string | string[];
   phone?: string;
@@ -31,11 +30,7 @@ export function stripeCustomerCreateInput(
     .filter(Boolean)
     .join(" ");
   return {
-    name:
-      fullName ||
-      user.displayName?.trim() ||
-      user.name?.trim() ||
-      undefined,
+    name: fullName || user.name?.trim() || undefined,
     email: firstEmail(user.email),
     phone: user.phone?.trim() || undefined,
     metadata: {

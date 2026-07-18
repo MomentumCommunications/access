@@ -111,7 +111,10 @@ function RouteComponent() {
     [selectedImage],
   );
   const displayedName =
-    form.watch("displayName") || convexUser?.displayName || convexUser?.name;
+    [form.watch("firstName"), form.watch("lastName")]
+      .filter(Boolean)
+      .join(" ")
+      .trim() || convexUser?.name;
   const initials = displayedName
     ?.split(" ")
     .filter(Boolean)
@@ -405,7 +408,8 @@ function RouteComponent() {
                         <Input {...field} autoComplete="name" />
                       </FormControl>
                       <FormDescription>
-                        This is the name other members will see.
+                        Reserved for your chat profile when messaging is
+                        available.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

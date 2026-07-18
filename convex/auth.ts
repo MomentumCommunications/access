@@ -140,7 +140,6 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
             userId,
             name:
               fullName ||
-              registeredUser.displayName ||
               registeredUser.name,
             email:
               typeof registeredUser.email === "string"

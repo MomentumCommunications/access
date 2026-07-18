@@ -25,6 +25,7 @@ import {
   disableDevicePush,
   disablePushSubscriptionRef,
 } from "~/lib/push-notifications";
+import { getAccountName } from "~/lib/account-name";
 
 export function NavUser({ user }: { user: Doc<"users"> }) {
   const { isMobile } = useSidebar();
@@ -33,7 +34,7 @@ export function NavUser({ user }: { user: Doc<"users"> }) {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const disablePushSubscription = useConvexMutation(disablePushSubscriptionRef);
 
-  const name = user.firstName + " " + user.lastName || "User";
+  const name = getAccountName(user);
   const email = Array.isArray(user.email) ? user.email[0] : user.email;
   const initials = name
     .split(" ")

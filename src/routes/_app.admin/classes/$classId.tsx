@@ -54,6 +54,7 @@ import { Separator } from "~/components/ui/separator";
 import { Switch } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
+import { getAccountName } from "~/lib/account-name";
 import { hasUserRole } from "~/lib/roles";
 import {
   ArrowUpDown,
@@ -1025,7 +1026,7 @@ function AdminClassDetailPage() {
                     ?.filter((account) => hasUserRole(account, "staff"))
                     .map((account) => (
                       <SelectItem key={account._id} value={account._id}>
-                        {account.name || account.email || "Unnamed"}
+                        {getAccountName(account)}
                       </SelectItem>
                     ))}
                 </SelectContent>
@@ -1046,7 +1047,7 @@ function AdminClassDetailPage() {
                     ?.filter((account) => hasUserRole(account, "staff"))
                     .map((account) => (
                       <SelectItem key={account._id} value={account._id}>
-                        {account.name || account.email || "Unnamed"}
+                        {getAccountName(account)}
                       </SelectItem>
                     ))}
                 </SelectContent>

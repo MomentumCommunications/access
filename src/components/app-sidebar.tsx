@@ -1,4 +1,5 @@
-import { memo } from "react";
+import { memo, useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
   BookOpenCheck,
   CalendarCheck,
@@ -51,6 +52,12 @@ import { Authenticated, AuthLoading, Unauthenticated } from "convex/react";
 import { Spinner } from "./ui/spinner";
 import { useActiveRole } from "~/contexts/ActiveRoleContext";
 import { RoleSwitcher } from "./role-switcher";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "~/components/ui/popover";
+import { cn } from "~/lib/utils";
 
 const AppSidebarComponent = memo(() => {
   const { convexUser } = useSidebarDataContext();
@@ -295,79 +302,28 @@ const AppSidebarComponent = memo(() => {
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  <Collapsible asChild className="group/collapsible">
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton
-                          isActive={isAdminClassesSectionActive(pathname)}
-                          tooltip="Classes"
-                        >
-                          <SportShoe />
-                          <span>Classes</span>
-                          <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenuSub>
-                          {[
-                            ["All", "/admin/classes"],
-                            ["Create", "/admin/classes/create"],
-                            ["Attendance", "/admin/attendance"],
-                            ["Enrollments", "/admin/classes/enrollments"],
-                            ["Privates", "/admin/privates"],
-                          ].map(([label, to]) => (
-                            <SidebarMenuSubItem key={to}>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={isAdminClassesSubItemActive(
-                                  pathname,
-                                  to,
-                                )}
-                                onClick={closeMobileSidebar}
-                              >
-                                <Link to={to as never}>{label}</Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
-                  <Collapsible asChild className="group/collapsible">
-                    <SidebarMenuItem>
-                      <CollapsibleTrigger asChild>
-                        <SidebarMenuButton
-                          isActive={isActivePath(pathname, "/admin/billing")}
-                          tooltip="Billing"
-                        >
-                          <DollarSign />
-                          <span>Billing</span>
-                          <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                        </SidebarMenuButton>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <SidebarMenuSub>
-                          {[
-                            ["Pricing", "/admin/billing/pricing"],
-                            ["Adjustments", "/admin/billing/adjustments"],
-                            ["Tuitions", "/admin/billing/tuitions"],
-                            ["Charges", "/admin/billing/charges"],
-                            ["Runs", "/admin/billing/runs"],
-                          ].map(([label, to]) => (
-                            <SidebarMenuSubItem key={to}>
-                              <SidebarMenuSubButton
-                                asChild
-                                isActive={isActivePath(pathname, to)}
-                                onClick={closeMobileSidebar}
-                              >
-                                <Link to={to as never}>{label}</Link>
-                              </SidebarMenuSubButton>
-                            </SidebarMenuSubItem>
-                          ))}
-                        </SidebarMenuSub>
-                      </CollapsibleContent>
-                    </SidebarMenuItem>
-                  </Collapsible>
+                  <SidebarCollapsibleGroup
+                    label="Classes"
+                    icon={SportShoe}
+                    isActive={isAdminClassesSectionActive(pathname)}
+                    items={ADMIN_CLASS_ITEMS.map(([label, to]) => ({
+                      label,
+                      to,
+                      isActive: isAdminClassesSubItemActive(pathname, to),
+                    }))}
+                    onNavigate={closeMobileSidebar}
+                  />
+                  <SidebarCollapsibleGroup
+                    label="Billing"
+                    icon={DollarSign}
+                    isActive={isActivePath(pathname, "/admin/billing")}
+                    items={ADMIN_BILLING_ITEMS.map(([label, to]) => ({
+                      label,
+                      to,
+                      isActive: isActivePath(pathname, to),
+                    }))}
+                    onNavigate={closeMobileSidebar}
+                  />
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -483,6 +439,132 @@ const AppSidebarComponent = memo(() => {
 AppSidebarComponent.displayName = "AppSidebar";
 
 export const AppSidebar = AppSidebarComponent;
+
+const ADMIN_CLASS_ITEMS = [
+  ["All", "/admin/classes"],
+  ["Create", "/admin/classes/create"],
+  ["Attendance", "/admin/attendance"],
+  ["Enrollments", "/admin/classes/enrollments"],
+  ["Privates", "/admin/privates"],
+] as const;
+
+const ADMIN_BILLING_ITEMS = [
+  ["Pricing", "/admin/billing/pricing"],
+  ["Adjustments", "/admin/billing/adjustments"],
+  ["Tuitions", "/admin/billing/tuitions"],
+  ["Charges", "/admin/billing/charges"],
+  ["Runs", "/admin/billing/runs"],
+] as const;
+
+type SidebarCollapsibleGroupProps = {
+  label: string;
+  icon: LucideIcon;
+  isActive: boolean;
+  items: Array<{
+    label: string;
+    to: string;
+    isActive: boolean;
+  }>;
+  onNavigate: () => void;
+};
+
+function SidebarCollapsibleGroup({
+  label,
+  icon: Icon,
+  isActive,
+  items,
+  onNavigate,
+}: SidebarCollapsibleGroupProps) {
+  const { state, isMobile } = useSidebar();
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const usesPopover = state === "collapsed" && !isMobile;
+
+  if (usesPopover) {
+    return (
+      <SidebarMenuItem>
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <PopoverTrigger asChild>
+            <SidebarMenuButton
+              isActive={isActive}
+              tooltip={label}
+              aria-label={`Open ${label} navigation`}
+            >
+              <Icon />
+              <span>{label}</span>
+            </SidebarMenuButton>
+          </PopoverTrigger>
+          <PopoverContent
+            side="right"
+            align="start"
+            sideOffset={8}
+            className="w-56 p-2"
+          >
+            <div className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold">
+              <Icon className="size-4" />
+              <span>{label}</span>
+            </div>
+            <nav
+              aria-label={`${label} navigation`}
+              className="mt-1 flex flex-col gap-1"
+            >
+              {items.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to as never}
+                  aria-current={item.isActive ? "page" : undefined}
+                  className={cn(
+                    "hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring flex h-8 items-center rounded-md px-2 text-sm outline-none focus-visible:ring-2",
+                    item.isActive &&
+                      "bg-accent text-accent-foreground font-medium",
+                  )}
+                  onClick={() => {
+                    setPopoverOpen(false);
+                    onNavigate();
+                  }}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </PopoverContent>
+        </Popover>
+      </SidebarMenuItem>
+    );
+  }
+
+  return (
+    <Collapsible
+      asChild
+      className="group/collapsible"
+      defaultOpen={isActive}
+    >
+      <SidebarMenuItem>
+        <CollapsibleTrigger asChild>
+          <SidebarMenuButton isActive={isActive} tooltip={label}>
+            <Icon />
+            <span>{label}</span>
+            <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+          </SidebarMenuButton>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarMenuSub>
+            {items.map((item) => (
+              <SidebarMenuSubItem key={item.to}>
+                <SidebarMenuSubButton
+                  asChild
+                  isActive={item.isActive}
+                  onClick={onNavigate}
+                >
+                  <Link to={item.to as never}>{item.label}</Link>
+                </SidebarMenuSubButton>
+              </SidebarMenuSubItem>
+            ))}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuItem>
+    </Collapsible>
+  );
+}
 
 function isActivePath(
   pathname: string,

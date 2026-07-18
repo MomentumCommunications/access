@@ -454,7 +454,7 @@ function AdminClassDetailPage() {
           </Card>
         </main>
       ) : (
-        <main className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-4 p-4 lg:p-8">
+        <main className="mx-auto flex w-full min-w-0 max-w-7xl flex-col gap-4 p-4 lg:p-8">
           <section className="min-w-0 space-y-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 space-y-2">
@@ -558,15 +558,12 @@ function AdminClassDetailPage() {
                 aria-label="Self-service enrollment"
               />
             </div>
-            <Separator />
           </section>
 
-          <Tabs defaultValue="enrollments" className="min-w-0 gap-4">
+          <Tabs defaultValue="enrollments" className="min-w-0 gap-2">
+            <Separator />
             <TabsList className="text-muted-foreground h-auto w-full justify-start gap-6 overflow-x-auto rounded-none border-b bg-transparent p-0">
-              <TabsTrigger
-                value="enrollments"
-                className={classTabTriggerClass}
-              >
+              <TabsTrigger value="enrollments" className={classTabTriggerClass}>
                 <GraduationCap />
                 {classMode === "per_session"
                   ? "Session signups"
@@ -578,7 +575,7 @@ function AdminClassDetailPage() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="enrollments" className="min-w-0 space-y-4">
+            <TabsContent value="enrollments" className="min-w-0 space-y-4 pt-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="text-2xl font-bold">
@@ -639,7 +636,7 @@ function AdminClassDetailPage() {
               )}
             </TabsContent>
 
-            <TabsContent value="sessions" className="min-w-0 space-y-4">
+            <TabsContent value="sessions" className="min-w-0 space-y-4 pt-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="text-2xl font-bold">Sessions</h2>
@@ -749,9 +746,8 @@ function AdminClassDetailPage() {
                   <ComboboxList>
                     {(value: string) => (
                       <ComboboxItem key={value} value={value}>
-                        {studentOptions.find(
-                          (option) => option.value === value,
-                        )?.label || value}
+                        {studentOptions.find((option) => option.value === value)
+                          ?.label || value}
                       </ComboboxItem>
                     )}
                   </ComboboxList>
@@ -820,12 +816,7 @@ function AdminClassDetailPage() {
                               onCheckedChange={(checked) =>
                                 setSelectedSessionIds((current) =>
                                   checked
-                                    ? [
-                                        ...new Set([
-                                          ...current,
-                                          session._id,
-                                        ]),
-                                      ]
+                                    ? [...new Set([...current, session._id])]
                                     : current.filter(
                                         (sessionId) =>
                                           sessionId !== session._id,
@@ -937,8 +928,7 @@ function AdminClassDetailPage() {
                   !selectedStudent ||
                   (classMode === "per_session"
                     ? selectedSessionIds.length === 0
-                    : newEnrollmentStatus === "enrolled" &&
-                      !billingTreatment)
+                    : newEnrollmentStatus === "enrolled" && !billingTreatment)
                 }
               >
                 {isAddingStudent ? <Spinner /> : <Plus />}
@@ -1062,10 +1052,7 @@ function AdminClassDetailPage() {
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={isAddingSession || !sessionDate}
-              >
+              <Button type="submit" disabled={isAddingSession || !sessionDate}>
                 {isAddingSession ? <Spinner /> : <Plus />}
                 Add session
               </Button>

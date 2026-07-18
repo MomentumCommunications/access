@@ -99,7 +99,7 @@ function AdminReportsPage() {
           </div>
         ) : (
           <>
-            <section className="min-w-0 max-w-full space-y-3">
+            <section className="w-full min-w-0 max-w-full space-y-3">
               <div className="min-w-0">
                 <h2 className="text-xl font-semibold">
                   Monthly participation
@@ -109,10 +109,10 @@ function AdminReportsPage() {
                   point during the month.
                 </p>
               </div>
-              <div className="min-w-0 max-w-full overflow-x-auto">
+              <div className="w-full min-w-0 max-w-full overflow-x-auto">
                 <ChartContainer
                   config={monthlyChartConfig}
-                  className="h-[340px] min-w-[38rem] max-w-full"
+                  className="h-[340px] w-full min-w-[38rem] lg:min-w-0"
                 >
                   <LineChart
                     accessibilityLayer
@@ -150,8 +150,8 @@ function AdminReportsPage() {
 
             <Separator />
 
-            <section className="grid min-w-0 max-w-full gap-6 lg:grid-cols-6">
-              <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:col-span-6 lg:grid-cols-4">
+            <section className="grid min-w-0 max-w-full gap-6 lg:grid-cols-3">
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-4">
                 <KpiStat
                   label="Active enrollments"
                   value={report.kpis.currentActiveEnrollments}
@@ -177,12 +177,12 @@ function AdminReportsPage() {
               <ReportSection
                 title="Requests per month"
                 description="Enrollment requests by creation month."
-                className="lg:col-span-4"
+                className="lg:col-span-2"
               >
-                <div className="min-w-0 max-w-full overflow-x-auto">
+                <div className="w-full min-w-0 max-w-full overflow-x-auto">
                   <ChartContainer
                     config={requestsChartConfig}
-                    className="h-[280px] min-w-[34rem] max-w-full"
+                    className="h-[280px] w-full min-w-[34rem] lg:min-w-0"
                   >
                     <BarChart
                       accessibilityLayer
@@ -211,7 +211,7 @@ function AdminReportsPage() {
               <ReportSection
                 title="Current status mix"
                 description="All current class enrollment rows by status."
-                className="lg:col-span-2"
+                className="lg:col-span-1"
               >
                 <StatusMixChart data={report.statusCounts} />
               </ReportSection>
@@ -219,7 +219,7 @@ function AdminReportsPage() {
               <ReportSection
                 title="Top classes by active enrollments"
                 description="Currently enrolled students whose enrollment overlaps today."
-                className="lg:col-span-4"
+                className="lg:col-span-2"
               >
                 <RankingBarChart
                   data={report.topClassesByActiveEnrollments}
@@ -231,7 +231,7 @@ function AdminReportsPage() {
               <ReportSection
                 title="Waitlist pressure"
                 description="Classes with the highest current waitlist count."
-                className="lg:col-span-2"
+                className="lg:col-span-1"
               >
                 <RankingList
                   data={report.topClassesByWaitlist}
@@ -381,8 +381,11 @@ function RankingBarChart({
   }
 
   return (
-    <div className="min-w-0 max-w-full overflow-x-auto">
-      <ChartContainer config={config} className="h-[300px] min-w-[32rem]">
+    <div className="w-full min-w-0 max-w-full overflow-x-auto">
+      <ChartContainer
+        config={config}
+        className="h-[300px] w-full min-w-[32rem] lg:min-w-0"
+      >
         <BarChart
           accessibilityLayer
           data={data}

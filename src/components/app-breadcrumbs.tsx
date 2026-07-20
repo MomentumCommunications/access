@@ -91,6 +91,8 @@ function getDynamicIds(pathname: string) {
     segments[0] === "admin" && segments[1] === "privates"
       ? segments[3]
       : undefined;
+  const calendarBulletinId =
+    segments[0] === "calendar" ? segments[1] : undefined;
 
   return {
     accountId: accountId && isDynamicId(accountId) ? accountId : undefined,
@@ -116,6 +118,10 @@ function getDynamicIds(pathname: string) {
     privateLessonId:
       privateLessonId && isDynamicId(privateLessonId)
         ? privateLessonId
+        : undefined,
+    calendarBulletinId:
+      calendarBulletinId && isDynamicId(calendarBulletinId)
+        ? calendarBulletinId
         : undefined,
   };
 }
@@ -193,6 +199,12 @@ export function AppBreadcrumbs() {
             privateLessonId: ids.privateLessonId as Id<"privateLessons">,
           }
         : "skip",
+      ),
+  );
+  const { data: calendarBulletinData } = useQuery(
+    convexQuery(
+      api.bulletins.getBulletin,
+      ids.calendarBulletinId ? { id: ids.calendarBulletinId } : "skip",
     ),
   );
 
@@ -244,6 +256,12 @@ export function AppBreadcrumbs() {
           [ids.privateLessonId]: privateLessonData
             ? formatDateTime(privateLessonData.lesson.startsAt)
             : "Lesson",
+        }
+      : {}),
+    ...(ids.calendarBulletinId
+      ? {
+          [ids.calendarBulletinId]:
+            calendarBulletinData?.title || "Calendar event",
         }
       : {}),
   };

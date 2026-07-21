@@ -18,6 +18,7 @@ import { getStripeClient } from "./lib/stripe";
 import { getResendApiKey, resendFromAddress } from "./resendConfig";
 import { normalizeAccountEmail } from "../shared/account-security";
 import { ensureStripeCustomerForUser } from "../shared/stripe-customer";
+import { validatePaidTrialPrice } from "../shared/trials";
 
 const roleValidator = v.union(
   v.literal("admin"),
@@ -38,6 +39,48 @@ const saveOnboardingProfileRef = makeFunctionReference<
     provisionCustomerBilling: boolean;
   }
 >("onboarding:saveProfile");
+
+const adminGetTrialBillingAccountRef = makeFunctionReference<
+  "query",
+  { trialRequestId: Id<"trialRequests"> },
+  {
+    account: Doc<"users">;
+    autopayEnabled: boolean;
+    request: {
+      id: Id<"trialRequests">;
+      status: "pending" | "approved";
+      stripeInvoiceId?: string;
+      unitPriceCents?: number;
+      sessionSignupId?: Id<"classSessionSignups">;
+    };
+    studentName: string;
+    className: string;
+    sessionDate: string;
+  }
+>("trials:adminGetBillingAccount");
+
+const adminRecordTrialDraftInvoiceRef = makeFunctionReference<
+  "mutation",
+  {
+    trialRequestId: Id<"trialRequests">;
+    stripeInvoiceId: string;
+    unitPriceCents: number;
+  },
+  null
+>("trials:adminRecordTrialDraftInvoice");
+
+const adminReviewTrialRef = makeFunctionReference<
+  "mutation",
+  {
+    trialRequestId: Id<"trialRequests">;
+    action: "approve" | "reject";
+    unitPriceCents?: number;
+  },
+  {
+    status: "approved" | "rejected";
+    signupId?: Id<"classSessionSignups">;
+  }
+>("trials:adminReview");
 
 function securityCode() {
   return randomInt(0, 100_000_000).toString().padStart(8, "0");
@@ -473,6 +516,117 @@ export const adminCreateAccount = action({
           "The account and household were created, but its Stripe customer could not be created. Stripe setup will be retried when the client completes onboarding.",
       };
     }
+  },
+});
+
+export const adminApproveTrial = action({
+  args: {
+    trialRequestId: v.id("trialRequests"),
+    unitPriceCents: v.number(),
+  },
+  handler: async (ctx, { trialRequestId, unitPriceCents }) => {
+    const price = validatePaidTrialPrice(unitPriceCents);
+    const billing = await ctx.runQuery(
+      adminGetTrialBillingAccountRef,
+      { trialRequestId },
+    );
+    if (
+      billing.request.unitPriceCents !== undefined &&
+      billing.request.unitPriceCents !== price
+    ) {
+      throw new Error(
+        "This trial already has a draft invoice at a different price.",
+      );
+    }
+    const customerResult = await ensureStripeCustomer(ctx, billing.account);
+    const stripe = getStripeClient();
+    const customer = await stripe.customers.retrieve(
+      customerResult.stripeCustomerId,
+      { expand: ["invoice_settings.default_payment_method"] },
+    );
+    if (customer.deleted) {
+      throw new Error("The household Stripe customer has been deleted.");
+    }
+    const hasPaymentMethod = Boolean(
+      customer.invoice_settings.default_payment_method ||
+        customer.default_source,
+    );
+    const collectionMethod =
+      billing.autopayEnabled && hasPaymentMethod
+        ? "charge_automatically"
+        : "send_invoice";
+    const metadata = {
+      source: "access_paid_trial",
+      trialRequestId,
+      studentName: billing.studentName,
+      className: billing.className,
+      sessionDate: billing.sessionDate,
+    };
+    let invoice;
+    if (billing.request.stripeInvoiceId) {
+      invoice = await stripe.invoices.retrieve(
+        billing.request.stripeInvoiceId,
+      );
+      if (invoice.status !== "draft") {
+        throw new Error(
+          "The linked Stripe invoice is no longer a draft. Resolve it in Stripe before retrying approval.",
+        );
+      }
+    } else {
+      invoice = await stripe.invoices.create(
+        {
+          customer: customerResult.stripeCustomerId,
+          collection_method: collectionMethod,
+          auto_advance: false,
+          description: `Paid trial for ${billing.studentName}: ${billing.className} on ${billing.sessionDate}`,
+          metadata,
+          ...(collectionMethod === "send_invoice"
+            ? { days_until_due: 30 }
+            : {}),
+        },
+        { idempotencyKey: `trial:${trialRequestId}:invoice:v1` },
+      );
+    }
+    const periodStart = Math.floor(
+      new Date(`${billing.sessionDate}T00:00:00Z`).getTime() / 1000,
+    );
+    const periodEnd = Math.floor(
+      new Date(`${billing.sessionDate}T23:59:59Z`).getTime() / 1000,
+    );
+    await stripe.invoiceItems.create(
+      {
+        customer: customerResult.stripeCustomerId,
+        invoice: invoice.id,
+        amount: price,
+        currency: "usd",
+        description: `Paid trial: ${billing.studentName} — ${billing.className} — ${billing.sessionDate}`,
+        metadata,
+        period: { start: periodStart, end: periodEnd },
+      },
+      { idempotencyKey: `trial:${trialRequestId}:line:v1` },
+    );
+    await ctx.runMutation(adminRecordTrialDraftInvoiceRef, {
+      trialRequestId,
+      stripeInvoiceId: invoice.id,
+      unitPriceCents: price,
+    });
+    const approval =
+      billing.request.status === "pending"
+        ? await ctx.runMutation(adminReviewTrialRef, {
+            trialRequestId,
+            action: "approve",
+            unitPriceCents: price,
+          })
+        : {
+            status: "approved" as const,
+            signupId: billing.request.sessionSignupId,
+          };
+    return {
+      ...approval,
+      stripeCustomerId: customerResult.stripeCustomerId,
+      stripeCustomerCreated: customerResult.created,
+      stripeInvoiceId: invoice.id,
+    };
   },
 });
 

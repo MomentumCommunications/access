@@ -52,6 +52,7 @@ import type * as resendConfig from "../resendConfig.js";
 import type * as stripe from "../stripe.js";
 import type * as stripeData from "../stripeData.js";
 import type * as tasks from "../tasks.js";
+import type * as trials from "../trials.js";
 import type * as users from "../users.js";
 
 import type {
@@ -105,6 +106,7 @@ declare const fullApi: ApiFromModules<{
   stripe: typeof stripe;
   stripeData: typeof stripeData;
   tasks: typeof tasks;
+  trials: typeof trials;
   users: typeof users;
 }>;
 

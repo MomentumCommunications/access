@@ -70,6 +70,7 @@ function getDynamicIds(pathname: string) {
       ? segments[2]
       : undefined;
   const publicClassId = segments[0] === "classes" ? segments[1] : undefined;
+  const trialClassId = segments[0] === "trial" ? segments[1] : undefined;
   const adminStudentId =
     segments[0] === "admin" && segments[1] === "students"
       ? segments[2]
@@ -112,6 +113,8 @@ function getDynamicIds(pathname: string) {
         : undefined,
     publicClassId:
       publicClassId && isDynamicId(publicClassId) ? publicClassId : undefined,
+    trialClassId:
+      trialClassId && isDynamicId(trialClassId) ? trialClassId : undefined,
     staffClassId:
       staffClassId && isDynamicId(staffClassId) ? staffClassId : undefined,
     privateId: privateId && isDynamicId(privateId) ? privateId : undefined,
@@ -144,6 +147,14 @@ export function AppBreadcrumbs() {
       api.classes.getClassForSignup,
       ids.publicClassId
         ? { classId: ids.publicClassId as Id<"classes"> }
+        : "skip",
+    ),
+  );
+  const { data: trialClassData } = useQuery(
+    convexQuery(
+      api.classes.getClassForSignup,
+      ids.trialClassId
+        ? { classId: ids.trialClassId as Id<"classes"> }
         : "skip",
     ),
   );
@@ -221,6 +232,9 @@ export function AppBreadcrumbs() {
       : {}),
     ...(ids.publicClassId
       ? { [ids.publicClassId]: publicClassData?.classItem.title || "Class" }
+      : {}),
+    ...(ids.trialClassId
+      ? { [ids.trialClassId]: trialClassData?.classItem.title || "Class" }
       : {}),
     ...(ids.staffClassId
       ? { [ids.staffClassId]: staffClassData?.classItem.title || "Class" }

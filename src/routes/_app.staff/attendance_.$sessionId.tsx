@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AttendanceRowActions } from "~/components/attendance-row-actions";
 import { RoleGate } from "~/components/role-gate";
 import { Button } from "~/components/ui/button";
+import { Badge } from "~/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -303,8 +304,11 @@ function AttendanceSessionPage() {
                         />
                       ) : null}
                       <div className="min-w-0">
-                        <div className="truncate font-medium">
-                          {studentName}
+                        <div className="flex flex-wrap items-center gap-2 font-medium">
+                          <span className="truncate">{studentName}</span>
+                          {enrollment.isTrial ? (
+                            <Badge variant="secondary">Trial</Badge>
+                          ) : null}
                           {isBirthday(student.dateOfBirth) && (
                             <span
                               title="Happy Birthday!"

@@ -939,6 +939,7 @@ async function getStaffAttendanceSessionRow(
       return {
         ...sessionStudent,
         status: "session" as const,
+        isTrial: false,
         student,
         photoUrl: student?.photo
           ? await ctx.storage.getUrl(student.photo)
@@ -952,20 +953,23 @@ async function getStaffAttendanceSessionRow(
     .withIndex("bySession", (q) => q.eq("session", session._id))
     .collect();
   const classMode = resolvedClassEnrollmentMode(classItem?.enrollmentMode);
-  const datedEnrollments =
+  const regularDatedEnrollments =
     classMode === "per_session"
       ? (
           await Promise.all(
             sessionSignups
               .filter(
                 (signup) =>
-                  signup.status === "enrolled" || signup.status === "pending",
+                  signup.trialRequestId === undefined &&
+                  (signup.status === "enrolled" ||
+                    signup.status === "pending"),
               )
               .map(async (signup) => {
                 const student = await ctx.db.get(signup.student);
                 return {
                   ...signup,
                   status: "session_signup" as const,
+                  isTrial: false,
                   student,
                   photoUrl: student?.photo
                     ? await ctx.storage.getUrl(student.photo)
@@ -987,7 +991,44 @@ async function getStaffAttendanceSessionRow(
               enrollment.startDate,
               enrollment.endDate,
             ),
-        );
+        ).map((enrollment) => ({ ...enrollment, isTrial: false }));
+  const trialSignupRows = (
+    await Promise.all(
+      sessionSignups
+        .filter(
+          (signup) =>
+            signup.trialRequestId !== undefined &&
+            (signup.status === "enrolled" || signup.status === "pending"),
+        )
+        .map(async (signup) => {
+          const student = await ctx.db.get(signup.student);
+          return {
+            ...signup,
+            status: "session_signup" as const,
+            isTrial: true,
+            student,
+            photoUrl: student?.photo
+              ? await ctx.storage.getUrl(student.photo)
+              : null,
+            requestedBy: signup.requestedBy
+              ? await ctx.db.get(signup.requestedBy)
+              : null,
+          };
+        }),
+    )
+  ).filter((row) => row.student?.status === "active");
+  const datedEnrollments = [...regularDatedEnrollments];
+  const datedStudentIds = new Set(
+    datedEnrollments
+      .map((row) => row.student?._id)
+      .filter((id): id is Id<"students"> => Boolean(id)),
+  );
+  for (const trial of trialSignupRows) {
+    if (trial.student && !datedStudentIds.has(trial.student._id)) {
+      datedStudentIds.add(trial.student._id);
+      datedEnrollments.push(trial);
+    }
+  }
   const rosterStudentIds = new Set(
     datedEnrollments
       .map((enrollment) => enrollment.student?._id)
@@ -2040,12 +2081,25 @@ async function syncStudentSessionSignups(
     );
   }
   const selected = new Set(sessionIds);
-  const existing = await ctx.db
+  const allExisting = await ctx.db
     .query("classSessionSignups")
     .withIndex("byClassStudent", (q) =>
       q.eq("classId", classItem._id).eq("student", student),
     )
     .collect();
+  const activeTrials = allExisting.filter(
+    (signup) =>
+      signup.trialRequestId !== undefined &&
+      isActiveSessionSignup(signup.status),
+  );
+  if (activeTrials.some((signup) => selected.has(signup.session))) {
+    throw new Error(
+      "A selected session is already reserved as an approved trial.",
+    );
+  }
+  const existing = allExisting.filter(
+    (signup) => signup.trialRequestId === undefined,
+  );
   const previousSessionIds = existing
     .filter((signup) => isActiveSessionSignup(signup.status))
     .map((signup) => signup.session);
@@ -4456,7 +4510,10 @@ export const addStudentToSession = mutation({
       )
       .unique();
     const alreadyExpected =
-      resolvedClassEnrollmentMode(classItem?.enrollmentMode) === "per_session"
+      signup?.trialRequestId !== undefined &&
+      (signup.status === "enrolled" || signup.status === "pending")
+        ? true
+        : resolvedClassEnrollmentMode(classItem?.enrollmentMode) === "per_session"
         ? signup?.status === "enrolled" || signup?.status === "pending"
         : !!enrollment &&
           (enrollment.status === "enrolled" ||
@@ -4585,6 +4642,18 @@ export const markSessionPresent = mutation({
           )
         ) {
           rosterStudentIds.add(enrollment.student);
+        }
+      }
+      const trialSignups = await ctx.db
+        .query("classSessionSignups")
+        .withIndex("bySession", (q) => q.eq("session", session))
+        .collect();
+      for (const signup of trialSignups) {
+        if (
+          signup.trialRequestId !== undefined &&
+          (signup.status === "enrolled" || signup.status === "pending")
+        ) {
+          rosterStudentIds.add(signup.student);
         }
       }
     }

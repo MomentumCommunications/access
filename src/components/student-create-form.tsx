@@ -78,12 +78,14 @@ type StudentCreateFormProps = {
   mode: "admin" | "member";
   groups?: Array<{ _id: Id<"groups">; name: string }>;
   accountId?: Id<"users">;
+  returnTo?: string;
 };
 
 function StudentCreateForm({
   mode,
   groups = [],
   accountId,
+  returnTo,
 }: StudentCreateFormProps) {
   const navigate = useNavigate();
   const createMyStudent = useConvexMutation(
@@ -136,7 +138,7 @@ function StudentCreateForm({
           ...common,
           relationship: values.relationship.trim() || undefined,
         });
-        await navigate({ to: "/students" });
+        await navigate({ to: (returnTo || "/students") as never });
       }
     } catch (error) {
       form.setError("root", {
@@ -427,7 +429,13 @@ function StudentCreateForm({
                   Cancel
                 </Link>
               ) : (
-                <Link to={mode === "admin" ? "/admin/students" : "/students"}>
+                <Link
+                  to={
+                    mode === "admin"
+                      ? "/admin/students"
+                      : ((returnTo || "/students") as never)
+                  }
+                >
                   Cancel
                 </Link>
               )}
@@ -442,8 +450,8 @@ function StudentCreateForm({
   );
 }
 
-export function MemberStudentCreateForm() {
-  return <StudentCreateForm mode="member" />;
+export function MemberStudentCreateForm({ returnTo }: { returnTo?: string } = {}) {
+  return <StudentCreateForm mode="member" returnTo={returnTo} />;
 }
 
 export function AdminStudentCreateForm({

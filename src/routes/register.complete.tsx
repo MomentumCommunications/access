@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCircle2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { OnboardingGate } from "~/components/onboarding/onboarding-gate";
 import { Button } from "~/components/ui/button";
 import {
@@ -9,12 +10,18 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import {
+  clearOnboardingReturn,
+  getOnboardingReturn,
+} from "~/lib/onboarding-return";
 
 export const Route = createFileRoute("/register/complete")({
   component: RegisterCompleteStep,
 });
 
 function RegisterCompleteStep() {
+  const [returnTo, setReturnTo] = useState<string | null>(null);
+  useEffect(() => setReturnTo(getOnboardingReturn()), []);
   return (
     <OnboardingGate>
       <div className="mx-auto flex w-full max-w-lg flex-1 items-center pb-12">
@@ -30,7 +37,14 @@ function RegisterCompleteStep() {
           </CardHeader>
           <CardContent>
             <Button className="w-full sm:w-auto" asChild>
-              <Link to="/home">Continue to Access Momentum</Link>
+              <Link
+                to={(returnTo || "/home") as never}
+                onClick={clearOnboardingReturn}
+              >
+                {returnTo?.startsWith("/trial")
+                  ? "Continue to trial request"
+                  : "Continue to Access Momentum"}
+              </Link>
             </Button>
           </CardContent>
         </Card>

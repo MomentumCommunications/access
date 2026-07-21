@@ -146,6 +146,7 @@ export type PerSessionChargeInput = {
   sessionStatus: string;
   signupStatus: SessionSignupStatus;
   unitPriceCents: number;
+  trialRequestId?: string;
 };
 
 export function calculatePerSessionChargeCandidates(
@@ -157,6 +158,7 @@ export function calculatePerSessionChargeCandidates(
     .filter(
       (row) =>
         row.classMode === "per_session" &&
+        row.trialRequestId === undefined &&
         row.studentStatus === "active" &&
         row.signupStatus === "enrolled" &&
         row.sessionActive &&

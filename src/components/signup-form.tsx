@@ -21,6 +21,7 @@ type SignupFormProps = Omit<React.ComponentProps<typeof Card>, "onSubmit"> & {
   isSubmitting?: boolean;
   email?: string;
   lockEmail?: boolean;
+  redirect?: string;
   onSubmit: React.FormEventHandler<HTMLFormElement>;
 };
 
@@ -29,6 +30,7 @@ export function SignupForm({
   isSubmitting,
   email,
   lockEmail,
+  redirect,
   onSubmit,
   ...props
 }: SignupFormProps) {
@@ -89,7 +91,13 @@ export function SignupForm({
                   {isSubmitting ? "Creating account..." : "Create Account"}
                 </Button>
                 <FieldDescription className="px-6 text-center">
-                  Already have an account? <Link to="/login">Sign in</Link>
+                  Already have an account?{" "}
+                  <Link
+                    to="/login"
+                    search={redirect ? { redirect } : undefined}
+                  >
+                    Sign in
+                  </Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>

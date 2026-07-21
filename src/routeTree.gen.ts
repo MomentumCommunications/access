@@ -30,12 +30,14 @@ import { Route as AppHomeRouteImport } from './routes/_app.home'
 import { Route as AppHelpRouteImport } from './routes/_app.help'
 import { Route as AppContactRouteImport } from './routes/_app.contact'
 import { Route as AppAccountRouteImport } from './routes/_app.account'
+import { Route as AppTrialIndexRouteImport } from './routes/_app.trial.index'
 import { Route as AppStudentsIndexRouteImport } from './routes/_app.students/index'
 import { Route as AppStaffIndexRouteImport } from './routes/_app.staff/index'
 import { Route as AppClassesIndexRouteImport } from './routes/_app.classes/index'
 import { Route as AppChannelIndexRouteImport } from './routes/_app.channel/index'
 import { Route as AppCalendarIndexRouteImport } from './routes/_app.calendar/index'
 import { Route as AppAdminIndexRouteImport } from './routes/_app.admin/index'
+import { Route as AppTrialClassIdRouteImport } from './routes/_app.trial.$classId'
 import { Route as AppStudentsCreateRouteImport } from './routes/_app.students/create'
 import { Route as AppStudentsStudentIdRouteImport } from './routes/_app.students/$studentId'
 import { Route as AppStaffClassesRouteImport } from './routes/_app.staff/classes'
@@ -62,6 +64,7 @@ import { Route as AppAdminStudentsCreateRouteImport } from './routes/_app.admin/
 import { Route as AppAdminStudentsStudentIdRouteImport } from './routes/_app.admin/students/$studentId'
 import { Route as AppAdminPrivatesCreateRouteImport } from './routes/_app.admin/privates/create'
 import { Route as AppAdminPrivatesPrivateIdRouteImport } from './routes/_app.admin/privates/$privateId'
+import { Route as AppAdminClassesTrialsRouteImport } from './routes/_app.admin/classes/trials'
 import { Route as AppAdminClassesEnrollmentsRouteImport } from './routes/_app.admin/classes/enrollments'
 import { Route as AppAdminClassesCreateRouteImport } from './routes/_app.admin/classes/create'
 import { Route as AppAdminClassesClassIdRouteImport } from './routes/_app.admin/classes/$classId'
@@ -189,6 +192,11 @@ const AppAccountRoute = AppAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTrialIndexRoute = AppTrialIndexRouteImport.update({
+  id: '/trial/',
+  path: '/trial/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppStudentsIndexRoute = AppStudentsIndexRouteImport.update({
   id: '/students/',
   path: '/students/',
@@ -217,6 +225,11 @@ const AppCalendarIndexRoute = AppCalendarIndexRouteImport.update({
 const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTrialClassIdRoute = AppTrialClassIdRouteImport.update({
+  id: '/trial/$classId',
+  path: '/trial/$classId',
   getParentRoute: () => AppRoute,
 } as any)
 const AppStudentsCreateRoute = AppStudentsCreateRouteImport.update({
@@ -354,6 +367,11 @@ const AppAdminPrivatesPrivateIdRoute =
     path: '/admin/privates/$privateId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppAdminClassesTrialsRoute = AppAdminClassesTrialsRouteImport.update({
+  id: '/admin/classes/trials',
+  path: '/admin/classes/trials',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminClassesEnrollmentsRoute =
   AppAdminClassesEnrollmentsRouteImport.update({
     id: '/admin/classes/enrollments',
@@ -512,12 +530,14 @@ export interface FileRoutesByFullPath {
   '/staff/classes': typeof AppStaffClassesRoute
   '/students/$studentId': typeof AppStudentsStudentIdRoute
   '/students/create': typeof AppStudentsCreateRoute
+  '/trial/$classId': typeof AppTrialClassIdRoute
   '/admin/': typeof AppAdminIndexRoute
   '/calendar/': typeof AppCalendarIndexRoute
   '/channel/': typeof AppChannelIndexRoute
   '/classes/': typeof AppClassesIndexRoute
   '/staff/': typeof AppStaffIndexRoute
   '/students/': typeof AppStudentsIndexRoute
+  '/trial/': typeof AppTrialIndexRoute
   '/admin/accounts/$userId': typeof AppAdminAccountsUserIdRoute
   '/admin/accounts/create': typeof AppAdminAccountsCreateRoute
   '/admin/attendance/$sessionId': typeof AppAdminAttendanceSessionIdRoute
@@ -531,6 +551,7 @@ export interface FileRoutesByFullPath {
   '/admin/classes/$classId': typeof AppAdminClassesClassIdRoute
   '/admin/classes/create': typeof AppAdminClassesCreateRoute
   '/admin/classes/enrollments': typeof AppAdminClassesEnrollmentsRoute
+  '/admin/classes/trials': typeof AppAdminClassesTrialsRoute
   '/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/admin/privates/create': typeof AppAdminPrivatesCreateRoute
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
@@ -587,12 +608,14 @@ export interface FileRoutesByTo {
   '/staff/classes': typeof AppStaffClassesRoute
   '/students/$studentId': typeof AppStudentsStudentIdRoute
   '/students/create': typeof AppStudentsCreateRoute
+  '/trial/$classId': typeof AppTrialClassIdRoute
   '/admin': typeof AppAdminIndexRoute
   '/calendar': typeof AppCalendarIndexRoute
   '/channel': typeof AppChannelIndexRoute
   '/classes': typeof AppClassesIndexRoute
   '/staff': typeof AppStaffIndexRoute
   '/students': typeof AppStudentsIndexRoute
+  '/trial': typeof AppTrialIndexRoute
   '/admin/accounts/$userId': typeof AppAdminAccountsUserIdRoute
   '/admin/accounts/create': typeof AppAdminAccountsCreateRoute
   '/admin/attendance/$sessionId': typeof AppAdminAttendanceSessionIdRoute
@@ -606,6 +629,7 @@ export interface FileRoutesByTo {
   '/admin/classes/$classId': typeof AppAdminClassesClassIdRoute
   '/admin/classes/create': typeof AppAdminClassesCreateRoute
   '/admin/classes/enrollments': typeof AppAdminClassesEnrollmentsRoute
+  '/admin/classes/trials': typeof AppAdminClassesTrialsRoute
   '/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/admin/privates/create': typeof AppAdminPrivatesCreateRoute
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
@@ -665,12 +689,14 @@ export interface FileRoutesById {
   '/_app/staff/classes': typeof AppStaffClassesRoute
   '/_app/students/$studentId': typeof AppStudentsStudentIdRoute
   '/_app/students/create': typeof AppStudentsCreateRoute
+  '/_app/trial/$classId': typeof AppTrialClassIdRoute
   '/_app/admin/': typeof AppAdminIndexRoute
   '/_app/calendar/': typeof AppCalendarIndexRoute
   '/_app/channel/': typeof AppChannelIndexRoute
   '/_app/classes/': typeof AppClassesIndexRoute
   '/_app/staff/': typeof AppStaffIndexRoute
   '/_app/students/': typeof AppStudentsIndexRoute
+  '/_app/trial/': typeof AppTrialIndexRoute
   '/_app/admin/accounts_/$userId': typeof AppAdminAccountsUserIdRoute
   '/_app/admin/accounts_/create': typeof AppAdminAccountsCreateRoute
   '/_app/admin/attendance_/$sessionId': typeof AppAdminAttendanceSessionIdRoute
@@ -684,6 +710,7 @@ export interface FileRoutesById {
   '/_app/admin/classes/$classId': typeof AppAdminClassesClassIdRoute
   '/_app/admin/classes/create': typeof AppAdminClassesCreateRoute
   '/_app/admin/classes/enrollments': typeof AppAdminClassesEnrollmentsRoute
+  '/_app/admin/classes/trials': typeof AppAdminClassesTrialsRoute
   '/_app/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/_app/admin/privates/create': typeof AppAdminPrivatesCreateRoute
   '/_app/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
@@ -743,12 +770,14 @@ export interface FileRouteTypes {
     | '/staff/classes'
     | '/students/$studentId'
     | '/students/create'
+    | '/trial/$classId'
     | '/admin/'
     | '/calendar/'
     | '/channel/'
     | '/classes/'
     | '/staff/'
     | '/students/'
+    | '/trial/'
     | '/admin/accounts/$userId'
     | '/admin/accounts/create'
     | '/admin/attendance/$sessionId'
@@ -762,6 +791,7 @@ export interface FileRouteTypes {
     | '/admin/classes/$classId'
     | '/admin/classes/create'
     | '/admin/classes/enrollments'
+    | '/admin/classes/trials'
     | '/admin/privates/$privateId'
     | '/admin/privates/create'
     | '/admin/students/$studentId'
@@ -818,12 +848,14 @@ export interface FileRouteTypes {
     | '/staff/classes'
     | '/students/$studentId'
     | '/students/create'
+    | '/trial/$classId'
     | '/admin'
     | '/calendar'
     | '/channel'
     | '/classes'
     | '/staff'
     | '/students'
+    | '/trial'
     | '/admin/accounts/$userId'
     | '/admin/accounts/create'
     | '/admin/attendance/$sessionId'
@@ -837,6 +869,7 @@ export interface FileRouteTypes {
     | '/admin/classes/$classId'
     | '/admin/classes/create'
     | '/admin/classes/enrollments'
+    | '/admin/classes/trials'
     | '/admin/privates/$privateId'
     | '/admin/privates/create'
     | '/admin/students/$studentId'
@@ -895,12 +928,14 @@ export interface FileRouteTypes {
     | '/_app/staff/classes'
     | '/_app/students/$studentId'
     | '/_app/students/create'
+    | '/_app/trial/$classId'
     | '/_app/admin/'
     | '/_app/calendar/'
     | '/_app/channel/'
     | '/_app/classes/'
     | '/_app/staff/'
     | '/_app/students/'
+    | '/_app/trial/'
     | '/_app/admin/accounts_/$userId'
     | '/_app/admin/accounts_/create'
     | '/_app/admin/attendance_/$sessionId'
@@ -914,6 +949,7 @@ export interface FileRouteTypes {
     | '/_app/admin/classes/$classId'
     | '/_app/admin/classes/create'
     | '/_app/admin/classes/enrollments'
+    | '/_app/admin/classes/trials'
     | '/_app/admin/privates/$privateId'
     | '/_app/admin/privates/create'
     | '/_app/admin/students/$studentId'
@@ -1097,6 +1133,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAccountRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/trial/': {
+      id: '/_app/trial/'
+      path: '/trial'
+      fullPath: '/trial/'
+      preLoaderRoute: typeof AppTrialIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/students/': {
       id: '/_app/students/'
       path: '/students'
@@ -1137,6 +1180,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin/'
       preLoaderRoute: typeof AppAdminIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/trial/$classId': {
+      id: '/_app/trial/$classId'
+      path: '/trial/$classId'
+      fullPath: '/trial/$classId'
+      preLoaderRoute: typeof AppTrialClassIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/students/create': {
@@ -1321,6 +1371,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminPrivatesPrivateIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/classes/trials': {
+      id: '/_app/admin/classes/trials'
+      path: '/admin/classes/trials'
+      fullPath: '/admin/classes/trials'
+      preLoaderRoute: typeof AppAdminClassesTrialsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/classes/enrollments': {
       id: '/_app/admin/classes/enrollments'
       path: '/admin/classes/enrollments'
@@ -1500,12 +1557,14 @@ interface AppRouteChildren {
   AppStaffClassesRoute: typeof AppStaffClassesRoute
   AppStudentsStudentIdRoute: typeof AppStudentsStudentIdRoute
   AppStudentsCreateRoute: typeof AppStudentsCreateRoute
+  AppTrialClassIdRoute: typeof AppTrialClassIdRoute
   AppAdminIndexRoute: typeof AppAdminIndexRoute
   AppCalendarIndexRoute: typeof AppCalendarIndexRoute
   AppChannelIndexRoute: typeof AppChannelIndexRoute
   AppClassesIndexRoute: typeof AppClassesIndexRoute
   AppStaffIndexRoute: typeof AppStaffIndexRoute
   AppStudentsIndexRoute: typeof AppStudentsIndexRoute
+  AppTrialIndexRoute: typeof AppTrialIndexRoute
   AppAdminAccountsUserIdRoute: typeof AppAdminAccountsUserIdRoute
   AppAdminAccountsCreateRoute: typeof AppAdminAccountsCreateRoute
   AppAdminAttendanceSessionIdRoute: typeof AppAdminAttendanceSessionIdRoute
@@ -1519,6 +1578,7 @@ interface AppRouteChildren {
   AppAdminClassesClassIdRoute: typeof AppAdminClassesClassIdRoute
   AppAdminClassesCreateRoute: typeof AppAdminClassesCreateRoute
   AppAdminClassesEnrollmentsRoute: typeof AppAdminClassesEnrollmentsRoute
+  AppAdminClassesTrialsRoute: typeof AppAdminClassesTrialsRoute
   AppAdminPrivatesPrivateIdRoute: typeof AppAdminPrivatesPrivateIdRoute
   AppAdminPrivatesCreateRoute: typeof AppAdminPrivatesCreateRoute
   AppAdminStudentsStudentIdRoute: typeof AppAdminStudentsStudentIdRoute
@@ -1565,12 +1625,14 @@ const AppRouteChildren: AppRouteChildren = {
   AppStaffClassesRoute: AppStaffClassesRoute,
   AppStudentsStudentIdRoute: AppStudentsStudentIdRoute,
   AppStudentsCreateRoute: AppStudentsCreateRoute,
+  AppTrialClassIdRoute: AppTrialClassIdRoute,
   AppAdminIndexRoute: AppAdminIndexRoute,
   AppCalendarIndexRoute: AppCalendarIndexRoute,
   AppChannelIndexRoute: AppChannelIndexRoute,
   AppClassesIndexRoute: AppClassesIndexRoute,
   AppStaffIndexRoute: AppStaffIndexRoute,
   AppStudentsIndexRoute: AppStudentsIndexRoute,
+  AppTrialIndexRoute: AppTrialIndexRoute,
   AppAdminAccountsUserIdRoute: AppAdminAccountsUserIdRoute,
   AppAdminAccountsCreateRoute: AppAdminAccountsCreateRoute,
   AppAdminAttendanceSessionIdRoute: AppAdminAttendanceSessionIdRoute,
@@ -1584,6 +1646,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminClassesClassIdRoute: AppAdminClassesClassIdRoute,
   AppAdminClassesCreateRoute: AppAdminClassesCreateRoute,
   AppAdminClassesEnrollmentsRoute: AppAdminClassesEnrollmentsRoute,
+  AppAdminClassesTrialsRoute: AppAdminClassesTrialsRoute,
   AppAdminPrivatesPrivateIdRoute: AppAdminPrivatesPrivateIdRoute,
   AppAdminPrivatesCreateRoute: AppAdminPrivatesCreateRoute,
   AppAdminStudentsStudentIdRoute: AppAdminStudentsStudentIdRoute,

@@ -9,19 +9,28 @@ import { EmailVerificationForm } from "~/components/email-verification-form";
 import { SignupForm } from "~/components/signup-form";
 import { Spinner } from "~/components/ui/spinner";
 import { getAuthErrorMessage } from "~/lib/auth-errors";
+import { saveOnboardingReturn } from "~/lib/onboarding-return";
+import { safeInternalPath } from "../../shared/push-notifications";
 
 export const Route = createFileRoute("/register/")({
-  validateSearch: (search: Record<string, unknown>): { invite?: string } => {
-    return typeof search.invite === "string" && search.invite.length <= 512
-      ? { invite: search.invite }
-      : {};
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { invite?: string; redirect?: string } => {
+    const invite =
+      typeof search.invite === "string" && search.invite.length <= 512
+        ? search.invite
+        : undefined;
+    const redirect = safeInternalPath(
+      typeof search.redirect === "string" ? search.redirect : undefined,
+    );
+    return { ...(invite ? { invite } : {}), ...(redirect ? { redirect } : {}) };
   },
   component: RegisterAccountStep,
 });
 
 function RegisterAccountStep() {
   const { isAuthenticated, isLoading } = useConvexAuth();
-  const { invite } = Route.useSearch();
+  const { invite, redirect } = Route.useSearch();
   const user = useConvexQuery(api.users.current, isAuthenticated ? {} : "skip");
   const onboarding = useConvexQuery(
     api.onboarding.getState,
@@ -50,6 +59,10 @@ function RegisterAccountStep() {
       .catch(() => setInvitation(null));
   }, [invite, previewInvitation]);
 
+  useEffect(() => {
+    if (redirect?.startsWith("/trial")) saveOnboardingReturn(redirect);
+  }, [redirect]);
+
   if (
     isLoading ||
     invitation === undefined ||
@@ -65,7 +78,7 @@ function RegisterAccountStep() {
 
   if (isAuthenticated) {
     if (user?.onboardingStatus !== "pending") {
-      return <Navigate to="/home" replace />;
+      return <Navigate to={(redirect || "/home") as never} replace />;
     }
 
     const step = onboarding?.onboarding?.currentStep;
@@ -161,6 +174,7 @@ function RegisterAccountStep() {
           lockEmail={Boolean(invitation)}
           error={error}
           isSubmitting={isSubmitting}
+          redirect={redirect}
           onSubmit={handleSubmit}
         />
       )}

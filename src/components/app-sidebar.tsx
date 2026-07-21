@@ -22,6 +22,7 @@ import {
   BookOpen,
   BarChart3,
   Calendar,
+  CalendarPlus,
   Newspaper,
 } from "lucide-react";
 import {
@@ -147,6 +148,19 @@ const AppSidebarComponent = memo(() => {
                       <Link to="/tuition-plan">
                         <ReceiptText />
                         <span>Tuition Plan</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActivePath(pathname, "/trial")}
+                      tooltip="Paid Trial"
+                      onClick={closeMobileSidebar}
+                    >
+                      <Link to="/trial">
+                        <CalendarPlus />
+                        <span>Request a Trial</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -445,6 +459,7 @@ const ADMIN_CLASS_ITEMS = [
   ["Create", "/admin/classes/create"],
   ["Attendance", "/admin/attendance"],
   ["Enrollments", "/admin/classes/enrollments"],
+  ["Trials", "/admin/classes/trials"],
   ["Privates", "/admin/privates"],
 ] as const;
 
@@ -533,11 +548,7 @@ function SidebarCollapsibleGroup({
   }
 
   return (
-    <Collapsible
-      asChild
-      className="group/collapsible"
-      defaultOpen={isActive}
-    >
+    <Collapsible asChild className="group/collapsible" defaultOpen={isActive}>
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
           <SidebarMenuButton isActive={isActive} tooltip={label}>
@@ -571,9 +582,7 @@ function isActivePath(
   target: string,
   options: { exact?: boolean } = {},
 ) {
-  const normalizedTarget = target.endsWith("/")
-    ? target.slice(0, -1)
-    : target;
+  const normalizedTarget = target.endsWith("/") ? target.slice(0, -1) : target;
   const normalizedPath = pathname.endsWith("/")
     ? pathname.slice(0, -1)
     : pathname;
@@ -600,7 +609,8 @@ function isAdminClassesSubItemActive(pathname: string, target: string) {
     return (
       isActivePath(pathname, "/admin/classes") &&
       !isActivePath(pathname, "/admin/classes/create") &&
-      !isActivePath(pathname, "/admin/classes/enrollments")
+      !isActivePath(pathname, "/admin/classes/enrollments") &&
+      !isActivePath(pathname, "/admin/classes/trials")
     );
   }
   return isActivePath(pathname, target);

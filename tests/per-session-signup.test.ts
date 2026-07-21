@@ -148,6 +148,23 @@ describe("per-session participation and charges", () => {
     );
   });
 
+  it("keeps separately invoiced paid trials out of monthly charges", () => {
+    assert.deepEqual(
+      calculatePerSessionChargeCandidates(
+        [
+          charge({
+            signupId: "trial",
+            classMode: "standard",
+            trialRequestId: "trial-1",
+          }),
+        ],
+        "2026-07-01",
+        "2026-07-31",
+      ).map((row) => row.signupId),
+      [],
+    );
+  });
+
   it("orders selected-session charges deterministically", () => {
     const rows = [
       charge({

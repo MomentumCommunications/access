@@ -8,6 +8,8 @@ import {
   newUserNotification,
   notificationHasUnread,
   pendingEnrollmentNotification,
+  pendingTrialNotification,
+  trialOutcomeNotification,
 } from "../shared/notifications.ts";
 
 describe("notification event generation", () => {
@@ -119,6 +121,39 @@ describe("notification event generation", () => {
           enrollmentCount: 5,
         },
       },
+    );
+  });
+
+  it("builds paid trial request and approval notifications", () => {
+    assert.deepEqual(
+      pendingTrialNotification({
+        trialRequestId: "trial-1",
+        requestedBy: "user-1",
+        studentName: "Grace Hopper",
+        className: "Jazz I",
+        sessionDate: "2026-08-10",
+      }),
+      {
+        type: "trial.pending",
+        title: "New paid trial request",
+        body: "Grace Hopper requested a trial for Jazz I on 2026-08-10.",
+        href: "/admin/classes/trials",
+        actorUserId: "user-1",
+        entityType: "trialRequest",
+        entityId: "trial-1",
+        metadata: { className: "Jazz I", sessionDate: "2026-08-10" },
+      },
+    );
+    assert.equal(
+      trialOutcomeNotification({
+        trialRequestId: "trial-1",
+        actorUserId: "admin-1",
+        outcome: "approved",
+        studentName: "Grace Hopper",
+        className: "Jazz I",
+        sessionDate: "2026-08-10",
+      }).title,
+      "Paid trial approved",
     );
   });
 });

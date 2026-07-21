@@ -96,6 +96,7 @@ function LoginRoute() {
           <LoginForm
             error={error}
             isSubmitting={isSubmitting}
+            redirect={redirect}
             onSubmit={handleSubmit}
           />
         )}

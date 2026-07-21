@@ -11,6 +11,7 @@ import { SidebarProvider } from "~/components/ui/sidebar";
 import { ActiveRoleProvider } from "~/contexts/ActiveRoleContext";
 import { setAppBadge } from "~/lib/push-notifications";
 import { useLocation } from "@tanstack/react-router";
+import { saveOnboardingReturn } from "~/lib/onboarding-return";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayoutComponent,
@@ -70,7 +71,12 @@ function AppLayoutComponent() {
           : step === "complete"
             ? "/register/complete"
             : "/register/profile";
-    return <Navigate to={destination} replace />;
+    return (
+      <PendingOnboardingRedirect
+        destination={destination}
+        returnPath={`${location.pathname}${location.searchStr}`}
+      />
+    );
   }
 
   return (
@@ -92,6 +98,19 @@ function AppLayoutComponent() {
       </ActiveRoleProvider>
     </SidebarProvider>
   );
+}
+
+function PendingOnboardingRedirect({
+  destination,
+  returnPath,
+}: {
+  destination: string;
+  returnPath: string;
+}) {
+  useEffect(() => {
+    if (returnPath.startsWith("/trial")) saveOnboardingReturn(returnPath);
+  }, [returnPath]);
+  return <Navigate to={destination as never} replace />;
 }
 
 function NotificationStateSync({

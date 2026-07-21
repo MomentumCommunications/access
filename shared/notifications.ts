@@ -139,6 +139,61 @@ export function incompleteAttendanceNotification({
   };
 }
 
+export function pendingTrialNotification({
+  trialRequestId,
+  requestedBy,
+  studentName,
+  className,
+  sessionDate,
+}: {
+  trialRequestId: string;
+  requestedBy: string;
+  studentName: string;
+  className: string;
+  sessionDate: string;
+}): NotificationEventInput {
+  return {
+    type: "trial.pending",
+    title: "New paid trial request",
+    body: `${studentName} requested a trial for ${className} on ${sessionDate}.`,
+    href: "/admin/classes/trials",
+    actorUserId: requestedBy,
+    entityType: "trialRequest",
+    entityId: trialRequestId,
+    metadata: { className, sessionDate },
+  };
+}
+
+export function trialOutcomeNotification({
+  trialRequestId,
+  actorUserId,
+  outcome,
+  studentName,
+  className,
+  sessionDate,
+}: {
+  trialRequestId: string;
+  actorUserId: string;
+  outcome: "approved" | "rejected";
+  studentName: string;
+  className: string;
+  sessionDate: string;
+}): NotificationEventInput {
+  const approved = outcome === "approved";
+  return {
+    type: `trial.${outcome}`,
+    title: approved ? "Paid trial approved" : "Trial request declined",
+    body: approved
+      ? `${studentName}'s trial for ${className} on ${sessionDate} is approved.`
+      : `${studentName}'s trial request for ${className} on ${sessionDate} was not approved.`,
+    href: "/trial",
+    actorUserId,
+    entityType: "trialRequest",
+    entityId: trialRequestId,
+    metadata: { className, sessionDate, outcome },
+  };
+}
+
 export function notificationHasUnread(
   notifications: Array<{ readAt?: number }>,
 ) {

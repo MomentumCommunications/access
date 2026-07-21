@@ -5,6 +5,9 @@ export const PUSH_NOTIFICATION_TYPES = new Set([
   "enrollment.waitlisted",
   "enrollment.rejected",
   "attendance.incomplete",
+  "trial.pending",
+  "trial.approved",
+  "trial.rejected",
 ]);
 
 export const PUSH_RETRY_DELAYS_MS = [60_000, 5 * 60_000, 30 * 60_000];

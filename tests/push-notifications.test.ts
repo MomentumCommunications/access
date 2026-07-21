@@ -16,6 +16,8 @@ describe("push notification policy", () => {
     assert.equal(shouldSendPush("enrollment.pending"), true);
     assert.equal(shouldSendPush("enrollment.enrolled"), true);
     assert.equal(shouldSendPush("attendance.incomplete"), true);
+    assert.equal(shouldSendPush("trial.pending"), true);
+    assert.equal(shouldSendPush("trial.approved"), true);
     assert.equal(shouldSendPush("billing.delinquent"), false);
   });
 

@@ -359,6 +359,7 @@ export default defineSchema({
       v.literal("cancelled"),
     ),
     unitPriceCents: v.number(),
+    trialRequestId: v.optional(v.id("trialRequests")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -367,6 +368,40 @@ export default defineSchema({
     .index("byStudent", ["student"])
     .index("bySessionStudent", ["session", "student"])
     .index("byClassStudent", ["classId", "student"]),
+  trialRequests: defineTable({
+    requestedBy: v.id("users"),
+    householdId: v.id("households"),
+    studentId: v.id("students"),
+    classId: v.id("classes"),
+    sessionId: v.id("sessions"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("cancelled"),
+    ),
+    unitPriceCents: v.optional(v.number()),
+    billingStatus: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("draft_invoice"),
+        v.literal("billed"),
+        v.literal("waived"),
+      ),
+    ),
+    sessionSignupId: v.optional(v.id("classSessionSignups")),
+    billingRunItemId: v.optional(v.id("billingRunItems")),
+    stripeInvoiceId: v.optional(v.string()),
+    reviewedBy: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("byStatus", ["status"])
+    .index("byRequestedBy", ["requestedBy"])
+    .index("byStudent", ["studentId"])
+    .index("bySession", ["sessionId"])
+    .index("byStudentSession", ["studentId", "sessionId"]),
   activityLog: defineTable({
     entityType: v.string(),
     entityId: v.string(),

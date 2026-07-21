@@ -21,11 +21,13 @@ export function LoginForm({
   className,
   error,
   isSubmitting,
+  redirect,
   onSubmit,
   ...props
 }: Omit<React.ComponentProps<"div">, "onSubmit"> & {
   error?: string | null;
   isSubmitting?: boolean;
+  redirect?: string;
   onSubmit: React.FormEventHandler<HTMLFormElement>;
 }) {
   return (
@@ -74,7 +76,12 @@ export function LoginForm({
                 </Button>
                 <FieldDescription className="text-center">
                   Don&apos;t have an account?{" "}
-                  <Link to="/register">Register</Link>
+                  <Link
+                    to="/register"
+                    search={redirect ? { redirect } : undefined}
+                  >
+                    Register
+                  </Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>

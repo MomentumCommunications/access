@@ -6,6 +6,10 @@ export type TrialRequestStatus =
 
 export type TrialReviewAction = "approve" | "reject";
 
+export function isTrialAccountReady(onboardingStatus?: "pending" | "complete") {
+  return onboardingStatus !== "pending";
+}
+
 export function assertSingleTrialSession(sessionIds: readonly string[]) {
   if (new Set(sessionIds).size !== 1) {
     throw new Error("Select exactly one trial session.");

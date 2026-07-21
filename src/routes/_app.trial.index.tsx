@@ -22,9 +22,11 @@ import {
 } from "~/components/ui/select";
 import { Spinner } from "~/components/ui/spinner";
 import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
+import { TrialRouteError } from "~/components/trial-route-error";
 
 export const Route = createFileRoute("/_app/trial/")({
   validateSearch: z.object({ student: z.string().optional() }),
+  errorComponent: TrialRouteError,
   component: TrialClassSelectionPage,
 });
 

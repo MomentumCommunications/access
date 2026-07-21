@@ -3,11 +3,18 @@ import { describe, it } from "node:test";
 import {
   assertSingleTrialSession,
   isEligibleTrialSession,
+  isTrialAccountReady,
   trialRequestNextStatus,
   validatePaidTrialPrice,
 } from "../shared/trials.ts";
 
 describe("paid trial request policy", () => {
+  it("blocks pending onboarding but permits complete and legacy accounts", () => {
+    assert.equal(isTrialAccountReady("pending"), false);
+    assert.equal(isTrialAccountReady("complete"), true);
+    assert.equal(isTrialAccountReady(undefined), true);
+  });
+
   it("requires exactly one session", () => {
     assert.equal(assertSingleTrialSession(["session-1"]), "session-1");
     assert.throws(() => assertSingleTrialSession([]), /exactly one/);

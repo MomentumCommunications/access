@@ -28,9 +28,11 @@ import {
 import { Spinner } from "~/components/ui/spinner";
 import { formatMDYYYY, formatTimeRange } from "~/lib/date-utils";
 import { cn } from "~/lib/utils";
+import { TrialRouteError } from "~/components/trial-route-error";
 
 export const Route = createFileRoute("/_app/trial/$classId")({
   validateSearch: z.object({ student: z.string().optional() }),
+  errorComponent: TrialRouteError,
   component: TrialDateSelectionPage,
 });
 

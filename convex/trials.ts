@@ -10,6 +10,7 @@ import { resolvedClassEnrollmentOpen } from "../shared/class-enrollment-selectio
 import { occupiesSessionCapacity } from "../shared/per-session-signup";
 import {
   isEligibleTrialSession,
+  isTrialAccountReady,
   trialRequestNextStatus,
   validatePaidTrialPrice,
 } from "../shared/trials";
@@ -67,12 +68,7 @@ async function managedStudent(
 }
 
 function assertTrialAccountReady(user: Doc<"users">) {
-  if (
-    user.onboardingStatus !== "complete" ||
-    !user.contractTypeSigned ||
-    !user.contractVersionSigned ||
-    !user.contractSignedAt
-  ) {
+  if (!isTrialAccountReady(user.onboardingStatus)) {
     throw new Error(
       "Complete onboarding and the client agreement before requesting a trial.",
     );

@@ -12,6 +12,11 @@ import { ActiveRoleProvider } from "~/contexts/ActiveRoleContext";
 import { setAppBadge } from "~/lib/push-notifications";
 import { useLocation } from "@tanstack/react-router";
 import { saveOnboardingReturn } from "~/lib/onboarding-return";
+import {
+  markStartupOnce,
+  measureStartupOnce,
+  STARTUP_PERFORMANCE,
+} from "~/lib/startup-performance";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayoutComponent,
@@ -29,6 +34,18 @@ function AppLayoutComponent() {
     api.onboarding.getState,
     user?.onboardingStatus === "pending" ? {} : "skip",
   );
+
+  if (user !== undefined) {
+    // The auth marker normally starts this timer. Keep this fallback for
+    // cached query results that settle in the same commit as auth restoration.
+    markStartupOnce(STARTUP_PERFORMANCE.usersCurrentStart);
+    markStartupOnce(STARTUP_PERFORMANCE.usersCurrentEnd);
+    measureStartupOnce(
+      STARTUP_PERFORMANCE.usersCurrentMeasure,
+      STARTUP_PERFORMANCE.usersCurrentStart,
+      STARTUP_PERFORMANCE.usersCurrentEnd,
+    );
+  }
 
   if (user === undefined) {
     return (
@@ -79,10 +96,13 @@ function AppLayoutComponent() {
     );
   }
 
+  markStartupOnce(STARTUP_PERFORMANCE.shellRenderStart);
+
   return (
     <SidebarProvider>
       <ActiveRoleProvider>
         <SidebarDataProvider>
+          <StartupShellMarker />
           <NotificationStateSync unreadCount={unreadCount} />
           <Suspense fallback={<SidebarSkeleton />}>
             <MemoizedAppSidebar />
@@ -98,6 +118,24 @@ function AppLayoutComponent() {
       </ActiveRoleProvider>
     </SidebarProvider>
   );
+}
+
+function StartupShellMarker() {
+  useEffect(() => {
+    markStartupOnce(STARTUP_PERFORMANCE.shellRenderEnd);
+    measureStartupOnce(
+      STARTUP_PERFORMANCE.shellRenderMeasure,
+      STARTUP_PERFORMANCE.shellRenderStart,
+      STARTUP_PERFORMANCE.shellRenderEnd,
+    );
+    measureStartupOnce(
+      STARTUP_PERFORMANCE.startupToShellMeasure,
+      STARTUP_PERFORMANCE.hydrationStart,
+      STARTUP_PERFORMANCE.shellRenderEnd,
+    );
+  }, []);
+
+  return null;
 }
 
 function PendingOnboardingRedirect({

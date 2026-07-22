@@ -5,8 +5,52 @@ import { NotFound } from "./components/not-found";
 import { DefaultCatchBoundary } from "./components/default-catch-boundry";
 import { getGlobalClients } from "./lib/query-client";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
+import { useConvexAuth } from "convex/react";
+import { useEffect, type ReactNode } from "react";
+import {
+  markStartupOnce,
+  measureStartupOnce,
+  STARTUP_PERFORMANCE,
+} from "./lib/startup-performance";
+
+function AuthRestorationMarker() {
+  const { isLoading } = useConvexAuth();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    markStartupOnce(STARTUP_PERFORMANCE.authRestorationEnd);
+    measureStartupOnce(
+      STARTUP_PERFORMANCE.authRestorationMeasure,
+      STARTUP_PERFORMANCE.authRestorationStart,
+      STARTUP_PERFORMANCE.authRestorationEnd,
+    );
+    markStartupOnce(STARTUP_PERFORMANCE.usersCurrentStart);
+  }, [isLoading]);
+
+  return null;
+}
+
+function InstrumentedConvexAuthProvider({
+  children,
+  client,
+}: {
+  children: ReactNode;
+  client: ReturnType<typeof getGlobalClients>["convex"];
+}) {
+  markStartupOnce(STARTUP_PERFORMANCE.authRestorationStart);
+
+  return (
+    <ConvexAuthProvider client={client}>
+      <AuthRestorationMarker />
+      {children}
+    </ConvexAuthProvider>
+  );
+}
 
 export function getRouter() {
+  markStartupOnce(STARTUP_PERFORMANCE.hydrationStart);
+
   // Use global singleton clients to ensure cache persistence
   const { convex, queryClient } = getGlobalClients();
 
@@ -18,7 +62,9 @@ export function getRouter() {
       defaultNotFoundComponent: () => <NotFound />,
       context: { queryClient },
       Wrap: ({ children }) => (
-        <ConvexAuthProvider client={convex}>{children}</ConvexAuthProvider>
+        <InstrumentedConvexAuthProvider client={convex}>
+          {children}
+        </InstrumentedConvexAuthProvider>
       ),
     }),
     queryClient,

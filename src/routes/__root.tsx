@@ -11,6 +11,11 @@ import { ThemeProvider } from "~/components/theme-provider";
 import { getGlobalClients } from "~/lib/query-client";
 import { Toaster } from "sonner";
 import { registerPushServiceWorker } from "~/lib/push-notifications";
+import {
+  markStartupOnce,
+  measureStartupOnce,
+  STARTUP_PERFORMANCE,
+} from "~/lib/startup-performance";
 
 const IOS_STARTUP_SCREENS = [
   { width: 320, height: 568, scale: 2 },
@@ -187,6 +192,12 @@ function PushServiceWorkerRegistration() {
 
 function BootSplashDismiss() {
   useEffect(() => {
+    markStartupOnce(STARTUP_PERFORMANCE.hydrationEnd);
+    measureStartupOnce(
+      STARTUP_PERFORMANCE.hydrationMeasure,
+      STARTUP_PERFORMANCE.hydrationStart,
+      STARTUP_PERFORMANCE.hydrationEnd,
+    );
     document.documentElement.dataset.appReady = "true";
   }, []);
 

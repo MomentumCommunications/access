@@ -84,7 +84,7 @@ export function StudentBirthdaysWidget() {
                 <TableRow>
                   <TableCell
                     colSpan={3}
-                    className="h-28 px-4 text-center text-muted-foreground"
+                    className="text-muted-foreground h-28 px-4 text-center"
                   >
                     Checking birthdays…
                   </TableCell>
@@ -93,7 +93,7 @@ export function StudentBirthdaysWidget() {
                 <TableRow>
                   <TableCell
                     colSpan={3}
-                    className="h-28 px-4 text-center text-muted-foreground"
+                    className="text-muted-foreground h-28 px-4 text-center"
                   >
                     No student birthdays this month.
                   </TableCell>
@@ -121,7 +121,7 @@ export function StudentBirthdaysWidget() {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                    <TableCell className="text-muted-foreground whitespace-nowrap px-4 py-3">
                       {formatBirthdayDate(student.birthdayDate)}
                     </TableCell>
                     <TableCell className="whitespace-nowrap px-4 py-3 text-right font-medium">

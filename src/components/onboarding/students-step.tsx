@@ -19,6 +19,7 @@ import { Checkbox } from "~/components/ui/checkbox";
 import {
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -121,7 +122,7 @@ export function StudentsStep() {
     <div className="mx-auto w-full max-w-2xl">
       <div className="mb-5">
         <h1 className="text-3xl font-bold">Students</h1>
-        <p className="mt-1 text-muted-foreground">
+        <p className="text-muted-foreground mt-1">
           Add each student connected to this account.
         </p>
       </div>
@@ -137,19 +138,20 @@ export function StudentsStep() {
                 className="gap-1.5 py-1 pl-2.5 pr-1"
               >
                 <span>
-                  {student.preferredName || student.firstName} {student.lastName}
+                  {student.preferredName || student.firstName}{" "}
+                  {student.lastName}
                 </span>
                 {wasCreated ? (
                   <button
                     type="button"
-                    className="rounded-sm p-0.5 hover:bg-foreground/10"
+                    className="hover:bg-foreground/10 rounded-sm p-0.5"
                     aria-label={`Remove ${student.firstName} ${student.lastName}`}
                     onClick={() => void handleRemove(student._id)}
                   >
                     <X className="size-3" />
                   </button>
                 ) : (
-                  <span className="rounded-sm bg-background/70 px-1 text-[10px] font-normal">
+                  <span className="bg-background/70 rounded-sm px-1 text-[10px] font-normal">
                     Imported
                   </span>
                 )}
@@ -205,6 +207,9 @@ export function StudentsStep() {
                       <FieldLabel htmlFor={field.name}>
                         Preferred name
                       </FieldLabel>
+                      <FieldDescription>
+                        If different from first name.
+                      </FieldDescription>
                       <Input
                         {...field}
                         id={field.name}
@@ -344,7 +349,7 @@ export function StudentsStep() {
             </FieldGroup>
 
             {form.formState.errors.root?.message ? (
-              <p role="alert" className="text-sm text-destructive">
+              <p role="alert" className="text-destructive text-sm">
                 {form.formState.errors.root.message}
               </p>
             ) : null}

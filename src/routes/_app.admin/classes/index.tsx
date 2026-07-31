@@ -59,6 +59,9 @@ const columns: ColumnDef<ClassRow>[] = [
     header: "Capacity",
     cell: ({ row }) => {
       const { classItem, enrollments, sessionSignups } = row.original;
+      const activeEnrollments = enrollments.filter(
+        (enrollment) => enrollment.status === "enrolled",
+      );
       if (classItem.enrollmentMode === "per_session") {
         const countBySession = new Map<string, number>();
         for (const signup of sessionSignups) {
@@ -77,7 +80,7 @@ const columns: ColumnDef<ClassRow>[] = [
       }
       return classItem.capacity === undefined
         ? `${enrollments.length} enrolled`
-        : `${enrollments.length}/${classItem.capacity}`;
+        : `${activeEnrollments.length}/${classItem.capacity}`;
     },
   },
   {
@@ -150,7 +153,7 @@ function AdminClassesPage() {
         {classes === undefined ||
         seasons === undefined ||
         groups === undefined ? (
-          <div className="flex min-h-40 items-center justify-center">
+          <div className="min-h-40 flex items-center justify-center">
             <Spinner className="size-5" />
           </div>
         ) : (

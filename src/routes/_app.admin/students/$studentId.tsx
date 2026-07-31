@@ -180,6 +180,23 @@ const enrollmentColumns: ColumnDef<EnrollmentRow>[] = [
       ),
   },
   {
+    id: "schedule",
+    header: "Schedule",
+    cell: ({ row }) => {
+      const classItem = row.original.classItem;
+      if (!classItem) return "Missing class";
+      const schedule =
+        classItem.scheduleSummary ||
+        [
+          [classItem.startDate, classItem.endDate].filter(Boolean).join(" - "),
+          formatTimeRange(classItem.startTime, classItem.endTime),
+        ]
+          .filter(Boolean)
+          .join(" · ");
+      return schedule ? schedule : "Not set";
+    },
+  },
+  {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => <Badge variant="outline">{row.original.status}</Badge>,

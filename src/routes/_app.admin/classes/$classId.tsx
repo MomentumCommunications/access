@@ -217,9 +217,9 @@ function AdminClassDetailPage() {
 
   const enrollmentColumns: ColumnDef<EnrollmentRow>[] = [
     {
+      id: "student",
       accessorFn: (row) =>
         row.student ? `${row.student.firstName} ${row.student.lastName}` : "",
-      id: "student",
       header: ({ column }) => {
         return (
           <Button
@@ -232,10 +232,19 @@ function AdminClassDetailPage() {
           </Button>
         );
       },
-      cell: ({ row }) =>
-        row.original.student
-          ? `${row.original.student.firstName} ${row.original.student.lastName}`
-          : "Missing student",
+      cell: ({ row }) => {
+        if (!row.original.student) return "Missing student";
+        return (
+          <Button asChild variant="link" className="h-auto p-0">
+            <Link
+              to="/admin/students/$studentId"
+              params={{ studentId: row.original.student._id }}
+            >
+              {row.original.student.firstName} {row.original.student.lastName}
+            </Link>
+          </Button>
+        );
+      },
     },
     {
       accessorKey: "status",

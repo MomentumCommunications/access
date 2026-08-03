@@ -314,7 +314,7 @@ function AttendanceSessionPage() {
                               title="Happy Birthday!"
                               className="text-muted-foreground ml-1"
                             >
-                              {" 🎉"}
+                              {" 🥳"}
                             </span>
                           )}
                         </div>

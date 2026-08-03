@@ -308,9 +308,9 @@ function AttendanceSession({ sessionId }: { sessionId: Id<"sessions"> }) {
                           {isBirthday(student.dateOfBirth) && (
                             <span
                               title="Happy Birthday!"
-                              className="ml-1 text-muted-foreground"
+                              className="text-muted-foreground ml-1"
                             >
-                              {" 🎉"}
+                              {" 🥳"}
                             </span>
                           )}
                         </div>

@@ -103,6 +103,7 @@ type EnrollmentStatus =
   | "waitlisted"
   | "dropped"
   | "declined";
+type EnrollmentStatusFilter = "active" | EnrollmentStatus | "all";
 type BillingTreatment = "" | "prorate" | "full";
 
 type AdminStudentData = NonNullable<
@@ -817,6 +818,8 @@ function StudentEnrollmentsTab({
   const [endDate, setEndDate] = useState("");
   const [billingTreatment, setBillingTreatment] =
     useState<BillingTreatment>("");
+  const [enrollmentStatusFilter, setEnrollmentStatusFilter] =
+    useState<EnrollmentStatusFilter>("active");
   const [saving, setSaving] = useState(false);
 
   const classOptions = useMemo(
@@ -827,6 +830,22 @@ function StudentEnrollmentsTab({
       })),
     [classes],
   );
+
+  const filteredEnrollments = useMemo(() => {
+    const today = todayValue();
+    if (enrollmentStatusFilter === "all") return studentData.enrollments;
+    if (enrollmentStatusFilter === "active") {
+      return studentData.enrollments.filter(
+        (enrollment) =>
+          enrollment.status === "enrolled" &&
+          (!enrollment.startDate || enrollment.startDate <= today) &&
+          (!enrollment.endDate || enrollment.endDate >= today),
+      );
+    }
+    return studentData.enrollments.filter(
+      (enrollment) => enrollment.status === enrollmentStatusFilter,
+    );
+  }, [enrollmentStatusFilter, studentData.enrollments]);
 
   function resetForm() {
     setSelectedClass("");
@@ -1023,9 +1042,33 @@ function StudentEnrollmentsTab({
       </div>
       <DataTable
         columns={enrollmentColumns}
-        data={studentData.enrollments}
+        data={filteredEnrollments}
         filterColumn="class"
         filterPlaceholder="Filter classes..."
+        toolbar={
+          <Select
+            value={enrollmentStatusFilter}
+            onValueChange={(value) =>
+              setEnrollmentStatusFilter(value as EnrollmentStatusFilter)
+            }
+          >
+            <SelectTrigger
+              className="w-48 max-w-full shrink-0"
+              aria-label="Enrollment status filter"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Active enrollments</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="enrolled">Enrolled</SelectItem>
+              <SelectItem value="waitlisted">Waitlisted</SelectItem>
+              <SelectItem value="dropped">Dropped</SelectItem>
+              <SelectItem value="declined">Declined</SelectItem>
+              <SelectItem value="all">No filter</SelectItem>
+            </SelectContent>
+          </Select>
+        }
       />
     </section>
   );

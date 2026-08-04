@@ -54,18 +54,26 @@ describe("marketing class catalog", () => {
   it("preserves one or multiple public instructor links", () => {
     assert.deepEqual(
       toPublicInstructors([
-        { displayName: "Alex", staffSlug: "alex-rivera" },
+        {
+          firstName: "Alex",
+          lastName: "Rivera",
+          staffSlug: "alex-rivera",
+        },
         { firstName: "Sam", lastName: "Lee", staffSlug: "sam-lee" },
         null,
       ]),
       [
-        { name: "Alex", staffSlug: "alex-rivera" },
+        { name: "Alex Rivera", staffSlug: "alex-rivera" },
         { name: "Sam Lee", staffSlug: "sam-lee" },
       ],
     );
-    assert.deepEqual(toPublicInstructors([{ name: "Taylor" }]), [
-      { name: "Taylor", staffSlug: null },
-    ]);
+    assert.deepEqual(
+      toPublicInstructors([
+        { firstName: "Taylor", staffSlug: undefined },
+        { staffSlug: "username-is-not-a-name" },
+      ]),
+      [{ name: "Taylor", staffSlug: null }],
+    );
   });
 });
 

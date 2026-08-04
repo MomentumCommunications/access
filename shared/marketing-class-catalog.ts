@@ -53,21 +53,18 @@ export function classDurationMinutes(startTime?: string, endTime?: string) {
 }
 
 export function publicInstructorName(user: {
-  displayName?: string;
   firstName?: string;
   lastName?: string;
-  name?: string;
 }) {
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
-  return user.displayName?.trim() || fullName.trim() || user.name?.trim() || "";
+  return [user.firstName?.trim(), user.lastName?.trim()]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export function toPublicInstructors<
   T extends {
-    displayName?: string;
     firstName?: string;
     lastName?: string;
-    name?: string;
     staffSlug?: string;
   },
 >(users: readonly (T | null)[]) {

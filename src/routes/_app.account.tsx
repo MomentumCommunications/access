@@ -33,6 +33,7 @@ import {
   disableDevicePush,
   disablePushSubscriptionRef,
 } from "~/lib/push-notifications";
+import { hasUserRole } from "~/lib/roles";
 
 const formSchema = z.object({
   firstName: z
@@ -51,6 +52,13 @@ const formSchema = z.object({
     .trim()
     .min(1, "Display name is required")
     .max(80, "Display name must be 80 characters or fewer"),
+  staffSlug: z
+    .string()
+    .trim()
+    .regex(
+      /^$|^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Use lowercase letters, numbers, and single hyphens only",
+    ),
   bio: z.string().max(1000),
 });
 
@@ -90,6 +98,7 @@ function RouteComponent() {
       lastName: "",
       phone: "",
       displayName: "",
+      staffSlug: "",
       bio: convexUser?.description || "",
     },
   });
@@ -133,6 +142,7 @@ function RouteComponent() {
       lastName: convexUser.lastName || "",
       phone: convexUser.phone || "",
       displayName: convexUser.displayName || convexUser.name || "",
+      staffSlug: convexUser.staffSlug || "",
       bio: convexUser.description || "",
     });
   }, [convexUser, form]);
@@ -176,6 +186,7 @@ function RouteComponent() {
         phone: values.phone,
         displayName: values.displayName,
         description: values.bio || undefined,
+        staffSlug: values.staffSlug || undefined,
         ...(imageStorageId ? { imageStorageId } : {}),
       });
       setSelectedImage(null);
@@ -415,6 +426,24 @@ function RouteComponent() {
                     </FormItem>
                   )}
                 />
+                {convexUser && hasUserRole(convexUser, "staff") ? (
+                  <FormField
+                    control={form.control}
+                    name="staffSlug"
+                    render={({ field }) => (
+                      <FormItem className="max-w-sm">
+                        <FormLabel>Staff page slug</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="jane-smith" />
+                        </FormControl>
+                        <FormDescription>
+                          Matches your profile URL on the marketing site.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : null}
                 <FormField
                   control={form.control}
                   name="bio"

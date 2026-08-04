@@ -17,6 +17,10 @@ import {
   SECURITY_CODE_MAX_ATTEMPTS,
   SECURITY_CODE_TTL_MS,
 } from "../shared/account-security";
+import {
+  isValidCatalogSlug,
+  normalizeCatalogSlug,
+} from "../shared/marketing-class-catalog";
 
 const challengeType = v.union(
   v.literal("email_change"),
@@ -77,6 +81,7 @@ export const updateProfile = mutation({
     phone: v.string(),
     displayName: v.string(),
     description: v.optional(v.string()),
+    staffSlug: v.optional(v.string()),
     imageStorageId: v.optional(v.id("_storage")),
   },
   handler: async (
@@ -87,6 +92,7 @@ export const updateProfile = mutation({
       phone,
       displayName,
       description,
+      staffSlug,
       imageStorageId,
     },
   ) => {
@@ -116,6 +122,32 @@ export const updateProfile = mutation({
       throw new Error("Description must be 1000 characters or fewer");
     }
 
+    const user = await ctx.db.get(userId);
+    const normalizedStaffSlug = normalizeCatalogSlug(staffSlug);
+    if (
+      normalizedStaffSlug &&
+      user?.role !== "staff" &&
+      !user?.roles?.includes("staff")
+    ) {
+      throw new Error("Only staff accounts can set a staff page slug");
+    }
+    if (normalizedStaffSlug && !isValidCatalogSlug(normalizedStaffSlug)) {
+      throw new Error(
+        "Staff page slug must contain lowercase letters, numbers, and single hyphens only",
+      );
+    }
+    if (normalizedStaffSlug) {
+      const existing = await ctx.db
+        .query("users")
+        .withIndex("byStaffSlug", (q) =>
+          q.eq("staffSlug", normalizedStaffSlug),
+        )
+        .first();
+      if (existing && existing._id !== userId) {
+        throw new Error("Staff page slug is already in use");
+      }
+    }
+
     const image = imageStorageId
       ? await ctx.storage.getUrl(imageStorageId)
       : undefined;
@@ -126,6 +158,7 @@ export const updateProfile = mutation({
       phone: trimmedPhone || undefined,
       displayName: trimmedDisplayName,
       description,
+      staffSlug: normalizedStaffSlug,
       ...(image ? { image } : {}),
     });
   },

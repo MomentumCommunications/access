@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 import {
+  internalQuery,
   internalMutation,
   mutation,
   MutationCtx,
@@ -92,6 +93,14 @@ import {
   matchesStaffAttendanceMode,
   zonedDateTimeParts,
 } from "../shared/staff-attendance";
+import {
+  classDurationMinutes,
+  isMarketingClassVisible,
+  isValidCatalogSlug,
+  marketingClassHasVacancy,
+  normalizeCatalogSlug,
+  toPublicInstructors,
+} from "../shared/marketing-class-catalog";
 
 const roleValidator = v.union(
   v.literal("admin"),
@@ -750,6 +759,48 @@ function validateNamedDateRange(
   }
 }
 
+async function validateUniqueSeasonSlug(
+  ctx: MutationCtx,
+  slug: string | undefined,
+  currentSeasonId?: Id<"seasons">,
+) {
+  if (!slug) return;
+  if (!isValidCatalogSlug(slug)) {
+    throw new Error(
+      "Season slug must contain lowercase letters, numbers, and single hyphens only.",
+    );
+  }
+
+  const existing = await ctx.db
+    .query("seasons")
+    .withIndex("bySlug", (q) => q.eq("slug", slug))
+    .first();
+  if (existing && existing._id !== currentSeasonId) {
+    throw new Error("Season slug is already in use.");
+  }
+}
+
+async function validateUniqueStaffSlug(
+  ctx: MutationCtx,
+  slug: string | undefined,
+  currentUserId: Id<"users">,
+) {
+  if (!slug) return;
+  if (!isValidCatalogSlug(slug)) {
+    throw new Error(
+      "Staff page slug must contain lowercase letters, numbers, and single hyphens only.",
+    );
+  }
+
+  const existing = await ctx.db
+    .query("users")
+    .withIndex("byStaffSlug", (q) => q.eq("staffSlug", slug))
+    .first();
+  if (existing && existing._id !== currentUserId) {
+    throw new Error("Staff page slug is already in use.");
+  }
+}
+
 function validateClassAgeRange(minAge?: number, maxAge?: number) {
   for (const [label, age] of [
     ["Minimum age", minAge],
@@ -1258,6 +1309,84 @@ export const searchApplication = query({
       students,
       classes,
       seasons,
+    };
+  },
+});
+
+export const listMarketingClasses = internalQuery({
+  args: { seasonSlug: v.string() },
+  handler: async (ctx, { seasonSlug }) => {
+    const season = await ctx.db
+      .query("seasons")
+      .withIndex("bySlug", (q) => q.eq("slug", seasonSlug))
+      .first();
+    if (!season) return null;
+
+    const links = await ctx.db
+      .query("seasonClasses")
+      .withIndex("bySeason", (q) => q.eq("season", season._id))
+      .collect();
+    const linkedClasses = await Promise.all(
+      links.map((link) => ctx.db.get(link.class)),
+    );
+    const classes = linkedClasses
+      .filter((classItem): classItem is Doc<"classes"> => Boolean(classItem))
+      .filter(isMarketingClassVisible)
+      .sort(compareClassesBySchedule);
+
+    const rows = await Promise.all(
+      classes.map(async (classItem) => {
+        const [enrollments, instructors] = await Promise.all([
+          ctx.db
+            .query("classEnrollments")
+            .withIndex("byClass", (q) => q.eq("classId", classItem._id))
+            .collect(),
+          Promise.all(
+            (classItem.assignedStaff || []).map((userId) => ctx.db.get(userId)),
+          ),
+        ]);
+        const activeEnrollmentCount = enrollments.filter(
+          (enrollment) =>
+            enrollment.status === "pending" || enrollment.status === "enrolled",
+        ).length;
+
+        return {
+          name: classItem.title,
+          category: classItem.marketingCategory || "",
+          days: classItem.weekdays || [],
+          time: classItem.scheduleSummary || "",
+          startTime: classItem.startTime || null,
+          endTime: classItem.endTime || null,
+          minAge: classItem.minAge ?? null,
+          maxAge: classItem.maxAge ?? null,
+          instructors: toPublicInstructors(instructors),
+          studio: classItem.location || "",
+          classSize: classItem.capacity ?? null,
+          description: classItem.description || "",
+          vacancy: marketingClassHasVacancy({
+            enrollmentOpen: classItem.enrollmentOpen,
+            capacity: classItem.capacity,
+            activeEnrollmentCount,
+          }),
+          duration: classDurationMinutes(
+            classItem.startTime,
+            classItem.endTime,
+          ),
+          recital: classItem.recital ?? false,
+          team: classItem.team ?? false,
+          underattended: classItem.underattended ?? false,
+        };
+      }),
+    );
+
+    return {
+      season: {
+        key: season.slug!,
+        name: season.name,
+        startDate: season.startDate,
+        endDate: season.endDate,
+      },
+      classes: rows,
     };
   },
 });
@@ -2574,16 +2703,20 @@ export const adminListSeasons = query({
 export const adminCreateSeason = mutation({
   args: {
     name: v.string(),
+    slug: v.optional(v.string()),
     startDate: v.string(),
     endDate: v.string(),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     validateNamedDateRange(args.name, args.startDate, args.endDate);
+    const slug = normalizeCatalogSlug(args.slug);
+    await validateUniqueSeasonSlug(ctx, slug);
 
     return await ctx.db.insert("seasons", {
       ...args,
       name: args.name.trim(),
+      slug,
     });
   },
 });
@@ -2592,6 +2725,7 @@ export const adminUpdateSeason = mutation({
   args: {
     season: v.id("seasons"),
     name: v.string(),
+    slug: v.optional(v.string()),
     startDate: v.string(),
     endDate: v.string(),
   },
@@ -2603,10 +2737,13 @@ export const adminUpdateSeason = mutation({
     if (!existing) {
       throw new Error("Season not found.");
     }
+    const slug = normalizeCatalogSlug(patch.slug);
+    await validateUniqueSeasonSlug(ctx, slug, season);
 
     await ctx.db.patch(season, {
       ...patch,
       name: patch.name.trim(),
+      slug,
     });
   },
 });
@@ -2814,6 +2951,7 @@ export const adminUpdateAccountRecord = internalMutation({
     firstName: v.string(),
     lastName: v.string(),
     phone: v.optional(v.string()),
+    staffSlug: v.optional(v.string()),
     email: v.string(),
     status: accountStatusValidator,
     roles: rolesValidator,
@@ -2829,6 +2967,9 @@ export const adminUpdateAccountRecord = internalMutation({
     const phone = args.phone?.trim() || undefined;
     const email = args.email.trim().toLowerCase();
     const roles = normalizeUserRoles(args.roles as UserRole[]);
+    const staffSlug = roles.includes("staff")
+      ? normalizeCatalogSlug(args.staffSlug)
+      : undefined;
     if (!firstName || firstName.length > 80) {
       throw new Error("First name must be between 1 and 80 characters.");
     }
@@ -2844,6 +2985,7 @@ export const adminUpdateAccountRecord = internalMutation({
     if (roles.length === 0) {
       throw new Error("Select at least one role.");
     }
+    await validateUniqueStaffSlug(ctx, staffSlug, args.user);
 
     const [users, passwordAccount, selectedGroups] = await Promise.all([
       ctx.db.query("users").collect(),
@@ -2901,6 +3043,7 @@ export const adminUpdateAccountRecord = internalMutation({
       firstName,
       lastName,
       phone,
+      staffSlug,
       email,
       ...(emailChanged ? { emailVerificationTime: Date.now() } : {}),
       roles,
@@ -3744,6 +3887,10 @@ export const adminCreateClass = mutation({
   args: {
     title: v.string(),
     description: v.optional(v.string()),
+    marketingCategory: v.optional(v.string()),
+    recital: v.optional(v.boolean()),
+    team: v.optional(v.boolean()),
+    underattended: v.optional(v.boolean()),
     status: classStatusValidator,
     capacity: v.optional(v.number()),
     location: v.optional(v.string()),
@@ -3791,6 +3938,10 @@ export const adminUpdateClass = mutation({
     classId: v.id("classes"),
     title: v.string(),
     description: v.optional(v.string()),
+    marketingCategory: v.optional(v.string()),
+    recital: v.optional(v.boolean()),
+    team: v.optional(v.boolean()),
+    underattended: v.optional(v.boolean()),
     status: classStatusValidator,
     capacity: v.optional(v.number()),
     location: v.optional(v.string()),

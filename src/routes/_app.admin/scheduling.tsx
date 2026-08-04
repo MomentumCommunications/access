@@ -38,6 +38,13 @@ export const Route = createFileRoute("/_app/admin/scheduling")({
 const seasonFormSchema = z
   .object({
     name: z.string().trim().min(1, "Name is required."),
+    slug: z
+      .string()
+      .trim()
+      .regex(
+        /^$|^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+        "Use lowercase letters, numbers, and single hyphens only.",
+      ),
     startDate: z.string().min(1, "Start date is required."),
     endDate: z.string().min(1, "End date is required."),
   })
@@ -54,6 +61,7 @@ type SeasonRow = {
 
 const emptySeasonValues: SeasonFormValues = {
   name: "",
+  slug: "",
   startDate: "",
   endDate: "",
 };
@@ -109,6 +117,12 @@ function SeasonManager() {
       ),
     },
     {
+      accessorKey: "season.slug",
+      id: "slug",
+      header: "Public key",
+      cell: ({ row }) => row.original.season.slug || "Not set",
+    },
+    {
       id: "dates",
       header: "Dates",
       cell: ({ row }) =>
@@ -128,6 +142,7 @@ function SeasonManager() {
               setEditingSeason(season._id);
               form.reset({
                 name: season.name,
+                slug: season.slug || "",
                 startDate: season.startDate,
                 endDate: season.endDate,
               });
@@ -215,6 +230,22 @@ function SeasonManager() {
                       {...field}
                       id="season-name"
                       aria-invalid={fieldState.invalid}
+                    />
+                    <FieldError errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+              <Controller
+                name="slug"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="season-slug">Public key</FieldLabel>
+                    <Input
+                      {...field}
+                      id="season-slug"
+                      aria-invalid={fieldState.invalid}
+                      placeholder="fall-26"
                     />
                     <FieldError errors={[fieldState.error]} />
                   </Field>

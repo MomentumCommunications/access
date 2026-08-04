@@ -819,7 +819,7 @@ function StudentEnrollmentsTab({
   const [billingTreatment, setBillingTreatment] =
     useState<BillingTreatment>("");
   const [enrollmentStatusFilter, setEnrollmentStatusFilter] =
-    useState<EnrollmentStatusFilter>("active");
+    useState<EnrollmentStatusFilter>("enrolled");
   const [saving, setSaving] = useState(false);
 
   const classOptions = useMemo(
@@ -1059,9 +1059,9 @@ function StudentEnrollmentsTab({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="enrolled">Enrolled</SelectItem>
               <SelectItem value="active">Active enrollments</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="enrolled">Enrolled</SelectItem>
               <SelectItem value="waitlisted">Waitlisted</SelectItem>
               <SelectItem value="dropped">Dropped</SelectItem>
               <SelectItem value="declined">Declined</SelectItem>

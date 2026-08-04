@@ -32,6 +32,7 @@ export default defineSchema({
     group: v.optional(v.array(v.id("groups"))),
     image: v.optional(v.string()),
     description: v.optional(v.string()),
+    staffSlug: v.optional(v.string()),
     onboardingStatus: v.optional(
       v.union(v.literal("pending"), v.literal("complete")),
     ),
@@ -49,6 +50,7 @@ export default defineSchema({
   })
     .index("email", ["email"])
     .index("phone", ["phone"])
+    .index("byStaffSlug", ["staffSlug"])
     .index("byExternalId", ["externalId"]),
   accountSecurityChallenges: defineTable({
     userId: v.id("users"),
@@ -275,12 +277,17 @@ export default defineSchema({
   }).index("byUser", ["user"]),
   seasons: defineTable({
     name: v.string(),
+    slug: v.optional(v.string()),
     startDate: v.string(),
     endDate: v.string(),
-  }),
+  }).index("bySlug", ["slug"]),
   classes: defineTable({
     title: v.string(),
     description: v.optional(v.string()),
+    marketingCategory: v.optional(v.string()),
+    recital: v.optional(v.boolean()),
+    team: v.optional(v.boolean()),
+    underattended: v.optional(v.boolean()),
     status: v.union(
       v.literal("draft"),
       v.literal("published"),

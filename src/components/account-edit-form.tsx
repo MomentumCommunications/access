@@ -57,6 +57,13 @@ const accountEditSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required.").max(80),
   lastName: z.string().trim().min(1, "Last name is required.").max(80),
   phone: z.string().max(30, "Phone number must be 30 characters or fewer."),
+  staffSlug: z
+    .string()
+    .trim()
+    .regex(
+      /^$|^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Use lowercase letters, numbers, and single hyphens only.",
+    ),
   email: z.email("Enter a valid email address."),
   roles: z
     .array(z.enum(["member", "staff", "admin"]))
@@ -89,6 +96,7 @@ export function AccountEditForm({
       firstName: account.firstName || "",
       lastName: account.lastName || "",
       phone: account.phone || "",
+      staffSlug: account.staffSlug || "",
       email: accountEmail(account.email),
       roles: resolveUserRoles(account),
       groups: account.group || [],
@@ -97,6 +105,7 @@ export function AccountEditForm({
     mode: "onTouched",
   });
   const selectedStatus = form.watch("status");
+  const selectedRoles = form.watch("roles");
   const statusImpact = useConvexQuery(api.classes.adminGetAccountStatusImpact, {
     user: account._id,
     status: selectedStatus,
@@ -110,6 +119,7 @@ export function AccountEditForm({
         firstName: values.firstName.trim(),
         lastName: values.lastName.trim(),
         phone: values.phone.trim() || undefined,
+        staffSlug: values.staffSlug.trim() || undefined,
         email: values.email.trim().toLowerCase(),
         status: values.status,
         roles: values.roles,
@@ -254,6 +264,31 @@ export function AccountEditForm({
                   </Field>
                 )}
               />
+
+              {selectedRoles.includes("staff") ? (
+                <Controller
+                  name="staffSlug"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor={field.name}>
+                        Staff page slug
+                      </FieldLabel>
+                      <Input
+                        {...field}
+                        id={field.name}
+                        placeholder="jane-smith"
+                        aria-invalid={fieldState.invalid}
+                      />
+                      <FieldDescription>
+                        Matches the teacher profile URL on the marketing
+                        site.
+                      </FieldDescription>
+                      <FieldError errors={[fieldState.error]} />
+                    </Field>
+                  )}
+                />
+              ) : null}
 
               <Controller
                 name="status"

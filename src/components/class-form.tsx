@@ -51,6 +51,12 @@ const classFormSchema = z
     description: z
       .string()
       .max(2000, "Description must be 2000 characters or fewer."),
+    marketingCategory: z
+      .string()
+      .max(120, "Marketing category must be 120 characters or fewer."),
+    recital: z.boolean(),
+    team: z.boolean(),
+    underattended: z.boolean(),
     status: z.enum(["draft", "published", "archived"]),
     scheduleSummary: z
       .string()
@@ -198,6 +204,10 @@ const weekdays: Weekday[] = [
 const emptyValues: ClassFormValues = {
   title: "",
   description: "",
+  marketingCategory: "",
+  recital: false,
+  team: false,
+  underattended: false,
   status: "draft",
   scheduleSummary: "",
   location: "",
@@ -223,6 +233,10 @@ function valuesFromClass(
   return {
     title: classItem.title,
     description: classItem.description || "",
+    marketingCategory: classItem.marketingCategory || "",
+    recital: classItem.recital ?? false,
+    team: classItem.team ?? false,
+    underattended: classItem.underattended ?? false,
     status: classItem.status,
     scheduleSummary: classItem.scheduleSummary || "",
     location: classItem.location || "",
@@ -276,6 +290,10 @@ export function ClassForm(props: ClassFormProps) {
     const classValues = {
       title: values.title.trim(),
       description: values.description.trim() || undefined,
+      marketingCategory: values.marketingCategory.trim() || undefined,
+      recital: values.recital,
+      team: values.team,
+      underattended: values.underattended,
       status: values.status,
       scheduleSummary: values.scheduleSummary.trim() || undefined,
       location: values.location.trim() || undefined,
@@ -395,6 +413,54 @@ export function ClassForm(props: ClassFormProps) {
             </Field>
           )}
         />
+        <FieldSet>
+          <FieldLegend variant="label">Marketing display</FieldLegend>
+          <Controller
+            name="marketingCategory"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor={field.name}>Category</FieldLabel>
+                <Input
+                  {...field}
+                  id={field.name}
+                  aria-invalid={fieldState.invalid}
+                  placeholder="Ballet"
+                />
+                <FieldError errors={[fieldState.error]} />
+              </Field>
+            )}
+          />
+          <FieldGroup className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {(
+              [
+                ["recital", "Recital class"],
+                ["team", "Team class"],
+                ["underattended", "Needs enrollment"],
+              ] as const
+            ).map(([name, label]) => (
+              <Controller
+                key={name}
+                name={name}
+                control={form.control}
+                render={({ field }) => (
+                  <Field orientation="horizontal">
+                    <Checkbox
+                      id={name}
+                      checked={field.value}
+                      onCheckedChange={(checked) =>
+                        field.onChange(checked === true)
+                      }
+                    />
+                    <FieldLabel htmlFor={name} className="font-normal">
+                      {label}
+                    </FieldLabel>
+                  </Field>
+                )}
+              />
+            ))}
+          </FieldGroup>
+        </FieldSet>
         <div className="grid gap-4 sm:grid-cols-2">
           <Controller
             name="enrollmentMode"

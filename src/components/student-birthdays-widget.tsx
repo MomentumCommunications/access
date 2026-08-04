@@ -1,5 +1,5 @@
 import { useConvexQuery } from "@convex-dev/react-query";
-import { ChevronLeft, ChevronRight, UserRound } from "lucide-react";
+import { Cake, ChevronLeft, ChevronRight, UserRound } from "lucide-react";
 import { useMemo, useState } from "react";
 import { api } from "../../convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
@@ -41,7 +41,10 @@ export function StudentBirthdaysWidget() {
 
   return (
     <section className="min-w-0 space-y-3">
-      <h2 className="text-2xl font-semibold tracking-tight">Birthdays</h2>
+      <div className="flex items-center gap-2">
+        <Cake />
+        <h2 className="text-2xl font-semibold tracking-tight">Birthdays</h2>
+      </div>
       <Card className="gap-0 overflow-hidden rounded-3xl py-0">
         <CardContent className="p-0">
           <div className="flex items-center justify-between border-b px-3 py-3 sm:px-4">

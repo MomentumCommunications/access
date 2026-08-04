@@ -636,6 +636,7 @@ export const adminUpdateAccount = action({
     firstName: v.string(),
     lastName: v.string(),
     phone: v.optional(v.string()),
+    staffSlug: v.optional(v.string()),
     email: v.string(),
     status: v.union(v.literal("active"), v.literal("inactive")),
     roles: v.array(roleValidator),

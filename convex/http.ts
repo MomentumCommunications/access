@@ -28,7 +28,7 @@ const marketingClasses = httpAction(async (ctx, request) => {
     );
   }
 
-  const catalog = await ctx.runQuery(internal.classes.listMarketingClasses, {
+  const catalog = await ctx.runQuery(internal.marketing.listClasses, {
     seasonSlug,
   });
   if (!catalog) {

@@ -38,6 +38,7 @@ import type * as lib_privateScheduling from "../lib/privateScheduling.js";
 import type * as lib_roles from "../lib/roles.js";
 import type * as lib_scheduling from "../lib/scheduling.js";
 import type * as lib_stripe from "../lib/stripe.js";
+import type * as marketing from "../marketing.js";
 import type * as notifications from "../notifications.js";
 import type * as onboarding from "../onboarding.js";
 import type * as payments from "../payments.js";
@@ -92,6 +93,7 @@ declare const fullApi: ApiFromModules<{
   "lib/roles": typeof lib_roles;
   "lib/scheduling": typeof lib_scheduling;
   "lib/stripe": typeof lib_stripe;
+  marketing: typeof marketing;
   notifications: typeof notifications;
   onboarding: typeof onboarding;
   payments: typeof payments;

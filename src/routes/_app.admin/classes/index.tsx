@@ -30,6 +30,7 @@ type ClassRow = {
   enrollments: Doc<"classEnrollments">[];
   sessionSignups: Doc<"classSessionSignups">[];
   sessions: Doc<"sessions">[];
+  instructors: Doc<"users">[];
   seasonId?: Id<"seasons">;
 };
 
@@ -84,12 +85,30 @@ const columns: ColumnDef<ClassRow>[] = [
     },
   },
   {
-    id: "signupMode",
-    header: "Signup",
-    cell: ({ row }) =>
-      row.original.classItem.enrollmentMode === "per_session"
-        ? "Per session"
-        : "All sessions",
+    id: "instructors",
+    header: "Instructors",
+    cell: ({ row }) => {
+      if (row.original.instructors.length === 0) return "Not set";
+
+      return row.original.instructors.map((instructor, index) => {
+        const name = [instructor.firstName, instructor.lastName]
+          .filter(Boolean)
+          .join(" ");
+
+        return (
+          <span key={instructor._id}>
+            {index > 0 ? ", " : null}
+            <Link
+              to="/admin/accounts/$userId"
+              params={{ userId: instructor._id }}
+              className="font-medium underline-offset-4 hover:underline"
+            >
+              {name || "Unnamed instructor"}
+            </Link>
+          </span>
+        );
+      });
+    },
   },
   {
     accessorKey: "classItem.status",

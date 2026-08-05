@@ -491,6 +491,14 @@ function AdminClassDetailPage() {
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-1">
+                <div className="text-muted-foreground">Instructor</div>
+                <div className="font-medium">
+                  {classData.instructors
+                    ?.map((staff) => `${staff?.firstName} ${staff?.lastName}`)
+                    .join(", ") || "Not set"}
+                </div>
+              </div>
+              <div className="space-y-1">
                 <div className="text-muted-foreground">Schedule</div>
                 <div className="font-medium">
                   {classData.classItem.scheduleSummary || "Not set"}
@@ -505,15 +513,6 @@ function AdminClassDetailPage() {
                   ]
                     .filter(Boolean)
                     .join(" – ") || "Not set"}
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-muted-foreground">Time</div>
-                <div className="font-medium">
-                  {formatTimeRange(
-                    classData.classItem.startTime,
-                    classData.classItem.endTime,
-                  ) || "Not set"}
                 </div>
               </div>
               <div className="space-y-1">

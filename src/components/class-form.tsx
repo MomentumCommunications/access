@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Doc, Id } from "convex/_generated/dataModel";
+import { X } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -10,6 +11,7 @@ import {
   parseCurrencyToCents,
 } from "../../shared/tuition-pricing";
 import { Button } from "~/components/ui/button";
+import { Badge } from "~/components/ui/badge";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
   Field,
@@ -93,7 +95,7 @@ const classFormSchema = z
     startTime: z.string(),
     endTime: z.string(),
     weekdays: z.array(weekdaySchema),
-    assignedStaff: z.string(),
+    assignedStaff: z.array(z.string()),
     seasonId: z.string(),
     visibleToGroupIds: z.array(z.string()),
     enrollmentMode: z.enum(["standard", "per_session"]),
@@ -219,7 +221,7 @@ const emptyValues: ClassFormValues = {
   startTime: "",
   endTime: "",
   weekdays: [],
-  assignedStaff: "none",
+  assignedStaff: [],
   seasonId: "none",
   visibleToGroupIds: [],
   enrollmentMode: "standard",
@@ -248,7 +250,7 @@ function valuesFromClass(
     startTime: classItem.startTime || "",
     endTime: classItem.endTime || "",
     weekdays: classItem.weekdays || [],
-    assignedStaff: classItem.assignedStaff?.[0] || "none",
+    assignedStaff: Array.from(new Set(classItem.assignedStaff || [])),
     seasonId: seasonId || "none",
     visibleToGroupIds: classItem.visibleToGroupIds || [],
     enrollmentMode: classItem.enrollmentMode || "standard",
@@ -305,10 +307,9 @@ export function ClassForm(props: ClassFormProps) {
       startTime: values.startTime || undefined,
       endTime: values.endTime || undefined,
       weekdays: values.weekdays.length ? values.weekdays : undefined,
-      assignedStaff:
-        values.assignedStaff === "none"
-          ? undefined
-          : [values.assignedStaff as Id<"users">],
+      assignedStaff: values.assignedStaff.length
+        ? (values.assignedStaff as Id<"users">[])
+        : undefined,
       seasonId:
         values.seasonId === "none"
           ? undefined
@@ -827,27 +828,76 @@ export function ClassForm(props: ClassFormProps) {
               <FieldLabel htmlFor={field.name}>Assigned staff</FieldLabel>
               <Select
                 name={field.name}
-                value={field.value}
-                onValueChange={field.onChange}
+                value=""
+                onValueChange={(staffId) => {
+                  if (!field.value.includes(staffId)) {
+                    field.onChange([...field.value, staffId]);
+                  }
+                }}
               >
                 <SelectTrigger
                   id={field.name}
                   aria-invalid={fieldState.invalid}
                   className="w-full"
                 >
-                  <SelectValue placeholder="Select staff" />
+                  <SelectValue placeholder="Add staff" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
                   {accounts
                     ?.filter((account) => hasUserRole(account, "staff"))
                     .map((account) => (
-                      <SelectItem key={account._id} value={account._id}>
+                      <SelectItem
+                        key={account._id}
+                        value={account._id}
+                        disabled={field.value.includes(account._id)}
+                      >
                         {getAccountName(account)}
                       </SelectItem>
                     ))}
                 </SelectContent>
               </Select>
+              {field.value.length > 0 ? (
+                <div
+                  className="flex flex-wrap gap-2"
+                  aria-label="Assigned staff order"
+                >
+                  {field.value.map((staffId) => {
+                    const account = accounts?.find(
+                      (candidate) => candidate._id === staffId,
+                    );
+                    const label = account
+                      ? getAccountName(account)
+                      : "Unknown staff";
+
+                    return (
+                      <Badge
+                        key={staffId}
+                        variant="secondary"
+                        className="gap-1 pr-1"
+                      >
+                        {label}
+                        <button
+                          type="button"
+                          className="rounded-sm p-0.5 hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          aria-label={`Remove ${label}`}
+                          title={`Remove ${label}`}
+                          onClick={() =>
+                            field.onChange(
+                              field.value.filter((id) => id !== staffId),
+                            )
+                          }
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No staff assigned.
+                </p>
+              )}
               <FieldError errors={[fieldState.error]} />
             </Field>
           )}

@@ -99,7 +99,9 @@ export function AccountEditForm({
       staffSlug: account.staffSlug || "",
       email: accountEmail(account.email),
       roles: resolveUserRoles(account),
-      groups: account.group || [],
+      groups: (account.group || []).filter((groupId) =>
+        groups.some((group) => group._id === groupId),
+      ),
       status: resolveAccountStatus(account.status),
     },
     mode: "onTouched",

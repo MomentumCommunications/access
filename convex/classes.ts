@@ -2856,9 +2856,9 @@ export const adminUpdateAccountRecord = internalMutation({
         .unique(),
       Promise.all(args.groups.map((groupId) => ctx.db.get(groupId))),
     ]);
-    if (selectedGroups.some((group) => !group)) {
-      throw new Error("One or more selected groups no longer exist.");
-    }
+    const validGroupIds = args.groups.filter(
+      (_groupId, index) => selectedGroups[index] !== null,
+    );
     const duplicateUser = users.some((user) => {
       if (user._id === args.user || !user.email) return false;
       const emails = Array.isArray(user.email) ? user.email : [user.email];
@@ -2906,7 +2906,7 @@ export const adminUpdateAccountRecord = internalMutation({
       ...(emailChanged ? { emailVerificationTime: Date.now() } : {}),
       roles,
       role: highestUserRole(roles),
-      group: args.groups,
+      group: validGroupIds,
     });
 
     const statusResult =
@@ -2944,7 +2944,8 @@ export const adminUpdateAccountRecord = internalMutation({
         emailChanged,
         status: args.status,
         roles,
-        groupIds: args.groups,
+        groupIds: validGroupIds,
+        staleGroupIdsRemoved: args.groups.length - validGroupIds.length,
       },
     });
     return {

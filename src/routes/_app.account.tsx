@@ -8,7 +8,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
-import { Camera, KeyRound, LogOut, Mail, ShieldCheck, User } from "lucide-react";
+import {
+  Camera,
+  KeyRound,
+  LogOut,
+  Mail,
+  ShieldCheck,
+  User,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -33,7 +40,6 @@ import {
   disableDevicePush,
   disablePushSubscriptionRef,
 } from "~/lib/push-notifications";
-import { hasUserRole } from "~/lib/roles";
 
 const formSchema = z.object({
   firstName: z
@@ -46,19 +52,15 @@ const formSchema = z.object({
     .trim()
     .min(1, "Last name is required")
     .max(80, "Last name must be 80 characters or fewer"),
-  phone: z.string().trim().max(30, "Phone number must be 30 characters or fewer"),
+  phone: z
+    .string()
+    .trim()
+    .max(30, "Phone number must be 30 characters or fewer"),
   displayName: z
     .string()
     .trim()
     .min(1, "Display name is required")
     .max(80, "Display name must be 80 characters or fewer"),
-  staffSlug: z
-    .string()
-    .trim()
-    .regex(
-      /^$|^[a-z0-9]+(?:-[a-z0-9]+)*$/,
-      "Use lowercase letters, numbers, and single hyphens only",
-    ),
   bio: z.string().max(1000),
 });
 
@@ -70,10 +72,7 @@ export const Route = createFileRoute("/_app/account")({
 
 function RouteComponent() {
   const convexUser = useConvexQuery(api.users.current, {});
-  const activeEmailChange = useConvexQuery(
-    api.users.getActiveEmailChange,
-    {},
-  );
+  const activeEmailChange = useConvexQuery(api.users.getActiveEmailChange, {});
 
   const { signOut } = useAuthActions();
   const navigate = useNavigate();
@@ -83,10 +82,8 @@ function RouteComponent() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [emailCode, setEmailCode] = useState("");
   const [showEmailRequest, setShowEmailRequest] = useState(false);
-  const [isRequestingEmailChange, setIsRequestingEmailChange] =
-    useState(false);
-  const [isConfirmingEmailChange, setIsConfirmingEmailChange] =
-    useState(false);
+  const [isRequestingEmailChange, setIsRequestingEmailChange] = useState(false);
+  const [isConfirmingEmailChange, setIsConfirmingEmailChange] = useState(false);
   const [isRequestingPasswordReset, setIsRequestingPasswordReset] =
     useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -98,15 +95,12 @@ function RouteComponent() {
       lastName: "",
       phone: "",
       displayName: "",
-      staffSlug: "",
       bio: convexUser?.description || "",
     },
   });
 
   const updateProfile = useConvexMutation(api.users.updateProfile);
-  const disablePushSubscription = useConvexMutation(
-    disablePushSubscriptionRef,
-  );
+  const disablePushSubscription = useConvexMutation(disablePushSubscriptionRef);
   const requestEmailChange = useConvexAction(api.stripe.requestEmailChange);
   const confirmEmailChange = useConvexAction(api.stripe.confirmEmailChange);
   const requestAccountPasswordReset = useConvexAction(
@@ -142,7 +136,6 @@ function RouteComponent() {
       lastName: convexUser.lastName || "",
       phone: convexUser.phone || "",
       displayName: convexUser.displayName || convexUser.name || "",
-      staffSlug: convexUser.staffSlug || "",
       bio: convexUser.description || "",
     });
   }, [convexUser, form]);
@@ -186,7 +179,6 @@ function RouteComponent() {
         phone: values.phone,
         displayName: values.displayName,
         description: values.bio || undefined,
-        staffSlug: values.staffSlug || undefined,
         ...(imageStorageId ? { imageStorageId } : {}),
       });
       setSelectedImage(null);
@@ -426,24 +418,6 @@ function RouteComponent() {
                     </FormItem>
                   )}
                 />
-                {convexUser && hasUserRole(convexUser, "staff") ? (
-                  <FormField
-                    control={form.control}
-                    name="staffSlug"
-                    render={({ field }) => (
-                      <FormItem className="max-w-sm">
-                        <FormLabel>Staff page slug</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="jane-smith" />
-                        </FormControl>
-                        <FormDescription>
-                          Matches your profile URL on the marketing site.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ) : null}
                 <FormField
                   control={form.control}
                   name="bio"
@@ -480,7 +454,7 @@ function RouteComponent() {
                 <ShieldCheck className="size-5" />
                 <h2 className="text-2xl font-semibold">Notifications</h2>
               </div>
-              <p className="mt-1 text-muted-foreground">
+              <p className="text-muted-foreground mt-1">
                 Choose whether this device receives important Access updates.
               </p>
             </div>
@@ -493,7 +467,7 @@ function RouteComponent() {
                 <ShieldCheck className="size-5" />
                 <h2 className="text-2xl font-semibold">Security</h2>
               </div>
-              <p className="mt-1 text-muted-foreground">
+              <p className="text-muted-foreground mt-1">
                 Manage the email and password used to sign in.
               </p>
             </div>
@@ -503,7 +477,7 @@ function RouteComponent() {
                 <Mail className="size-4" />
                 <h3 className="font-semibold">Login email</h3>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Current email: {accountEmail || "Not set"}
               </p>
 
@@ -513,9 +487,7 @@ function RouteComponent() {
                   onSubmit={handleEmailChangeConfirmation}
                 >
                   <div className="space-y-2">
-                    <Label htmlFor="email-change-code">
-                      Verification code
-                    </Label>
+                    <Label htmlFor="email-change-code">Verification code</Label>
                     <Input
                       id="email-change-code"
                       value={emailCode}
@@ -524,15 +496,12 @@ function RouteComponent() {
                       autoComplete="one-time-code"
                       required
                     />
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-muted-foreground text-sm">
                       Enter the code sent to {activeEmailChange.newEmail}.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="submit"
-                      disabled={isConfirmingEmailChange}
-                    >
+                    <Button type="submit" disabled={isConfirmingEmailChange}>
                       {isConfirmingEmailChange
                         ? "Confirming..."
                         : "Confirm email"}
@@ -550,10 +519,7 @@ function RouteComponent() {
                   </div>
                 </form>
               ) : (
-                <form
-                  className="space-y-4"
-                  onSubmit={handleEmailChangeRequest}
-                >
+                <form className="space-y-4" onSubmit={handleEmailChangeRequest}>
                   <div className="space-y-2">
                     <Label htmlFor="new-email">New email</Label>
                     <Input
@@ -566,9 +532,7 @@ function RouteComponent() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="current-password">
-                      Current password
-                    </Label>
+                    <Label htmlFor="current-password">Current password</Label>
                     <Input
                       id="current-password"
                       type="password"
@@ -579,16 +543,13 @@ function RouteComponent() {
                       }
                       required
                     />
-                    <p className="text-sm text-muted-foreground">
-                      We will verify your password, then email a code to the
-                      new address.
+                    <p className="text-muted-foreground text-sm">
+                      We will verify your password, then email a code to the new
+                      address.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="submit"
-                      disabled={isRequestingEmailChange}
-                    >
+                    <Button type="submit" disabled={isRequestingEmailChange}>
                       {isRequestingEmailChange
                         ? "Sending code..."
                         : "Change email"}
@@ -612,7 +573,7 @@ function RouteComponent() {
                 <KeyRound className="size-4" />
                 <h3 className="font-semibold">Password</h3>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 We will email a one-time code to your current login address
                 before allowing a new password.
               </p>

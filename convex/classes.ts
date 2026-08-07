@@ -62,6 +62,10 @@ import { recordActivityEvent } from "./lib/activityLog";
 import { ensureDefaultHouseholdBilling } from "./lib/householdBilling";
 import { isWorkforceAccount } from "../shared/account-invitations";
 import {
+  isValidCatalogSlug,
+  normalizeCatalogSlug,
+} from "../shared/marketing-class-catalog";
+import {
   createNotifications,
   createAdminNotifications,
   createStudentManagerNotifications,
@@ -2815,6 +2819,7 @@ export const adminUpdateAccountRecord = internalMutation({
     firstName: v.string(),
     lastName: v.string(),
     phone: v.optional(v.string()),
+    staffSlug: v.optional(v.string()),
     email: v.string(),
     status: accountStatusValidator,
     roles: rolesValidator,
@@ -2828,6 +2833,7 @@ export const adminUpdateAccountRecord = internalMutation({
     const firstName = args.firstName.trim();
     const lastName = args.lastName.trim();
     const phone = args.phone?.trim() || undefined;
+    const staffSlug = normalizeCatalogSlug(args.staffSlug);
     const email = args.email.trim().toLowerCase();
     const roles = normalizeUserRoles(args.roles as UserRole[]);
     if (!firstName || firstName.length > 80) {
@@ -2844,6 +2850,14 @@ export const adminUpdateAccountRecord = internalMutation({
     }
     if (roles.length === 0) {
       throw new Error("Select at least one role.");
+    }
+    if (staffSlug && !roles.includes("staff")) {
+      throw new Error("Only staff accounts can set a staff page slug.");
+    }
+    if (staffSlug && !isValidCatalogSlug(staffSlug)) {
+      throw new Error(
+        "Staff page slug must contain lowercase letters, numbers, and single hyphens only.",
+      );
     }
 
     const [users, passwordAccount, selectedGroups] = await Promise.all([
@@ -2868,6 +2882,15 @@ export const adminUpdateAccountRecord = internalMutation({
     });
     if (duplicateUser) {
       throw new Error("An account with this email already exists.");
+    }
+    const duplicateStaffSlug = users.some(
+      (user) =>
+        user._id !== args.user &&
+        staffSlug !== undefined &&
+        user.staffSlug === staffSlug,
+    );
+    if (duplicateStaffSlug) {
+      throw new Error("Staff page slug is already in use.");
     }
     const duplicateAuthAccount = await ctx.db
       .query("authAccounts")
@@ -2902,6 +2925,7 @@ export const adminUpdateAccountRecord = internalMutation({
       firstName,
       lastName,
       phone,
+      staffSlug,
       email,
       ...(emailChanged ? { emailVerificationTime: Date.now() } : {}),
       roles,

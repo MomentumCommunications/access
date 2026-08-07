@@ -121,7 +121,9 @@ export function AccountEditForm({
         firstName: values.firstName.trim(),
         lastName: values.lastName.trim(),
         phone: values.phone.trim() || undefined,
-        staffSlug: values.staffSlug.trim() || undefined,
+        staffSlug: values.roles.includes("staff")
+          ? values.staffSlug.trim() || undefined
+          : undefined,
         email: values.email.trim().toLowerCase(),
         status: values.status,
         roles: values.roles,

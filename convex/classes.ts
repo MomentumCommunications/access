@@ -86,6 +86,12 @@ import {
   type ClassWeekday,
 } from "../shared/class-weekday-filter";
 import {
+  classMatchesRosterFilters,
+  isPrintRosterEnrollment,
+  isPrintRosterSessionSignup,
+  isPrintRosterTrial,
+} from "../shared/class-roster-printing";
+import {
   resolveAccountStatus,
   shouldSkipSharedStudentOnInactivation,
   type AccountStatus,
@@ -3510,6 +3516,210 @@ export const adminListClasses = query({
             (instructor) => instructor !== null,
           ),
           seasonId: seasonLink?.season,
+        };
+      }),
+    );
+  },
+});
+
+export const adminPrintClassRosters = query({
+  args: {
+    seasonId: v.optional(v.id("seasons")),
+    group: v.optional(v.union(v.id("groups"), v.literal("none"))),
+    titleQuery: v.optional(v.string()),
+  },
+  handler: async (ctx, filters) => {
+    await requireAdmin(ctx);
+    const classes = await ctx.db.query("classes").collect();
+    classes.sort(compareClassesBySchedule);
+
+    const matchedClasses = (
+      await Promise.all(
+        classes.map(async (classItem) => {
+          const seasonLink = await ctx.db
+            .query("seasonClasses")
+            .withIndex("byClass", (q) => q.eq("class", classItem._id))
+            .first();
+          return classMatchesRosterFilters(
+            classItem,
+            seasonLink?.season,
+            filters,
+          )
+            ? classItem
+            : null;
+        }),
+      )
+    ).filter((classItem) => classItem !== null);
+
+    return await Promise.all(
+      matchedClasses.map(async (classItem) => {
+        const classMode = resolvedClassEnrollmentMode(
+          classItem.enrollmentMode,
+        );
+        const today = todayValue(classItem.timezone);
+        const [instructorDocs, enrollmentDocs, signupDocs, trialDocs] =
+          await Promise.all([
+            Promise.all(
+              (classItem.assignedStaff || []).map((staffId) =>
+                ctx.db.get(staffId),
+              ),
+            ),
+            classMode === "standard"
+              ? ctx.db
+                  .query("classEnrollments")
+                  .withIndex("byClass", (q) =>
+                    q.eq("classId", classItem._id),
+                  )
+                  .collect()
+              : Promise.resolve([]),
+            classMode === "per_session"
+              ? ctx.db
+                  .query("classSessionSignups")
+                  .withIndex("byClass", (q) =>
+                    q.eq("classId", classItem._id),
+                  )
+                  .collect()
+              : Promise.resolve([]),
+            ctx.db
+              .query("trialRequests")
+              .withIndex("byClass", (q) => q.eq("classId", classItem._id))
+              .collect(),
+          ]);
+
+        const enrollments = (
+          await Promise.all(
+            enrollmentDocs
+              .filter((enrollment) =>
+                isPrintRosterEnrollment(enrollment.status),
+              )
+              .map(async (enrollment) => {
+                const [student, requester] = await Promise.all([
+                  ctx.db.get(enrollment.student),
+                  enrollment.requestedBy
+                    ? ctx.db.get(enrollment.requestedBy)
+                    : Promise.resolve(null),
+                ]);
+                return {
+                  id: enrollment._id,
+                  studentName: student
+                    ? studentDisplayName(student)
+                    : "Missing student",
+                  status: enrollment.status,
+                  prorateTuition: enrollment.prorateTuition,
+                  requestedByName: enrollment.requestedBy
+                    ? requester
+                      ? accountDisplayName(requester) || "Unnamed account"
+                      : "Missing account"
+                    : "Not set",
+                  startDate: enrollment.startDate,
+                  endDate: enrollment.endDate,
+                };
+              }),
+          )
+        ).sort((left, right) =>
+          left.studentName.localeCompare(right.studentName),
+        );
+
+        const sessionSignups = (
+          await Promise.all(
+            signupDocs.map(async (signup) => {
+              const [student, session] = await Promise.all([
+                ctx.db.get(signup.student),
+                ctx.db.get(signup.session),
+              ]);
+              if (!isPrintRosterSessionSignup(signup, session, today)) {
+                return null;
+              }
+              return {
+                id: signup._id,
+                sessionId: signup.session,
+                studentName: student
+                  ? studentDisplayName(student)
+                  : "Missing student",
+                sessionDate: session?.date,
+                status: signup.status,
+                unitPriceCents: signup.unitPriceCents,
+              };
+            }),
+          )
+        )
+          .filter((signup) => signup !== null)
+          .sort(
+            (left, right) =>
+              (left.sessionDate || "9999-99-99").localeCompare(
+                right.sessionDate || "9999-99-99",
+              ) || left.studentName.localeCompare(right.studentName),
+          );
+
+        const trials = (
+          await Promise.all(
+            trialDocs.map(async (request) => {
+              const [student, session] = await Promise.all([
+                ctx.db.get(request.studentId),
+                ctx.db.get(request.sessionId),
+              ]);
+              if (!isPrintRosterTrial(request, session, today)) return null;
+              return {
+                id: request._id,
+                studentName: student
+                  ? studentDisplayName(student)
+                  : "Missing student",
+                sessionDate: session?.date,
+                status: request.status,
+              };
+            }),
+          )
+        )
+          .filter((trial) => trial !== null)
+          .sort(
+            (left, right) =>
+              (left.sessionDate || "9999-99-99").localeCompare(
+                right.sessionDate || "9999-99-99",
+              ) || left.studentName.localeCompare(right.studentName),
+          );
+
+        const instructors = instructorDocs.map((instructor) =>
+          instructor
+            ? accountDisplayName(instructor) || "Unnamed instructor"
+            : "Missing instructor",
+        );
+        const signupCountsBySession = new Map<string, number>();
+        for (const signup of sessionSignups) {
+          signupCountsBySession.set(
+            signup.sessionId,
+            (signupCountsBySession.get(signup.sessionId) || 0) + 1,
+          );
+        }
+        const highestSessionCount = Math.max(
+          0,
+          ...signupCountsBySession.values(),
+        );
+        const rosterSummary =
+          classMode === "per_session"
+            ? classItem.capacity === undefined
+              ? `${highestSessionCount} max per session`
+              : `${highestSessionCount} / ${classItem.capacity} per session`
+            : classItem.capacity === undefined
+              ? `${enrollments.length}`
+              : `${enrollments.length} / ${classItem.capacity}`;
+
+        return {
+          classItem: {
+            id: classItem._id,
+            title: classItem.title,
+            status: classItem.status,
+            scheduleSummary: classItem.scheduleSummary,
+            startDate: classItem.startDate,
+            endDate: classItem.endDate,
+            location: classItem.location,
+            capacity: classItem.capacity,
+            enrollmentMode: classMode,
+          },
+          instructors,
+          rosterSummary,
+          enrollments,
+          sessionSignups,
+          trials,
         };
       }),
     );

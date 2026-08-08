@@ -34,6 +34,8 @@ type DataTableProps<TData, TValue> = {
   data: TData[];
   filterColumn?: string;
   filterPlaceholder?: string;
+  filterValue?: string;
+  onFilterValueChange?: (value: string) => void;
   toolbar?: ReactNode;
 };
 
@@ -42,6 +44,8 @@ export function DataTable<TData, TValue>({
   data,
   filterColumn,
   filterPlaceholder = "Filter...",
+  filterValue,
+  onFilterValueChange,
   toolbar,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -128,11 +132,16 @@ export function DataTable<TData, TValue>({
           <Input
             placeholder={filterPlaceholder}
             value={
-              (table.getColumn(filterColumn)?.getFilterValue() as string) ?? ""
+              filterValue ??
+              ((table.getColumn(filterColumn)?.getFilterValue() as string) ??
+                "")
             }
-            onChange={(event) =>
-              table.getColumn(filterColumn)?.setFilterValue(event.target.value)
-            }
+            onChange={(event) => {
+              table
+                .getColumn(filterColumn)
+                ?.setFilterValue(event.target.value);
+              onFilterValueChange?.(event.target.value);
+            }}
             className="order-last min-w-0 basis-full sm:order-none sm:max-w-sm sm:flex-1 sm:basis-auto"
           />
         ) : null}

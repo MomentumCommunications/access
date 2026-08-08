@@ -37,6 +37,7 @@ import { Route as AppClassesIndexRouteImport } from './routes/_app.classes/index
 import { Route as AppChannelIndexRouteImport } from './routes/_app.channel/index'
 import { Route as AppCalendarIndexRouteImport } from './routes/_app.calendar/index'
 import { Route as AppAdminIndexRouteImport } from './routes/_app.admin/index'
+import { Route as AdminClassesPrintRouteImport } from './routes/admin.classes.print'
 import { Route as AppTrialClassIdRouteImport } from './routes/_app.trial.$classId'
 import { Route as AppStudentsCreateRouteImport } from './routes/_app.students/create'
 import { Route as AppStudentsStudentIdRouteImport } from './routes/_app.students/$studentId'
@@ -226,6 +227,11 @@ const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => AppRoute,
+} as any)
+const AdminClassesPrintRoute = AdminClassesPrintRouteImport.update({
+  id: '/admin/classes/print',
+  path: '/admin/classes/print',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppTrialClassIdRoute = AppTrialClassIdRouteImport.update({
   id: '/trial/$classId',
@@ -531,6 +537,7 @@ export interface FileRoutesByFullPath {
   '/students/$studentId': typeof AppStudentsStudentIdRoute
   '/students/create': typeof AppStudentsCreateRoute
   '/trial/$classId': typeof AppTrialClassIdRoute
+  '/admin/classes/print': typeof AdminClassesPrintRoute
   '/admin/': typeof AppAdminIndexRoute
   '/calendar/': typeof AppCalendarIndexRoute
   '/channel/': typeof AppChannelIndexRoute
@@ -609,6 +616,7 @@ export interface FileRoutesByTo {
   '/students/$studentId': typeof AppStudentsStudentIdRoute
   '/students/create': typeof AppStudentsCreateRoute
   '/trial/$classId': typeof AppTrialClassIdRoute
+  '/admin/classes/print': typeof AdminClassesPrintRoute
   '/admin': typeof AppAdminIndexRoute
   '/calendar': typeof AppCalendarIndexRoute
   '/channel': typeof AppChannelIndexRoute
@@ -690,6 +698,7 @@ export interface FileRoutesById {
   '/_app/students/$studentId': typeof AppStudentsStudentIdRoute
   '/_app/students/create': typeof AppStudentsCreateRoute
   '/_app/trial/$classId': typeof AppTrialClassIdRoute
+  '/admin/classes/print': typeof AdminClassesPrintRoute
   '/_app/admin/': typeof AppAdminIndexRoute
   '/_app/calendar/': typeof AppCalendarIndexRoute
   '/_app/channel/': typeof AppChannelIndexRoute
@@ -771,6 +780,7 @@ export interface FileRouteTypes {
     | '/students/$studentId'
     | '/students/create'
     | '/trial/$classId'
+    | '/admin/classes/print'
     | '/admin/'
     | '/calendar/'
     | '/channel/'
@@ -849,6 +859,7 @@ export interface FileRouteTypes {
     | '/students/$studentId'
     | '/students/create'
     | '/trial/$classId'
+    | '/admin/classes/print'
     | '/admin'
     | '/calendar'
     | '/channel'
@@ -929,6 +940,7 @@ export interface FileRouteTypes {
     | '/_app/students/$studentId'
     | '/_app/students/create'
     | '/_app/trial/$classId'
+    | '/admin/classes/print'
     | '/_app/admin/'
     | '/_app/calendar/'
     | '/_app/channel/'
@@ -982,6 +994,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  AdminClassesPrintRoute: typeof AdminClassesPrintRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1181,6 +1194,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AppAdminIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/admin/classes/print': {
+      id: '/admin/classes/print'
+      path: '/admin/classes/print'
+      fullPath: '/admin/classes/print'
+      preLoaderRoute: typeof AdminClassesPrintRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/trial/$classId': {
       id: '/_app/trial/$classId'
@@ -1705,6 +1725,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   InviteTokenRoute: InviteTokenRoute,
+  AdminClassesPrintRoute: AdminClassesPrintRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

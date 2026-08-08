@@ -3,8 +3,9 @@ import { ColumnDef } from "@tanstack/react-table";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Doc, Id } from "convex/_generated/dataModel";
-import { Plus } from "lucide-react";
+import { Plus, Printer } from "lucide-react";
 import { z } from "zod";
+import { classMatchesRosterFilters } from "../../../../shared/class-roster-printing";
 import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
 import { Button } from "~/components/ui/button";
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/_app/admin/classes/")({
   validateSearch: z.object({
     season: z.string().optional(),
     group: z.string().optional(),
+    q: z.string().optional(),
   }),
   component: AdminClassesPage,
 });
@@ -124,7 +126,11 @@ const columns: ColumnDef<ClassRow>[] = [
 
 function AdminClassesPage() {
   const navigate = useNavigate();
-  const { season: selectedSeason, group: selectedGroup } = Route.useSearch();
+  const {
+    season: selectedSeason,
+    group: selectedGroup,
+    q: titleQuery = "",
+  } = Route.useSearch();
   const classes = useConvexQuery(api.classes.adminListClasses, {});
   const seasons = useConvexQuery(api.classes.adminListSeasons, {});
   const groups = useConvexQuery(api.classes.adminListStudentGroups, {});
@@ -136,21 +142,13 @@ function AdminClassesPage() {
   ].join("-");
   const availableSeasons =
     seasons?.filter(({ season }) => season.endDate >= today) || [];
-  const filteredClasses = classes?.filter((classRow) => {
-    if (selectedSeason && classRow.seasonId !== selectedSeason) {
-      return false;
-    }
-
-    const visibleGroupIds = classRow.classItem.visibleToGroupIds || [];
-    if (selectedGroup === "none") {
-      return visibleGroupIds.length === 0;
-    }
-    if (selectedGroup) {
-      return visibleGroupIds.includes(selectedGroup as Id<"groups">);
-    }
-
-    return true;
-  });
+  const filteredClasses = classes?.filter((classRow) =>
+    classMatchesRosterFilters(classRow.classItem, classRow.seasonId, {
+      seasonId: selectedSeason,
+      group: selectedGroup,
+      titleQuery,
+    }),
+  );
 
   return (
     <RoleGate allow="admin">
@@ -162,12 +160,36 @@ function AdminClassesPage() {
               Manage class details, sessions, and enrollments.
             </p>
           </div>
-          <Button asChild>
-            <Link to="/admin/classes/create">
-              <Plus />
-              Create Class
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {filteredClasses?.length ? (
+              <Button asChild variant="outline">
+                <Link
+                  to="/admin/classes/print"
+                  search={{
+                    season: selectedSeason,
+                    group: selectedGroup,
+                    q: titleQuery || undefined,
+                  }}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Printer />
+                  Print rosters
+                </Link>
+              </Button>
+            ) : (
+              <Button variant="outline" disabled>
+                <Printer />
+                Print rosters
+              </Button>
+            )}
+            <Button asChild>
+              <Link to="/admin/classes/create">
+                <Plus />
+                Create Class
+              </Link>
+            </Button>
+          </div>
         </div>
         {classes === undefined ||
         seasons === undefined ||
@@ -181,6 +203,17 @@ function AdminClassesPage() {
             data={filteredClasses || []}
             filterColumn="title"
             filterPlaceholder="Filter classes..."
+            filterValue={titleQuery}
+            onFilterValueChange={(value) =>
+              navigate({
+                to: "/admin/classes",
+                search: (previous) => ({
+                  ...previous,
+                  q: value || undefined,
+                }),
+                replace: true,
+              })
+            }
             toolbar={
               <div className="flex min-w-0 flex-1 gap-2 sm:flex-none">
                 <Select

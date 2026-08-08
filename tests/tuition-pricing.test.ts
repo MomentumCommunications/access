@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   applyTuitionTierPaste,
+  formatTuitionTierMaximum,
   nextPricingSchemaVersion,
   parseCurrencyToCents,
   parsePercentToBasisPoints,
@@ -13,6 +14,12 @@ import {
 } from "../shared/tuition-pricing.ts";
 
 describe("tuition pricing parsing", () => {
+  it("formats a finite final tier as open-ended", () => {
+    assert.equal(formatTuitionTierMaximum(480, false), "8");
+    assert.equal(formatTuitionTierMaximum(540, true), "9+");
+    assert.equal(formatTuitionTierMaximum(undefined, true), "Unlimited");
+  });
+
   it("converts decimal weekly hours to exact whole minutes", () => {
     assert.equal(parseWeeklyHours("1.5"), 90);
     assert.equal(parseWeeklyHours("0.75"), 45);

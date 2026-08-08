@@ -57,6 +57,10 @@ import {
   validateSpecificEnrollmentDateRange,
 } from "../shared/class-enrollment-estimate";
 import { matchTuitionTier } from "../shared/tuition-pricing";
+import {
+  canEditEnrollmentTuitionTreatment,
+  enrollmentTuitionTreatmentPatch,
+} from "../shared/enrollment-tuition-treatment";
 import { classWeeklyMinutes } from "./lib/billing/weeklyClassHours";
 import { recordActivityEvent } from "./lib/activityLog";
 import { ensureDefaultHouseholdBilling } from "./lib/householdBilling";
@@ -4133,6 +4137,30 @@ export const adminUpdateEnrollmentStatus = mutation({
         });
       }
     }
+  },
+});
+
+export const adminUpdateEnrollmentTuitionTreatment = mutation({
+  args: {
+    enrollment: v.id("classEnrollments"),
+    prorateTuition: v.boolean(),
+  },
+  handler: async (ctx, { enrollment, prorateTuition }) => {
+    await requireAdmin(ctx);
+    const existing = await ctx.db.get(enrollment);
+    if (!existing) {
+      throw new Error("Enrollment not found.");
+    }
+    if (!canEditEnrollmentTuitionTreatment(existing.status)) {
+      throw new Error(
+        "Tuition treatment can only be changed for enrolled or dropped enrollments.",
+      );
+    }
+
+    await ctx.db.patch(
+      enrollment,
+      enrollmentTuitionTreatmentPatch(prorateTuition, Date.now()),
+    );
   },
 });
 

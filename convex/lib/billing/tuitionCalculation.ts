@@ -5,6 +5,7 @@ import {
 import {
   calculateWeeklyClassMinuteSegments,
   collectBillingEnrollmentExclusions,
+  getBillingEnrollmentExclusion,
   type BillingEnrollmentExclusion,
   type WeeklyClassHoursInput,
 } from "./weeklyClassHours.ts";
@@ -48,37 +49,33 @@ function validIsoDate(value?: string) {
   );
 }
 
-function rangesOverlap(
-  periodStart: string,
-  periodEnd: string,
-  startDate?: string,
-  endDate?: string,
-) {
-  return (!startDate || startDate <= periodEnd) && (!endDate || endDate >= periodStart);
-}
-
-function enrollmentOverlapsPeriod(
+function fullPeriodRowOverlapsPeriod(
   row: TuitionCalculationInput,
   periodStart: string,
   periodEnd: string,
 ) {
-  if (
-    !validIsoDate(row.enrollmentStartDate) ||
-    !validIsoDate(row.enrollmentEndDate)
-  ) {
-    return false;
-  }
   if (
     row.enrollmentStatus !== "enrolled" &&
     !(row.enrollmentStatus === "dropped" && row.enrollmentEndDate)
   ) {
     return false;
   }
-  return rangesOverlap(
+
+  const startDate = [
     periodStart,
-    periodEnd,
     row.enrollmentStartDate,
-    row.enrollmentEndDate,
+    row.classStartDate,
+  ]
+    .filter((date): date is string => date !== undefined)
+    .sort()
+    .at(-1);
+  const endDate = [periodEnd, row.enrollmentEndDate, row.classEndDate]
+    .filter((date): date is string => date !== undefined)
+    .sort()
+    .at(0);
+
+  return (
+    startDate !== undefined && endDate !== undefined && startDate <= endDate
   );
 }
 
@@ -89,13 +86,25 @@ function rowsForPeriodCalculation(
 ) {
   return rows.flatMap((row) => {
     if (row.prorateTuition !== false) return [row];
-    if (!enrollmentOverlapsPeriod(row, periodStart, periodEnd)) return [];
+    if (getBillingEnrollmentExclusion(row) !== null) return [row];
+    if (
+      !validIsoDate(row.classStartDate) ||
+      !validIsoDate(row.classEndDate) ||
+      (row.classStartDate &&
+        row.classEndDate &&
+        row.classStartDate > row.classEndDate)
+    ) {
+      return [row];
+    }
+    if (!fullPeriodRowOverlapsPeriod(row, periodStart, periodEnd)) return [];
     return [
       {
         ...row,
         enrollmentStatus: "enrolled",
         enrollmentStartDate: periodStart,
         enrollmentEndDate: periodEnd,
+        classStartDate: periodStart,
+        classEndDate: periodEnd,
       },
     ];
   });

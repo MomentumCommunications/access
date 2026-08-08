@@ -56,6 +56,14 @@ describe("matchTuitionTier", () => {
     assert.equal(matchTuitionTier(tiers, 600)?.label, "Unlimited");
     assert.equal(matchTuitionTier(tiers, 0), undefined);
   });
+
+  it("uses a finite final tier as the open-ended pricing cap", () => {
+    const finiteTiers = tiers.slice(0, 2);
+    assert.equal(matchTuitionTier(finiteTiers, 120)?.label, "Two hours");
+    assert.equal(matchTuitionTier(finiteTiers, 121)?.label, "Two hours");
+    assert.equal(matchTuitionTier(finiteTiers, 600)?.label, "Two hours");
+    assert.equal(matchTuitionTier([], 600), undefined);
+  });
 });
 
 describe("calculatePeriodTuitions", () => {
@@ -90,6 +98,22 @@ describe("calculatePeriodTuitions", () => {
         { days: 15, weeklyMinutes: 60 },
       ],
     );
+  });
+
+  it("treats a legacy missing tuition treatment as prorated", () => {
+    const result = calculatePeriodTuitions(
+      [
+        row({
+          enrollmentStartDate: "2026-06-16",
+          prorateTuition: undefined,
+        }),
+      ],
+      tiers,
+      "2026-06-01",
+      "2026-06-30",
+    )[0];
+
+    assert.equal(result.totalTuitionCents, 5000);
   });
 
   it("charges the full period when enrollment proration is disabled", () => {
@@ -161,7 +185,7 @@ describe("calculatePeriodTuitions", () => {
     );
   });
 
-  it("still prorates class boundaries for full-period enrollments", () => {
+  it("charges the full period across overlapping class boundaries", () => {
     const result = calculatePeriodTuitions(
       [
         row({
@@ -175,13 +199,39 @@ describe("calculatePeriodTuitions", () => {
       "2026-06-30",
     )[0];
 
+    assert.equal(result.totalTuitionCents, 10000);
+    assert.equal(result.segments.length, 1);
+    assert.equal(result.segments[0].days, 30);
+  });
+
+  it("keeps class boundaries date-weighted for prorated enrollments", () => {
+    const result = calculatePeriodTuitions(
+      [row({ classStartDate: "2026-06-16" })],
+      tiers,
+      "2026-06-01",
+      "2026-06-30",
+    )[0];
+
     assert.equal(result.totalTuitionCents, 5000);
   });
 
-  it("returns a warning instead of a partial total when no tier matches", () => {
+  it("prices hours above a finite final tier at that tier", () => {
     const result = calculatePeriodTuitions(
       [row({ startTime: "16:00", endTime: "19:00" })],
       tiers.slice(0, 2),
+      "2026-06-01",
+      "2026-06-30",
+    )[0];
+
+    assert.equal(result.totalTuitionCents, 18000);
+    assert.equal(result.warning, undefined);
+    assert.equal(result.segments[0].tierLabel, "Two hours");
+  });
+
+  it("returns a warning when tuition pricing is not configured", () => {
+    const result = calculatePeriodTuitions(
+      [row()],
+      [],
       "2026-06-01",
       "2026-06-30",
     )[0];
@@ -207,6 +257,74 @@ describe("calculatePeriodTuitions", () => {
     );
   });
 
+  it("does not bill a full-period class outside the period", () => {
+    assert.deepEqual(
+      calculatePeriodTuitions(
+        [
+          row({
+            classStartDate: "2026-07-01",
+            prorateTuition: false,
+          }),
+        ],
+        tiers,
+        "2026-06-01",
+        "2026-06-30",
+      ),
+      [],
+    );
+  });
+
+  it("does not bill non-overlapping class and enrollment ranges", () => {
+    assert.deepEqual(
+      calculatePeriodTuitions(
+        [
+          row({
+            enrollmentStartDate: "2026-06-01",
+            enrollmentEndDate: "2026-06-10",
+            classStartDate: "2026-06-11",
+            prorateTuition: false,
+          }),
+        ],
+        tiers,
+        "2026-06-01",
+        "2026-06-30",
+      ),
+      [],
+    );
+  });
+
+  it("combines full-period and prorated enrollments by actual segments", () => {
+    const result = calculatePeriodTuitions(
+      [
+        row({
+          classStartDate: "2026-06-16",
+          enrollmentStartDate: "2026-06-16",
+          prorateTuition: false,
+        }),
+        row({
+          enrollmentStartDate: "2026-06-16",
+          startTime: "17:00",
+          endTime: "18:00",
+        }),
+      ],
+      tiers,
+      "2026-06-01",
+      "2026-06-30",
+    )[0];
+
+    assert.equal(result.totalTuitionCents, 14000);
+    assert.deepEqual(
+      result.segments.map(({ days, weeklyMinutes }) => ({
+        days,
+        weeklyMinutes,
+      })),
+      [
+        { days: 15, weeklyMinutes: 60 },
+        { days: 15, weeklyMinutes: 120 },
+      ],
+    );
+  });
+
   it("surfaces invalid enrollment rows instead of silently omitting them", () => {
     const result = calculatePeriodTuitionsWithExclusions(
       [
@@ -216,6 +334,7 @@ describe("calculatePeriodTuitions", () => {
           classTitle: "Technique",
           enrollmentStatus: "dropped",
           enrollmentEndDate: undefined,
+          prorateTuition: false,
         }),
         row({
           enrollmentId: "enrollment-2",

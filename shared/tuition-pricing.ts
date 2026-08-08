@@ -95,6 +95,15 @@ export function formatWeeklyHours(minutes?: number) {
   return Number((minutes / 60).toFixed(4)).toString();
 }
 
+export function formatTuitionTierMaximum(
+  maxWeeklyMinutes: number | undefined,
+  isFinalTier: boolean,
+) {
+  if (maxWeeklyMinutes === undefined) return "Unlimited";
+  const hours = formatWeeklyHours(maxWeeklyMinutes);
+  return isFinalTier ? `${hours}+` : hours;
+}
+
 export function formatCurrencyFromCents(cents: number) {
   return (cents / 100).toFixed(2);
 }
@@ -262,12 +271,14 @@ export function matchTuitionTier(
   weeklyMinutes: number,
 ) {
   if (weeklyMinutes <= 0) return undefined;
-  return tiers
+  const sortedTiers = tiers
     .slice()
-    .sort((left, right) => left.sortOrder - right.sortOrder)
-    .find(
+    .sort((left, right) => left.sortOrder - right.sortOrder);
+  return (
+    sortedTiers.find(
       (tier) =>
         tier.maxWeeklyMinutes === undefined ||
         weeklyMinutes <= tier.maxWeeklyMinutes,
-    );
+    ) ?? sortedTiers.at(-1)
+  );
 }

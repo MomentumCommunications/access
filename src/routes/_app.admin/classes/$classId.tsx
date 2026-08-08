@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { resolvedClassEnrollmentOpen } from "../../../../shared/class-enrollment-selection";
 import { resolvedClassEnrollmentMode } from "../../../../shared/per-session-signup";
 import { DataTable } from "~/components/data-table";
+import { EnrollmentTuitionTreatmentSelect } from "~/components/enrollment-tuition-treatment-select";
 import { RoleGate } from "~/components/role-gate";
 import {
   AlertDialog,
@@ -146,8 +147,7 @@ function AdminClassDetailPage() {
   const [isAddingSession, setIsAddingSession] = useState(false);
   const [enrollmentStatusFilter, setEnrollmentStatusFilter] =
     useState<EnrollmentStatusFilter>("enrolled");
-  const [selectedTab, setSelectedTab] =
-    useState<ClassTabValue>("enrollments");
+  const [selectedTab, setSelectedTab] = useState<ClassTabValue>("enrollments");
   const classMode = resolvedClassEnrollmentMode(
     classData?.classItem.enrollmentMode,
   );
@@ -292,8 +292,13 @@ function AdminClassDetailPage() {
     {
       id: "proration",
       header: "Tuition",
-      cell: ({ row }) =>
-        row.original.prorateTuition === false ? "Full period" : "Prorated",
+      cell: ({ row }) => (
+        <EnrollmentTuitionTreatmentSelect
+          enrollment={row.original._id}
+          status={row.original.status}
+          prorateTuition={row.original.prorateTuition}
+        />
+      ),
     },
     {
       id: "requestedBy",
@@ -540,8 +545,7 @@ function AdminClassDetailPage() {
                   }
                   {classData.classItem.capacity
                     ? ` / ${classData.classItem.capacity}`
-                    : ""}{" "}
-                  enrolled
+                    : ""}
                 </div>
               </div>
               <div className="space-y-1">
@@ -579,9 +583,7 @@ function AdminClassDetailPage() {
 
           <Tabs
             value={selectedTab}
-            onValueChange={(value) =>
-              setSelectedTab(value as ClassTabValue)
-            }
+            onValueChange={(value) => setSelectedTab(value as ClassTabValue)}
             className="min-w-0 gap-2"
           >
             <Separator />
@@ -733,10 +735,7 @@ function AdminClassDetailPage() {
               )}
             </TabsContent>
             {selectedTab === "trials" ? (
-              <TabsContent
-                value="trials"
-                className="min-w-0 space-y-4 pt-4"
-              >
+              <TabsContent value="trials" className="min-w-0 space-y-4 pt-4">
                 <ClassTrialsTab classId={classData.classItem._id} />
               </TabsContent>
             ) : null}
@@ -1150,8 +1149,7 @@ function AdminClassDetailPage() {
 
 function ClassTrialsTab({ classId }: { classId: Id<"classes"> }) {
   const trials = useConvexQuery(api.trials.adminListForClass, { classId });
-  const [statusFilter, setStatusFilter] =
-    useState<TrialStatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<TrialStatusFilter>("all");
   const filteredTrials = useMemo(() => {
     if (!trials || statusFilter === "all") return trials || [];
     return trials.filter((row) => row.request.status === statusFilter);
@@ -1189,9 +1187,7 @@ function ClassTrialsTab({ classId }: { classId: Id<"classes"> }) {
       cell: ({ row }) => (
         <Badge
           variant={
-            row.original.request.status === "approved"
-              ? "default"
-              : "secondary"
+            row.original.request.status === "approved" ? "default" : "secondary"
           }
           className="capitalize"
         >
@@ -1210,7 +1206,7 @@ function ClassTrialsTab({ classId }: { classId: Id<"classes"> }) {
         </p>
       </div>
       {trials === undefined ? (
-        <div className="flex min-h-48 items-center justify-center">
+        <div className="min-h-48 flex items-center justify-center">
           <Spinner className="size-5" />
         </div>
       ) : (

@@ -107,7 +107,9 @@ npm install
 npm run dev
 ```
 
-This starts the local app on **http://localhost:3000**.
+This syncs and watches the Convex backend, then starts the local app on
+**http://localhost:3000**. Use `npm run dev:frontend` only when intentionally
+working against an already-synchronized Convex deployment.
 
 ## Environment variables
 
@@ -138,7 +140,8 @@ These are used by Convex actions/functions:
 ## Scripts
 
 ```bash
-npm run dev                  # Start local dev server
+npm run dev                  # Sync Convex and start the local app
+npm run dev:frontend         # Start only the Vite frontend
 npm run build                # Production build
 npm run lint                 # ESLint
 npm test                     # Node built-in test runner

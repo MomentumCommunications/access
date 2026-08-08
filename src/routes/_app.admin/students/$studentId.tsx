@@ -21,6 +21,7 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
+import { EnrollmentTuitionTreatmentSelect } from "~/components/enrollment-tuition-treatment-select";
 import { RoleGate } from "~/components/role-gate";
 import {
   AlertDialog,
@@ -215,8 +216,13 @@ const enrollmentColumns: ColumnDef<EnrollmentRow>[] = [
   {
     id: "proration",
     header: "Tuition",
-    cell: ({ row }) =>
-      row.original.prorateTuition === false ? "Full period" : "Prorated",
+    cell: ({ row }) => (
+      <EnrollmentTuitionTreatmentSelect
+        enrollment={row.original._id}
+        status={row.original.status}
+        prorateTuition={row.original.prorateTuition}
+      />
+    ),
   },
   {
     id: "requestedBy",

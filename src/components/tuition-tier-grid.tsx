@@ -10,6 +10,7 @@ import {
 import {
   applyTuitionTierPaste,
   formatCurrencyFromCents,
+  formatTuitionTierMaximum,
   formatWeeklyHours,
   parseTabularText,
   type NormalizedTuitionTier,
@@ -234,13 +235,14 @@ export function TuitionTierGrid({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tiers.map((tier) => (
+            {tiers.map((tier, index) => (
               <TableRow key={tier.sortOrder}>
                 <TableCell className="font-medium">{tier.label}</TableCell>
                 <TableCell>
-                  {tier.maxWeeklyMinutes === undefined
-                    ? "Unlimited"
-                    : formatWeeklyHours(tier.maxWeeklyMinutes)}
+                  {formatTuitionTierMaximum(
+                    tier.maxWeeklyMinutes,
+                    index === tiers.length - 1,
+                  )}
                 </TableCell>
                 <TableCell>
                   {new Intl.NumberFormat("en-US", {

@@ -4,7 +4,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "vite dev",
+    "dev": "convex dev --start 'vite dev'",
+    "dev:frontend": "vite dev",
     "build": "vite build",
     "lint": "eslint .",
     "test": "node --test --experimental-strip-types tests/*.test.ts",

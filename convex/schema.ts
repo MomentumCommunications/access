@@ -405,6 +405,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("byStatus", ["status"])
+    .index("byClass", ["classId"])
     .index("byRequestedBy", ["requestedBy"])
     .index("byStudent", ["studentId"])
     .index("bySession", ["sessionId"])

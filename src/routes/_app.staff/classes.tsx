@@ -28,18 +28,9 @@ const columns: ColumnDef<Doc<"classes">>[] = [
     ),
   },
   {
-    accessorKey: "status",
-    header: "Status",
-  },
-  {
     accessorKey: "scheduleSummary",
     header: "Schedule",
     cell: ({ row }) => row.original.scheduleSummary || "Not set",
-  },
-  {
-    accessorKey: "location",
-    header: "Location",
-    cell: ({ row }) => row.original.location || "Not set",
   },
 ];
 
@@ -56,7 +47,7 @@ function StaffClassesPage() {
           </p>
         </div>
         {classes === undefined ? (
-          <div className="flex min-h-40 items-center justify-center">
+          <div className="min-h-40 flex items-center justify-center">
             <Spinner className="size-5" />
           </div>
         ) : (

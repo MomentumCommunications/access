@@ -59,6 +59,7 @@ import { hasUserRole } from "~/lib/roles";
 import {
   ArrowUpDown,
   CalendarDays,
+  FlaskConical,
   GraduationCap,
   Pencil,
   Plus,
@@ -76,6 +77,9 @@ type EnrollmentStatus =
   | "dropped"
   | "declined";
 type EnrollmentStatusFilter = EnrollmentStatus | "all";
+type TrialStatus = "pending" | "approved" | "rejected" | "cancelled";
+type TrialStatusFilter = TrialStatus | "all";
+type ClassTabValue = "enrollments" | "sessions" | "trials";
 type BillingTreatment = "" | "prorate" | "full";
 
 function todayValue() {
@@ -87,6 +91,9 @@ type AdminClassData = NonNullable<
 >;
 type EnrollmentRow = AdminClassData["enrollments"][number];
 type SessionSignupRow = AdminClassData["sessionSignups"][number];
+type ClassTrialRow = FunctionReturnType<
+  typeof api.trials.adminListForClass
+>[number];
 
 const classTabTriggerClass =
   "data-[state=active]:border-primary relative h-10 flex-none rounded-none border-x-0 border-b-2 border-t-0 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent";
@@ -139,6 +146,8 @@ function AdminClassDetailPage() {
   const [isAddingSession, setIsAddingSession] = useState(false);
   const [enrollmentStatusFilter, setEnrollmentStatusFilter] =
     useState<EnrollmentStatusFilter>("enrolled");
+  const [selectedTab, setSelectedTab] =
+    useState<ClassTabValue>("enrollments");
   const classMode = resolvedClassEnrollmentMode(
     classData?.classItem.enrollmentMode,
   );
@@ -568,7 +577,13 @@ function AdminClassDetailPage() {
             </div>
           </section>
 
-          <Tabs defaultValue="enrollments" className="min-w-0 gap-2">
+          <Tabs
+            value={selectedTab}
+            onValueChange={(value) =>
+              setSelectedTab(value as ClassTabValue)
+            }
+            className="min-w-0 gap-2"
+          >
             <Separator />
             <TabsList className="text-muted-foreground h-auto w-full justify-start gap-6 overflow-x-auto rounded-none border-b bg-transparent p-0">
               <TabsTrigger value="enrollments" className={classTabTriggerClass}>
@@ -580,6 +595,10 @@ function AdminClassDetailPage() {
               <TabsTrigger value="sessions" className={classTabTriggerClass}>
                 <CalendarDays />
                 Sessions
+              </TabsTrigger>
+              <TabsTrigger value="trials" className={classTabTriggerClass}>
+                <FlaskConical />
+                Trials
               </TabsTrigger>
             </TabsList>
 
@@ -713,6 +732,14 @@ function AdminClassDetailPage() {
                 </div>
               )}
             </TabsContent>
+            {selectedTab === "trials" ? (
+              <TabsContent
+                value="trials"
+                className="min-w-0 space-y-4 pt-4"
+              >
+                <ClassTrialsTab classId={classData.classItem._id} />
+              </TabsContent>
+            ) : null}
           </Tabs>
         </main>
       )}
@@ -1118,5 +1145,104 @@ function AdminClassDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
     </RoleGate>
+  );
+}
+
+function ClassTrialsTab({ classId }: { classId: Id<"classes"> }) {
+  const trials = useConvexQuery(api.trials.adminListForClass, { classId });
+  const [statusFilter, setStatusFilter] =
+    useState<TrialStatusFilter>("all");
+  const filteredTrials = useMemo(() => {
+    if (!trials || statusFilter === "all") return trials || [];
+    return trials.filter((row) => row.request.status === statusFilter);
+  }, [statusFilter, trials]);
+
+  const columns: ColumnDef<ClassTrialRow>[] = [
+    {
+      id: "student",
+      accessorFn: (row) =>
+        row.student.preferredName ||
+        `${row.student.firstName} ${row.student.lastName}`,
+      header: "Student",
+      cell: ({ row }) => (
+        <Button asChild variant="link" className="h-auto p-0">
+          <Link
+            to="/admin/students/$studentId"
+            params={{ studentId: row.original.student._id }}
+          >
+            {row.original.student.preferredName ||
+              `${row.original.student.firstName} ${row.original.student.lastName}`}
+          </Link>
+        </Button>
+      ),
+    },
+    {
+      id: "sessionDate",
+      accessorFn: (row) => row.session.date,
+      header: "Session date",
+      cell: ({ row }) => formatMDYYYY(row.original.session.date),
+    },
+    {
+      id: "status",
+      accessorFn: (row) => row.request.status,
+      header: "Status",
+      cell: ({ row }) => (
+        <Badge
+          variant={
+            row.original.request.status === "approved"
+              ? "default"
+              : "secondary"
+          }
+          className="capitalize"
+        >
+          {row.original.request.status}
+        </Badge>
+      ),
+    },
+  ];
+
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-bold">Trials</h2>
+        <p className="text-muted-foreground">
+          Paid trial requests for this class.
+        </p>
+      </div>
+      {trials === undefined ? (
+        <div className="flex min-h-48 items-center justify-center">
+          <Spinner className="size-5" />
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filteredTrials}
+          filterColumn="student"
+          filterPlaceholder="Filter students..."
+          toolbar={
+            <Select
+              value={statusFilter}
+              onValueChange={(value) =>
+                setStatusFilter(value as TrialStatusFilter)
+              }
+            >
+              <SelectTrigger
+                className="w-40 max-w-full shrink-0"
+                aria-label="Trial status filter"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">No filter</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          }
+        />
+      )}
+    </section>
   );
 }

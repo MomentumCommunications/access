@@ -436,6 +436,33 @@ export const adminList = query({
   },
 });
 
+export const adminListForClass = query({
+  args: { classId: v.id("classes") },
+  handler: async (ctx, { classId }) => {
+    await requireAdmin(ctx);
+    const requests = await ctx.db
+      .query("trialRequests")
+      .withIndex("byClass", (q) => q.eq("classId", classId))
+      .collect();
+    const rows = await Promise.all(
+      requests.map(async (request) => {
+        const [student, session] = await Promise.all([
+          ctx.db.get(request.studentId),
+          ctx.db.get(request.sessionId),
+        ]);
+        return student && session ? { request, student, session } : null;
+      }),
+    );
+    return rows
+      .filter((row) => row !== null)
+      .sort(
+        (a, b) =>
+          b.session.date.localeCompare(a.session.date) ||
+          b.request.createdAt - a.request.createdAt,
+      );
+  },
+});
+
 export const adminGetBillingAccount = query({
   args: { trialRequestId: v.id("trialRequests") },
   handler: async (ctx, { trialRequestId }) => {

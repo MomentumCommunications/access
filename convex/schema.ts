@@ -323,6 +323,7 @@ export default defineSchema({
     ),
     perSessionPriceCents: v.optional(v.number()),
     enrollmentOpen: v.optional(v.boolean()),
+    allowTrials: v.optional(v.boolean()),
     visibleToGroupIds: v.optional(v.array(v.id("groups"))),
   }).index("byStatus", ["status"]),
   sessions: defineTable({

@@ -3806,6 +3806,7 @@ export const adminCreateClass = mutation({
     seasonId: v.optional(v.id("seasons")),
     enrollmentMode: classEnrollmentModeValidator,
     perSessionPriceCents: v.optional(v.number()),
+    allowTrials: v.optional(v.boolean()),
     visibleToGroupIds: v.optional(v.array(v.id("groups"))),
   },
   handler: async (ctx, { seasonId, ...args }) => {
@@ -3857,6 +3858,7 @@ export const adminUpdateClass = mutation({
     seasonId: v.optional(v.id("seasons")),
     enrollmentMode: classEnrollmentModeValidator,
     perSessionPriceCents: v.optional(v.number()),
+    allowTrials: v.optional(v.boolean()),
     visibleToGroupIds: v.optional(v.array(v.id("groups"))),
   },
   handler: async (ctx, { classId, seasonId, ...patch }) => {

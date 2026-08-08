@@ -9,6 +9,7 @@ import { classVisibleToStudentGroup } from "../shared/class-enrollment-policy";
 import { resolvedClassEnrollmentOpen } from "../shared/class-enrollment-selection";
 import { occupiesSessionCapacity } from "../shared/per-session-signup";
 import {
+  classAllowsTrials,
   isEligibleTrialSession,
   isTrialAccountReady,
   trialRequestNextStatus,
@@ -95,6 +96,7 @@ async function validateTrialClassForStudent(
 ) {
   if (
     classItem.status !== "published" ||
+    !classAllowsTrials(classItem.allowTrials) ||
     !resolvedClassEnrollmentOpen(classItem.enrollmentOpen)
   ) {
     throw new Error("This class is not available for trial requests.");

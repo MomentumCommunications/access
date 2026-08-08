@@ -100,6 +100,7 @@ const classFormSchema = z
     visibleToGroupIds: z.array(z.string()),
     enrollmentMode: z.enum(["standard", "per_session"]),
     perSessionPrice: z.string(),
+    allowTrials: z.boolean(),
   })
   .superRefine((values, ctx) => {
     const perSessionPrice = parseCurrencyToCents(values.perSessionPrice);
@@ -226,6 +227,7 @@ const emptyValues: ClassFormValues = {
   visibleToGroupIds: [],
   enrollmentMode: "standard",
   perSessionPrice: "",
+  allowTrials: true,
 };
 
 function valuesFromClass(
@@ -258,6 +260,7 @@ function valuesFromClass(
       classItem.perSessionPriceCents === undefined
         ? ""
         : formatCurrencyFromCents(classItem.perSessionPriceCents),
+    allowTrials: classItem.allowTrials !== false,
   };
 }
 
@@ -322,6 +325,7 @@ export function ClassForm(props: ClassFormProps) {
         values.enrollmentMode === "per_session"
           ? parseCurrencyToCents(values.perSessionPrice)!
           : undefined,
+      allowTrials: values.allowTrials,
     };
 
     try {
@@ -527,6 +531,22 @@ export function ClassForm(props: ClassFormProps) {
             />
           ) : null}
         </div>
+        <Controller
+          name="allowTrials"
+          control={form.control}
+          render={({ field }) => (
+            <Field orientation="horizontal">
+              <Checkbox
+                id={field.name}
+                checked={field.value}
+                onCheckedChange={(checked) => field.onChange(checked === true)}
+              />
+              <FieldLabel htmlFor={field.name} className="font-normal">
+                Allow paid trials
+              </FieldLabel>
+            </Field>
+          )}
+        />
         <Controller
           name="seasonId"
           control={form.control}

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   assertSingleTrialSession,
+  classAllowsTrials,
   isEligibleTrialSession,
   isTrialAccountReady,
   trialRequestNextStatus,
@@ -9,6 +10,12 @@ import {
 } from "../shared/trials.ts";
 
 describe("paid trial request policy", () => {
+  it("allows legacy and enabled classes but excludes disabled classes", () => {
+    assert.equal(classAllowsTrials(undefined), true);
+    assert.equal(classAllowsTrials(true), true);
+    assert.equal(classAllowsTrials(false), false);
+  });
+
   it("blocks pending onboarding but permits complete and legacy accounts", () => {
     assert.equal(isTrialAccountReady("pending"), false);
     assert.equal(isTrialAccountReady("complete"), true);

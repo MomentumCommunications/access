@@ -79,8 +79,47 @@ const activeClassChartConfig = {
   },
 } satisfies ChartConfig;
 
+const tuitionChartConfig = {
+  estimatedTuitionCents: {
+    label: "Estimated tuition",
+    color: "var(--chart-4)",
+  },
+} satisfies ChartConfig;
+
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 0,
+});
+
+const compactCurrencyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
 function AdminReportsPage() {
   const report = useConvexQuery(api.reports.adminEnrollmentDashboard, {});
+  const tuitionEstimate = useConvexQuery(
+    api.billing.adminMonthlyTuitionEstimates,
+    report === undefined
+      ? "skip"
+      : { months: report.months.map((month) => month.month) },
+  );
+  const estimatesByMonth = new Map(
+    tuitionEstimate?.months.map((month) => [month.month, month]) ?? [],
+  );
+  const tuitionChartData =
+    report?.months.map((month) => ({
+      month: month.month,
+      label: month.label,
+      estimatedTuitionCents:
+        estimatesByMonth.get(month.month)?.estimatedTuitionCents ?? 0,
+    })) ?? [];
+  const hasIncompleteTuition = tuitionEstimate?.months.some(
+    (month) => month.hasIncompleteData,
+  );
 
   return (
     <RoleGate allow="admin">
@@ -88,8 +127,8 @@ function AdminReportsPage() {
         <div className="min-w-0">
           <h1 className="text-3xl font-bold">Reports</h1>
           <p className="break-words text-muted-foreground">
-            A first pass at enrollment reporting from current class enrollment
-            records.
+            Enrollment activity and estimated recurring tuition from current
+            studio records.
           </p>
         </div>
 
@@ -99,6 +138,91 @@ function AdminReportsPage() {
           </div>
         ) : (
           <>
+            <section className="w-full min-w-0 max-w-full space-y-3">
+              <div className="min-w-0">
+                <h2 className="text-xl font-semibold">
+                  Estimated monthly tuition
+                </h2>
+                <p className="break-words text-sm text-muted-foreground">
+                  Best estimate from enrollment records using the currently
+                  active pricing schema, sibling discounts, and adjustments
+                  saved for each month. Amounts may differ from invoices or
+                  payments actually collected.
+                </p>
+                {hasIncompleteTuition ? (
+                  <p className="mt-1 break-words text-sm text-destructive">
+                    Some months exclude enrollment records with incomplete
+                    pricing or invalid billing dates.
+                  </p>
+                ) : null}
+              </div>
+              {tuitionEstimate === undefined ? (
+                <div className="flex h-[340px] items-center justify-center">
+                  <Spinner className="size-5" />
+                </div>
+              ) : tuitionEstimate.pricingSchema === null ? (
+                <div className="flex h-[240px] items-center justify-center rounded-lg border border-dashed px-4 text-center text-sm text-muted-foreground">
+                  Activate a tuition pricing schema to calculate monthly
+                  estimates.
+                </div>
+              ) : (
+                <div className="w-full min-w-0 max-w-full overflow-x-auto">
+                  <ChartContainer
+                    config={tuitionChartConfig}
+                    className="h-[340px] w-full min-w-[38rem] lg:min-w-0"
+                  >
+                    <BarChart
+                      accessibilityLayer
+                      data={tuitionChartData}
+                      margin={{ left: 12, right: 16, top: 12, bottom: 8 }}
+                    >
+                      <CartesianGrid vertical={false} />
+                      <XAxis
+                        dataKey="label"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        width={64}
+                        tickFormatter={(value) =>
+                          compactCurrencyFormatter.format(Number(value) / 100)
+                        }
+                      />
+                      <ChartTooltip
+                        content={
+                          <ChartTooltipContent
+                            formatter={(value) => (
+                              <div className="flex min-w-40 items-center justify-between gap-4">
+                                <span className="text-muted-foreground">
+                                  Estimated tuition
+                                </span>
+                                <span className="font-mono font-medium tabular-nums text-foreground">
+                                  {currencyFormatter.format(
+                                    Number(value) / 100,
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                          />
+                        }
+                      />
+                      <Bar
+                        dataKey="estimatedTuitionCents"
+                        fill="var(--color-estimatedTuitionCents)"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ChartContainer>
+                </div>
+              )}
+            </section>
+
+            <Separator />
+
             <section className="w-full min-w-0 max-w-full space-y-3">
               <div className="min-w-0">
                 <h2 className="text-xl font-semibold">

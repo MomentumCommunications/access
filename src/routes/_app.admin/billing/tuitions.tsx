@@ -1,7 +1,4 @@
-import {
-  useConvexMutation,
-  useConvexQuery,
-} from "@convex-dev/react-query";
+import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { FunctionReturnType } from "convex/server";
@@ -201,9 +198,7 @@ function HouseholdTuitionCard({
                 <TableCell>{formatWeeklyHourRange(student)}</TableCell>
                 <TableCell>{tierLabels(student)}</TableCell>
                 <TableCell>
-                  <Badge
-                    variant={student.isProrated ? "secondary" : "outline"}
-                  >
+                  <Badge variant={student.isProrated ? "secondary" : "outline"}>
                     {student.isProrated ? "Prorated" : "Full period"}
                   </Badge>
                 </TableCell>
@@ -217,19 +212,17 @@ function HouseholdTuitionCard({
                       <span className="font-medium">
                         {formatCurrency(student.baseTuitionCents)}
                       </span>
-                      {student.studentBillingAdjustments.map(
-                        (adjustment) => (
-                          <div
-                            key={adjustment.id}
-                            className="text-xs text-muted-foreground"
-                          >
-                            {reasonLabels[adjustment.reasonCode]}:{" "}
-                            {adjustment.applicable
-                              ? formatCurrency(adjustment.amountCents)
-                              : "No applicable subtotal"}
-                          </div>
-                        ),
-                      )}
+                      {student.studentBillingAdjustments.map((adjustment) => (
+                        <div
+                          key={adjustment.id}
+                          className="text-xs text-muted-foreground"
+                        >
+                          {reasonLabels[adjustment.reasonCode]}:{" "}
+                          {adjustment.applicable
+                            ? formatCurrency(adjustment.amountCents)
+                            : "No applicable subtotal"}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </TableCell>
@@ -257,9 +250,7 @@ function HouseholdTuitionCard({
           <div className="min-w-56 space-y-2 text-right">
             <div className="flex justify-between gap-6 text-sm">
               <span className="text-muted-foreground">Base subtotal</span>
-              <span>
-                {formatCurrency(household.subtotalBaseTuitionCents)}
-              </span>
+              <span>{formatCurrency(household.subtotalBaseTuitionCents)}</span>
             </div>
             {household.adjustments.map((adjustment, index) => (
               <div
@@ -273,13 +264,9 @@ function HouseholdTuitionCard({
               </div>
             ))}
             <div className="flex justify-between gap-6 border-t pt-2 text-sm font-medium">
-              <span className="text-muted-foreground">
-                After pricing rules
-              </span>
+              <span className="text-muted-foreground">After pricing rules</span>
               <span>
-                {formatCurrency(
-                  household.totalBeforeManualAdjustmentsCents,
-                )}
+                {formatCurrency(household.totalBeforeManualAdjustmentsCents)}
               </span>
             </div>
             {household.billingAdjustments
@@ -469,7 +456,12 @@ function BillingAdjustmentManager({
               Access-side changes for this household and billing period.
             </p>
           </div>
-          <Button type="button" size="sm" variant="outline" onClick={openCreate}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={openCreate}
+          >
             <Plus />
             Add adjustment
           </Button>
@@ -492,24 +484,18 @@ function BillingAdjustmentManager({
                     </span>
                     <Badge
                       variant={
-                        adjustment.status === "active"
-                          ? "secondary"
-                          : "outline"
+                        adjustment.status === "active" ? "secondary" : "outline"
                       }
                     >
                       {adjustment.status}
                     </Badge>
                   </div>
                   <p className="text-muted-foreground">
-                    {adjustment.kind === "discount"
-                      ? "Discount"
-                      : "Surcharge"}{" "}
+                    {adjustment.kind === "discount" ? "Discount" : "Surcharge"}{" "}
                     ·{" "}
                     {adjustment.calculationType === "fixed_cents"
                       ? formatCurrency(adjustment.amount)
-                      : `${formatPercentFromBasisPoints(
-                          adjustment.amount,
-                        )}%`}
+                      : `${formatPercentFromBasisPoints(adjustment.amount)}%`}
                     {adjustment.status === "active" &&
                     adjustment.appliedAmountCents !== undefined
                       ? ` · ${formatCurrency(
@@ -563,9 +549,9 @@ function BillingAdjustmentManager({
               {editing ? "Edit adjustment" : "Add adjustment"}
             </DialogTitle>
             <DialogDescription>
-              Applies only to {household.householdName} for {periodStart} through{" "}
-              {periodEnd}. Percentage adjustments use the subtotal after sibling
-              discounts.
+              Applies only to {household.householdName} for {periodStart}{" "}
+              through {periodEnd}. Percentage adjustments use the subtotal after
+              sibling discounts.
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleSave}>
@@ -603,9 +589,8 @@ function BillingAdjustmentManager({
                   onChange={(event) =>
                     setForm((current) => ({
                       ...current,
-                      calculationType:
-                        event.target
-                          .value as AdjustmentFormState["calculationType"],
+                      calculationType: event.target
+                        .value as AdjustmentFormState["calculationType"],
                       amount: "",
                     }))
                   }
@@ -618,9 +603,7 @@ function BillingAdjustmentManager({
             </div>
             <div className="space-y-2">
               <Label htmlFor={`adjustment-amount-${household.householdId}`}>
-                {form.calculationType === "fixed_cents"
-                  ? "Amount"
-                  : "Percent"}
+                {form.calculationType === "fixed_cents" ? "Amount" : "Percent"}
               </Label>
               <div className="relative">
                 <Input
@@ -658,9 +641,8 @@ function BillingAdjustmentManager({
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
-                    reasonCode:
-                      event.target
-                        .value as AdjustmentFormState["reasonCode"],
+                    reasonCode: event.target
+                      .value as AdjustmentFormState["reasonCode"],
                   }))
                 }
                 className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
@@ -753,12 +735,19 @@ function TuitionsAdminPage() {
   const defaults = periodDefaults();
   const [periodStart, setPeriodStart] = useState(defaults.start);
   const [periodEnd, setPeriodEnd] = useState(defaults.end);
-  const validPeriod =
-    !!periodStart && !!periodEnd && periodEnd >= periodStart;
+  const validPeriod = !!periodStart && !!periodEnd && periodEnd >= periodStart;
   const review = useConvexQuery(
     api.billing.adminPeriodTuitionReview,
     validPeriod ? { periodStart, periodEnd } : "skip",
   );
+  const reviewedTotalCents =
+    review?.households.reduce(
+      (total, household) => total + household.totalTuitionCents,
+      0,
+    ) ?? 0;
+  const hasIncompleteReviewedTotal =
+    (review?.excludedEnrollments.length ?? 0) > 0 ||
+    review?.households.some((household) => household.hasIncompleteTuition);
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 lg:p-8">
@@ -770,21 +759,48 @@ function TuitionsAdminPage() {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-end gap-2 rounded-lg border p-4">
-        <BillingDateRangePicker
-          id="tuition-period"
-          start={periodStart}
-          end={periodEnd}
-          onChange={(start, end) => {
-            setPeriodStart(start);
-            setPeriodEnd(end);
-          }}
-        />
-        {!validPeriod ? (
-          <p className="text-sm text-destructive">
-            End date must be on or after start date.
-          </p>
-        ) : null}
+      <div className="flex flex-col gap-4 rounded-lg border p-4 sm:align-middle sm:space-x-4 sm:flex-row sm:justify-between">
+        <div className="min-w-0">
+          <BillingDateRangePicker
+            id="tuition-period"
+            start={periodStart}
+            end={periodEnd}
+            onChange={(start, end) => {
+              setPeriodStart(start);
+              setPeriodEnd(end);
+            }}
+          />
+          {!validPeriod ? (
+            <p className="mt-2 text-sm text-destructive">
+              End date must be on or after start date.
+            </p>
+          ) : null}
+        </div>
+        <div className="min-w-0 border-t pt-4 sm:ml-auto sm:min-w-56 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0 sm:text-right">
+          <div className="text-sm font-medium text-muted-foreground">
+            Total reviewed tuition
+          </div>
+          <div className="mt-1 flex min-h-9 items-center text-3xl font-semibold tabular-nums sm:justify-end">
+            {!validPeriod || review?.pricingSchema === null ? (
+              <span className="text-muted-foreground">Not available</span>
+            ) : review === undefined ? (
+              <Spinner className="size-5" />
+            ) : (
+              formatCurrency(reviewedTotalCents)
+            )}
+          </div>
+          {review?.pricingSchema && review.households.length > 0 ? (
+            <div className="mt-1 text-xs text-muted-foreground">
+              Across {review.households.length}{" "}
+              {review.households.length === 1 ? "household" : "households"}
+            </div>
+          ) : null}
+          {hasIncompleteReviewedTotal ? (
+            <div className="mt-1 text-xs text-destructive">
+              Total excludes records that could not be priced
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {review === undefined ? (

@@ -162,6 +162,117 @@ function formatEventType(eventType: string) {
     .join(" ");
 }
 
+function EnrollmentStatusSelect({ enrollment }: { enrollment: EnrollmentRow }) {
+  const updateEnrollment = useConvexMutation(
+    api.classes.adminUpdateEnrollmentStatus,
+  );
+  const [activationOpen, setActivationOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function saveStatus(
+    status: EnrollmentStatus,
+    prorateTuition?: boolean,
+  ) {
+    setSaving(true);
+    try {
+      await updateEnrollment({
+        enrollment: enrollment._id,
+        status,
+        endDate:
+          status === "dropped"
+            ? todayValue()
+            : status === "enrolled"
+              ? null
+              : undefined,
+        prorateTuition,
+      });
+      setActivationOpen(false);
+      toast.success("Enrollment status updated.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to update enrollment status.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <Select
+        value={enrollment.status}
+        disabled={saving}
+        onValueChange={(value) => {
+          const nextStatus = value as EnrollmentStatus;
+          if (
+            nextStatus === "enrolled" &&
+            enrollment.status !== "enrolled"
+          ) {
+            setActivationOpen(true);
+            return;
+          }
+          void saveStatus(nextStatus);
+        }}
+      >
+        <SelectTrigger
+          className="w-36"
+          aria-label={`Enrollment status for ${enrollment.classItem?.title || "class"}`}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="pending">Pending</SelectItem>
+          <SelectItem value="enrolled">Enrolled</SelectItem>
+          <SelectItem value="waitlisted">Waitlisted</SelectItem>
+          <SelectItem value="dropped">Dropped</SelectItem>
+          <SelectItem value="declined">Declined</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <AlertDialog
+        open={activationOpen}
+        onOpenChange={(open) => {
+          if (!saving) setActivationOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>How should tuition be charged?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Choose whether this enrollment should be prorated when its dates
+              cover only part of a billing period.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="outline"
+              disabled={saving}
+              onClick={(event) => {
+                event.preventDefault();
+                void saveStatus("enrolled", false);
+              }}
+            >
+              Charge full period
+            </AlertDialogAction>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(event) => {
+                event.preventDefault();
+                void saveStatus("enrolled", true);
+              }}
+            >
+              Prorate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 const enrollmentColumns: ColumnDef<EnrollmentRow>[] = [
   {
     accessorFn: (row) => row.classItem?.title || "",
@@ -201,7 +312,7 @@ const enrollmentColumns: ColumnDef<EnrollmentRow>[] = [
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ row }) => <Badge variant="outline">{row.original.status}</Badge>,
+    cell: ({ row }) => <EnrollmentStatusSelect enrollment={row.original} />,
   },
   {
     accessorKey: "startDate",

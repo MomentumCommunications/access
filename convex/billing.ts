@@ -524,6 +524,7 @@ async function getPeriodTuitionReview(
   ctx: BillingCtx,
   periodStart: string,
   periodEnd: string,
+  context?: PeriodTuitionReviewContext,
 ) {
   validateIsoDate(periodStart, "periodStart");
   validateIsoDate(periodEnd, "periodEnd");
@@ -531,107 +532,128 @@ async function getPeriodTuitionReview(
     throw new Error("periodEnd must be on or after periodStart.");
   }
 
-  const inputs = await getWeeklyClassHoursInputs(ctx);
-    const exclusions = collectBillingEnrollmentExclusions(inputs);
-    const excludedEnrollments = await Promise.all(
-      exclusions.map(async (exclusion) => {
-        const student = await ctx.db.get(exclusion.studentId as Id<"students">);
-        return {
-          ...exclusion,
-          studentName: student
-            ? `${student.firstName} ${student.lastName}`
-            : "Missing student",
-        };
-      }),
-    );
-    const activeSchema = await ctx.db
-      .query("pricingSchemas")
-      .withIndex("byStatus", (q) => q.eq("status", "active"))
-      .first();
-    if (!activeSchema) {
+  const inputs = context?.inputs ?? (await getWeeklyClassHoursInputs(ctx));
+  const exclusions = collectBillingEnrollmentExclusions(inputs);
+  const excludedEnrollments = await Promise.all(
+    exclusions.map(async (exclusion) => {
+      const student = context
+        ? context.studentsById.get(exclusion.studentId)
+        : await ctx.db.get(exclusion.studentId as Id<"students">);
       return {
-        pricingSchema: null,
-        rows: [],
-        households: [],
-        excludedEnrollments,
+        ...exclusion,
+        studentName: student
+          ? `${student.firstName} ${student.lastName}`
+          : "Missing student",
       };
-    }
-    const storedTiers = await getPricingSchemaTiers(ctx, activeSchema._id);
-    const calculationResult = calculatePeriodTuitionsWithExclusions(
-      inputs,
-      normalizedStoredTiers(storedTiers),
-      periodStart,
-      periodEnd,
-    );
-    const calculations = calculationResult.tuitions;
+    }),
+  );
+  const activeSchema = context
+    ? context.activeSchema
+    : await ctx.db
+        .query("pricingSchemas")
+        .withIndex("byStatus", (q) => q.eq("status", "active"))
+        .first();
+  if (!activeSchema) {
+    return {
+      pricingSchema: null,
+      rows: [],
+      households: [],
+      excludedEnrollments,
+    };
+  }
+  const tiers = context
+    ? context.tiers
+    : normalizedStoredTiers(
+        await getPricingSchemaTiers(ctx, activeSchema._id),
+      );
+  const calculationResult = calculatePeriodTuitionsWithExclusions(
+    inputs,
+    tiers,
+    periodStart,
+    periodEnd,
+  );
+  const calculations = calculationResult.tuitions;
 
-    const householdData = await getHouseholdResolutionData(ctx);
-    const rows = await Promise.all(
-      calculations.map(async (calculation) => {
-        const student = await ctx.db.get(
-          calculation.studentId as Id<"students">,
-        );
-        if (!student) return null;
-        const pricedDays = calculation.segments
-          .filter((segment) => segment.monthlyAmountCents !== undefined)
-          .reduce((days, segment) => days + segment.days, 0);
-        const pricedAmounts = new Set(
-          calculation.segments.flatMap((segment) =>
-            segment.monthlyAmountCents === undefined
-              ? []
-              : [segment.monthlyAmountCents],
-          ),
-        );
+  const householdData =
+    context?.householdData ?? (await getHouseholdResolutionData(ctx));
+  const rows = await Promise.all(
+    calculations.map(async (calculation) => {
+      const student = context
+        ? context.studentsById.get(calculation.studentId)
+        : await ctx.db.get(calculation.studentId as Id<"students">);
+      if (!student) return null;
+      const pricedDays = calculation.segments
+        .filter((segment) => segment.monthlyAmountCents !== undefined)
+        .reduce((days, segment) => days + segment.days, 0);
+      const pricedAmounts = new Set(
+        calculation.segments.flatMap((segment) =>
+          segment.monthlyAmountCents === undefined
+            ? []
+            : [segment.monthlyAmountCents],
+        ),
+      );
 
-        const household = resolveStudentHousehold(student._id, householdData);
+      const household = resolveStudentHousehold(student._id, householdData);
 
-        return {
-          ...calculation,
-          student,
-          studentId: student._id,
-          studentName: `${student.firstName} ${student.lastName}`,
-          ...household,
-          baseTuitionCents: calculation.totalTuitionCents,
-          pricingSource: `${activeSchema.name} v${activeSchema.version}`,
-          isProrated:
-            pricedDays < calculation.periodDays || pricedAmounts.size > 1,
-        };
-      }),
-    );
-    const recurringAdjustments = await getRecurringStudentAdjustments(
-      ctx,
-      periodStart,
-      periodEnd,
-    );
-    const tuitionRows = rows
-      .filter((row) => row !== null)
-      .map((row) => {
-        const rawBaseTuitionCents = row.baseTuitionCents;
-        const applied = applyTargetedBillingAdjustments(
-          rawBaseTuitionCents || 0,
-          selectBillingAdjustments(
-            recurringAdjustments.map(billingAdjustmentLike),
-            "student_tuition",
-            row.studentId,
+      return {
+        ...calculation,
+        student,
+        studentId: student._id,
+        studentName: `${student.firstName} ${student.lastName}`,
+        ...household,
+        baseTuitionCents: calculation.totalTuitionCents,
+        pricingSource: `${activeSchema.name} v${activeSchema.version}`,
+        isProrated:
+          pricedDays < calculation.periodDays || pricedAmounts.size > 1,
+      };
+    }),
+  );
+  const recurringAdjustments = context
+    ? context.billingAdjustments.filter(
+        (adjustment) =>
+          isRecurringStudentAdjustment(adjustment.scopeType) &&
+          billingPeriodsOverlap(
+            adjustment.periodStart,
+            adjustment.periodEnd,
             periodStart,
             periodEnd,
           ),
-        );
-        return {
-          ...row,
-          rawBaseTuitionCents,
-          baseTuitionCents:
-            rawBaseTuitionCents === undefined
-              ? undefined
-              : applied.totalCents,
-          studentBillingAdjustments: applied.adjustments,
-        };
-      });
-    const householdTuitions = aggregateHouseholdTuitions(
-      tuitionRows,
-      activeSchema.siblingDiscount || disabledSiblingDiscount,
-    );
-    const storedAdjustments = await ctx.db
+      )
+    : await getRecurringStudentAdjustments(ctx, periodStart, periodEnd);
+  const tuitionRows = rows
+    .filter((row) => row !== null)
+    .map((row) => {
+      const rawBaseTuitionCents = row.baseTuitionCents;
+      const applied = applyTargetedBillingAdjustments(
+        rawBaseTuitionCents || 0,
+        selectBillingAdjustments(
+          recurringAdjustments.map(billingAdjustmentLike),
+          "student_tuition",
+          row.studentId,
+          periodStart,
+          periodEnd,
+        ),
+      );
+      return {
+        ...row,
+        rawBaseTuitionCents,
+        baseTuitionCents:
+          rawBaseTuitionCents === undefined ? undefined : applied.totalCents,
+        studentBillingAdjustments: applied.adjustments,
+      };
+    });
+  const householdTuitions = aggregateHouseholdTuitions(
+    tuitionRows,
+    activeSchema.siblingDiscount || disabledSiblingDiscount,
+  );
+  const storedAdjustments = context
+    ? context.billingAdjustments.filter(
+        (adjustment) =>
+          adjustment.periodStart === periodStart &&
+          adjustment.periodEnd === periodEnd &&
+          adjustment.scopeType === "household_tuition",
+      )
+    : await ctx.db
       .query("billingAdjustments")
       .withIndex("byPeriodScope", (q) =>
         q
@@ -640,51 +662,51 @@ async function getPeriodTuitionReview(
           .eq("scopeType", "household_tuition"),
       )
       .collect();
-    const adjustmentsByScope = new Map<string, typeof storedAdjustments>();
-    for (const adjustment of storedAdjustments) {
-      const rowsForScope = adjustmentsByScope.get(adjustment.scopeId) || [];
-      rowsForScope.push(adjustment);
-      adjustmentsByScope.set(adjustment.scopeId, rowsForScope);
-    }
-    const households = householdTuitions.map((household) => {
-      const billingAdjustments = (
-        adjustmentsByScope.get(household.householdId) || []
-      ).sort(
-        (left, right) =>
-          left.createdAt - right.createdAt || left._id.localeCompare(right._id),
-      );
-      const applied = applyBillingAdjustments(
-        household.totalTuitionCents,
-        billingAdjustments.map((adjustment) => ({
-          id: adjustment._id,
-          scopeType: adjustment.scopeType,
-          scopeId: adjustment.scopeId,
-          periodStart: adjustment.periodStart,
-          periodEnd: adjustment.periodEnd,
-          kind: adjustment.kind,
-          calculationType: adjustment.calculationType,
-          amount: adjustment.amount,
-          reasonCode: adjustment.reasonCode,
-          note: adjustment.note,
-          status: adjustment.status,
-          createdAt: adjustment.createdAt,
-        })),
-      );
-      const appliedById = new Map(
-        applied.adjustments.map((adjustment) => [adjustment.id, adjustment]),
-      );
-      return {
-        ...household,
-        totalBeforeManualAdjustmentsCents: household.totalTuitionCents,
-        billingAdjustments: billingAdjustments.map((adjustment) => ({
-          ...adjustment,
-          appliedAmountCents: appliedById.get(adjustment._id)?.amountCents,
-          percentageBaseCents: appliedById.get(adjustment._id)
-            ?.percentageBaseCents,
-        })),
-        totalTuitionCents: applied.totalCents,
-      };
-    });
+  const adjustmentsByScope = new Map<string, typeof storedAdjustments>();
+  for (const adjustment of storedAdjustments) {
+    const rowsForScope = adjustmentsByScope.get(adjustment.scopeId) || [];
+    rowsForScope.push(adjustment);
+    adjustmentsByScope.set(adjustment.scopeId, rowsForScope);
+  }
+  const households = householdTuitions.map((household) => {
+    const billingAdjustments = (
+      adjustmentsByScope.get(household.householdId) || []
+    ).sort(
+      (left, right) =>
+        left.createdAt - right.createdAt || left._id.localeCompare(right._id),
+    );
+    const applied = applyBillingAdjustments(
+      household.totalTuitionCents,
+      billingAdjustments.map((adjustment) => ({
+        id: adjustment._id,
+        scopeType: adjustment.scopeType,
+        scopeId: adjustment.scopeId,
+        periodStart: adjustment.periodStart,
+        periodEnd: adjustment.periodEnd,
+        kind: adjustment.kind,
+        calculationType: adjustment.calculationType,
+        amount: adjustment.amount,
+        reasonCode: adjustment.reasonCode,
+        note: adjustment.note,
+        status: adjustment.status,
+        createdAt: adjustment.createdAt,
+      })),
+    );
+    const appliedById = new Map(
+      applied.adjustments.map((adjustment) => [adjustment.id, adjustment]),
+    );
+    return {
+      ...household,
+      totalBeforeManualAdjustmentsCents: household.totalTuitionCents,
+      billingAdjustments: billingAdjustments.map((adjustment) => ({
+        ...adjustment,
+        appliedAmountCents: appliedById.get(adjustment._id)?.amountCents,
+        percentageBaseCents: appliedById.get(adjustment._id)
+          ?.percentageBaseCents,
+      })),
+      totalTuitionCents: applied.totalCents,
+    };
+  });
 
   return {
     pricingSchema: {
@@ -700,6 +722,52 @@ async function getPeriodTuitionReview(
   };
 }
 
+type PeriodTuitionReviewContext = {
+  inputs: TuitionCalculationInput[];
+  activeSchema: Doc<"pricingSchemas"> | null;
+  tiers: NormalizedTuitionTier[];
+  householdData: Awaited<ReturnType<typeof getHouseholdResolutionData>>;
+  studentsById: Map<string, Doc<"students">>;
+  billingAdjustments: Doc<"billingAdjustments">[];
+};
+
+async function getPeriodTuitionReviewContext(
+  ctx: BillingCtx,
+): Promise<PeriodTuitionReviewContext> {
+  const [
+    inputs,
+    activeSchema,
+    householdData,
+    students,
+    billingAdjustments,
+  ] = await Promise.all([
+    getWeeklyClassHoursInputs(ctx),
+    ctx.db
+      .query("pricingSchemas")
+      .withIndex("byStatus", (q) => q.eq("status", "active"))
+      .first(),
+    getHouseholdResolutionData(ctx),
+    ctx.db.query("students").collect(),
+    ctx.db.query("billingAdjustments").collect(),
+  ]);
+  const tiers = activeSchema
+    ? normalizedStoredTiers(
+        await getPricingSchemaTiers(ctx, activeSchema._id),
+      )
+    : [];
+
+  return {
+    inputs,
+    activeSchema,
+    tiers,
+    householdData,
+    studentsById: new Map(
+      students.map((student) => [student._id, student]),
+    ),
+    billingAdjustments,
+  };
+}
+
 export const adminPeriodTuitionReview = query({
   args: {
     periodStart: v.string(),
@@ -708,6 +776,56 @@ export const adminPeriodTuitionReview = query({
   handler: async (ctx, { periodStart, periodEnd }) => {
     await requireAdmin(ctx);
     return await getPeriodTuitionReview(ctx, periodStart, periodEnd);
+  },
+});
+
+export const adminMonthlyTuitionEstimates = query({
+  args: { months: v.array(v.string()) },
+  handler: async (ctx, { months }) => {
+    await requireAdmin(ctx);
+    if (months.length > 24) {
+      throw new Error("Monthly tuition reports are limited to 24 months.");
+    }
+    if (new Set(months).size !== months.length) {
+      throw new Error("Monthly tuition report months must be unique.");
+    }
+    const periods = months.map((month) => ({
+      month,
+      ...billingMonthPeriod(month),
+    }));
+    const context = await getPeriodTuitionReviewContext(ctx);
+    const estimates = await Promise.all(
+      periods.map(async ({ month, periodStart, periodEnd }) => {
+        const review = await getPeriodTuitionReview(
+          ctx,
+          periodStart,
+          periodEnd,
+          context,
+        );
+        return {
+          month,
+          estimatedTuitionCents: review.households.reduce(
+            (total, household) => total + household.totalTuitionCents,
+            0,
+          ),
+          hasIncompleteData:
+            review.excludedEnrollments.length > 0 ||
+            review.households.some(
+              (household) => household.hasIncompleteTuition,
+            ),
+        };
+      }),
+    );
+
+    return {
+      pricingSchema: context.activeSchema
+        ? {
+            name: context.activeSchema.name,
+            version: context.activeSchema.version,
+          }
+        : null,
+      months: estimates,
+    };
   },
 });
 

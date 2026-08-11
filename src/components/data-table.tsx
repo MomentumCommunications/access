@@ -28,6 +28,20 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
+import { cn } from "~/lib/utils";
+
+function mobileColumnLabel(columnId: string, header: unknown) {
+  if (typeof header === "string") return header;
+
+  const leafId = columnId.split(".").at(-1) || columnId;
+  const label = leafId
+    .replace(/^_+/, "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim();
+
+  return label.replace(/\b\w/g, (character) => character.toUpperCase());
+}
 
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
@@ -133,16 +147,14 @@ export function DataTable<TData, TValue>({
             placeholder={filterPlaceholder}
             value={
               filterValue ??
-              ((table.getColumn(filterColumn)?.getFilterValue() as string) ??
-                "")
+              (table.getColumn(filterColumn)?.getFilterValue() as string) ??
+              ""
             }
             onChange={(event) => {
-              table
-                .getColumn(filterColumn)
-                ?.setFilterValue(event.target.value);
+              table.getColumn(filterColumn)?.setFilterValue(event.target.value);
               onFilterValueChange?.(event.target.value);
             }}
-            className="order-last min-w-0 basis-full sm:order-none sm:max-w-sm sm:flex-1 sm:basis-auto"
+            className="order-last min-w-0 basis-full sm:order-none-0 sm:max-w-sm sm:flex-1 sm:basis-auto"
           />
         ) : null}
         <DropdownMenu>
@@ -170,9 +182,9 @@ export function DataTable<TData, TValue>({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="min-w-0 max-w-full overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
+      <div className="min-w-0 max-w-full overflow-hidden rounded-md border sm:overflow-x-auto">
+        <Table className="block w-full sm:table">
+          <TableHeader className="hidden sm:table-header-group">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
@@ -188,28 +200,54 @@ export function DataTable<TData, TValue>({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody className="block sm:table-row-group">
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              table.getRowModel().rows.map((row) => {
+                const visibleCells = row.getVisibleCells();
+
+                return (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className="grid grid-cols-2 sm:table-row"
+                  >
+                    {visibleCells.map((cell, index) => {
+                      const isPrimaryCell = index === 0;
+
+                      return (
+                        <TableCell
+                          key={cell.id}
+                          className={cn(
+                            "min-w-0 px-3 py-2.5 sm:table-cell sm:p-2",
+                            isPrimaryCell &&
+                              "col-span-2 pt-3 pb-1 text-[15px] sm:py-2 sm:text-sm [&_[data-slot=button]]:text-[15px] sm:[&_[data-slot=button]]:text-sm",
+                          )}
+                        >
+                          {!isPrimaryCell ? (
+                            <span className="mb-1 block text-xs font-medium text-muted-foreground sm:hidden">
+                              {mobileColumnLabel(
+                                cell.column.id,
+                                cell.column.columnDef.header,
+                              )}
+                            </span>
+                          ) : null}
+                          <div className="min-w-0 break-words [&>*]:max-w-full sm:contents">
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
+                          </div>
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                );
+              })
             ) : (
-              <TableRow>
+              <TableRow className="grid grid-cols-2 sm:table-row">
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="col-span-2 flex h-24 items-center justify-center text-center sm:table-cell"
                 >
                   No results.
                 </TableCell>

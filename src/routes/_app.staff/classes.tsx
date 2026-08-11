@@ -15,25 +15,61 @@ export const Route = createFileRoute("/_app/staff/classes")({
   component: StaffClassesPage,
 });
 
-const columns: ColumnDef<Doc<"classes">>[] = [
+type StaffClassRow = {
+  classItem: Doc<"classes">;
+  enrollments: Doc<"classEnrollments">[];
+  sessionSignups: Doc<"classSessionSignups">[];
+};
+
+const columns: ColumnDef<StaffClassRow>[] = [
   {
-    accessorKey: "title",
+    accessorKey: "classItem.title",
+    id: "title",
     header: "Class",
     cell: ({ row }) => (
       <Button asChild variant="link" className="h-auto p-0">
         <Link
           to="/staff/classes/$classId"
-          params={{ classId: row.original._id }}
+          params={{ classId: row.original.classItem._id }}
         >
-          {row.original.title}
+          {row.original.classItem.title}
         </Link>
       </Button>
     ),
   },
   {
-    accessorKey: "scheduleSummary",
+    accessorKey: "classItem.scheduleSummary",
     header: "Schedule",
-    cell: ({ row }) => row.original.scheduleSummary || "Not set",
+    cell: ({ row }) => row.original.classItem.scheduleSummary || "Not set",
+  },
+  {
+    id: "capacity",
+    header: "Capacity",
+    cell: ({ row }) => {
+      const { classItem, enrollments, sessionSignups } = row.original;
+      const activeEnrollments = enrollments.filter(
+        (enrollment) => enrollment.status === "enrolled",
+      );
+      if (classItem.enrollmentMode === "per_session") {
+        const countBySession = new Map<string, number>();
+        for (const signup of sessionSignups) {
+          if (signup.status !== "pending" && signup.status !== "enrolled") {
+            continue;
+          }
+          countBySession.set(
+            signup.session,
+            (countBySession.get(signup.session) || 0) + 1,
+          );
+        }
+        const highestSessionCount = Math.max(0, ...countBySession.values());
+        return classItem.capacity === undefined
+          ? `${highestSessionCount} selected`
+          : `${highestSessionCount}/${classItem.capacity} per session`;
+      }
+      return classItem.capacity === undefined
+        ? `${enrollments.length} enrolled`
+        : `${activeEnrollments.length}/${classItem.capacity}`;
+    },
   },
 ];
 

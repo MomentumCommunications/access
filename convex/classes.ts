@@ -4379,12 +4379,28 @@ export const staffListClasses = query({
   handler: async (ctx, { showAll }) => {
     const user = await requireStaff(ctx);
     const classes = await ctx.db.query("classes").collect();
-    if (showAll) {
-      return classes.sort(compareClassesBySchedule);
-    }
-    return classes
-      .filter((classItem) => classItem.assignedStaff?.includes(user._id))
-      .sort(compareClassesBySchedule);
+    const visibleClasses = showAll
+      ? classes
+      : classes.filter((classItem) =>
+          classItem.assignedStaff?.includes(user._id),
+        );
+    visibleClasses.sort(compareClassesBySchedule);
+
+    return await Promise.all(
+      visibleClasses.map(async (classItem) => {
+        const [enrollments, sessionSignups] = await Promise.all([
+          ctx.db
+            .query("classEnrollments")
+            .withIndex("byClass", (q) => q.eq("classId", classItem._id))
+            .collect(),
+          ctx.db
+            .query("classSessionSignups")
+            .withIndex("byClass", (q) => q.eq("classId", classItem._id))
+            .collect(),
+        ]);
+        return { classItem, enrollments, sessionSignups };
+      }),
+    );
   },
 });
 

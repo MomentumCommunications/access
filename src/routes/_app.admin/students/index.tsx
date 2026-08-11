@@ -57,6 +57,17 @@ const columns: ColumnDef<StudentRow>[] = [
     cell: ({ row }) => row.original.student.preferredName || "-",
   },
   {
+    id: "age",
+    header: "Age",
+    cell: ({ row }) => formatAge(row.original.student.dateOfBirth),
+  },
+  {
+    accessorKey: "student.dateOfBirth",
+    header: "Birthday",
+    cell: ({ row }) =>
+      formatMDYYYY(row.original.student.dateOfBirth) || "Not set",
+  },
+  {
     accessorKey: "student.status",
     header: "Status",
     cell: ({ row }) => {
@@ -67,17 +78,6 @@ const columns: ColumnDef<StudentRow>[] = [
         </Badge>
       );
     },
-  },
-  {
-    id: "age",
-    header: "Age",
-    cell: ({ row }) => formatAge(row.original.student.dateOfBirth),
-  },
-  {
-    accessorKey: "student.dateOfBirth",
-    header: "Birthday",
-    cell: ({ row }) =>
-      formatMDYYYY(row.original.student.dateOfBirth) || "Not set",
   },
   {
     id: "contacts",

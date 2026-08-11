@@ -4375,11 +4375,11 @@ export const adminUpdateEnrollmentTuitionTreatment = mutation({
 });
 
 export const staffListClasses = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { showAll: v.boolean() },
+  handler: async (ctx, { showAll }) => {
     const user = await requireStaff(ctx);
     const classes = await ctx.db.query("classes").collect();
-    if (isAdmin(user)) {
+    if (showAll) {
       return classes.sort(compareClassesBySchedule);
     }
     return classes
@@ -4391,13 +4391,10 @@ export const staffListClasses = query({
 export const staffGetClass = query({
   args: { classId: v.id("classes") },
   handler: async (ctx, { classId }) => {
-    const user = await requireStaff(ctx);
+    await requireStaff(ctx);
     const classItem = await ctx.db.get(classId);
     if (!classItem) {
       return null;
-    }
-    if (!isAdmin(user) && !classItem.assignedStaff?.includes(user._id)) {
-      throw new Error("Unauthorized");
     }
     const visibleGroups = await Promise.all(
       (classItem.visibleToGroupIds || []).map((groupId) => ctx.db.get(groupId)),

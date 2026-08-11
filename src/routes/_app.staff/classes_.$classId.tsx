@@ -35,7 +35,7 @@ import {
   SheetTrigger,
 } from "~/components/ui/sheet";
 import { Spinner } from "~/components/ui/spinner";
-import { formatMDYYYY } from "~/lib/date-utils";
+import { formatAge, formatMDYYYY } from "~/lib/date-utils";
 import { getAccountName } from "~/lib/account-name";
 import { formatPhone } from "~/lib/utils";
 
@@ -200,6 +200,11 @@ function StaffClassDetailPage() {
       cell: ({ row }) => <ContactSheet row={row.original} />,
     },
     {
+      id: "age",
+      header: "Age",
+      cell: ({ row }) => formatAge(row.original.student?.dateOfBirth),
+    },
+    {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => (
@@ -231,7 +236,7 @@ function StaffClassDetailPage() {
             <CardHeader>
               <CardTitle>Class not found</CardTitle>
               <CardDescription>
-                This class may have been removed or is not assigned to you.
+                This class may have been removed.
               </CardDescription>
             </CardHeader>
           </Card>

@@ -736,7 +736,10 @@ function AdminClassDetailPage() {
             </TabsContent>
             {selectedTab === "trials" ? (
               <TabsContent value="trials" className="min-w-0 space-y-4 pt-4">
-                <ClassTrialsTab classId={classData.classItem._id} />
+                <ClassTrialsTab
+                  classId={classData.classItem._id}
+                  allowTrials={classData.classItem.allowTrials !== false}
+                />
               </TabsContent>
             ) : null}
           </Tabs>
@@ -1147,13 +1150,40 @@ function AdminClassDetailPage() {
   );
 }
 
-function ClassTrialsTab({ classId }: { classId: Id<"classes"> }) {
+function ClassTrialsTab({
+  classId,
+  allowTrials,
+}: {
+  classId: Id<"classes">;
+  allowTrials: boolean;
+}) {
   const trials = useConvexQuery(api.trials.adminListForClass, { classId });
+  const setClassAllowTrials = useConvexMutation(
+    api.classes.adminSetClassAllowTrials,
+  );
   const [statusFilter, setStatusFilter] = useState<TrialStatusFilter>("all");
+  const [allowTrialsSaving, setAllowTrialsSaving] = useState(false);
   const filteredTrials = useMemo(() => {
     if (!trials || statusFilter === "all") return trials || [];
     return trials.filter((row) => row.request.status === statusFilter);
   }, [statusFilter, trials]);
+
+  async function handleAllowTrialsChange(nextValue: boolean) {
+    if (allowTrialsSaving) return;
+    setAllowTrialsSaving(true);
+    try {
+      await setClassAllowTrials({ classId, allowTrials: nextValue });
+      toast.success(nextValue ? "Trials enabled." : "Trials disabled.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "The trial setting could not be updated.",
+      );
+    } finally {
+      setAllowTrialsSaving(false);
+    }
+  }
 
   const columns: ColumnDef<ClassTrialRow>[] = [
     {
@@ -1199,11 +1229,35 @@ function ClassTrialsTab({ classId }: { classId: Id<"classes"> }) {
 
   return (
     <section className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold">Trials</h2>
-        <p className="text-muted-foreground">
-          Paid trial requests for this class.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold">Trials</h2>
+          <p className="text-muted-foreground">
+            Paid trial requests for this class.
+          </p>
+        </div>
+        <div className="flex w-full flex-wrap items-center justify-between gap-3 sm:w-auto sm:justify-end">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="class-trials-enabled">Trials enabled</Label>
+            <Switch
+              id="class-trials-enabled"
+              checked={allowTrials}
+              disabled={allowTrialsSaving}
+              onCheckedChange={(value) =>
+                void handleAllowTrialsChange(value)
+              }
+            />
+          </div>
+          <Button asChild>
+            <Link
+              to="/admin/classes/$classId/create-trial"
+              params={{ classId }}
+            >
+              <Plus />
+              Add trial
+            </Link>
+          </Button>
+        </div>
       </div>
       {trials === undefined ? (
         <div className="min-h-48 flex items-center justify-center">

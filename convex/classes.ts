@@ -4139,6 +4139,21 @@ export const adminSetClassEnrollmentOpen = mutation({
   },
 });
 
+export const adminSetClassAllowTrials = mutation({
+  args: {
+    classId: v.id("classes"),
+    allowTrials: v.boolean(),
+  },
+  handler: async (ctx, { classId, allowTrials }) => {
+    await requireAdmin(ctx);
+    const classItem = await ctx.db.get(classId);
+    if (!classItem) {
+      throw new Error("Class not found.");
+    }
+    await ctx.db.patch(classId, { allowTrials });
+  },
+});
+
 export const adminGenerateSessionsForClass = mutation({
   args: { classId: v.id("classes") },
   handler: async (ctx, { classId }) => {

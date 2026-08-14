@@ -6,7 +6,7 @@ import {
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { FunctionReturnType } from "convex/server";
-import { Check, XCircle } from "lucide-react";
+import { Check, Plus, XCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { RoleGate } from "~/components/role-gate";
@@ -141,11 +141,19 @@ function AdminTrialsPage() {
   return (
     <RoleGate allow="admin">
       <main className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4 lg:p-8">
-        <div>
-          <h1 className="text-3xl font-bold">Paid Trial Requests</h1>
-          <p className="text-muted-foreground">
-            Review single-session trial requests and prepare them for billing.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold">Paid Trial Requests</h1>
+            <p className="text-muted-foreground">
+              Review single-session trial requests and prepare them for billing.
+            </p>
+          </div>
+          <Button asChild className="w-full sm:w-auto">
+            <Link to="/admin/classes/trials/create">
+              <Plus />
+              Add trial
+            </Link>
+          </Button>
         </div>
 
         <div className="w-full max-w-56 space-y-1.5">

@@ -51,6 +51,12 @@ function studentName(student: Doc<"students">) {
   );
 }
 
+function accountName(user: Doc<"users">) {
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
+  const email = Array.isArray(user.email) ? user.email[0] : user.email;
+  return fullName || user.name || email || "Unnamed account";
+}
+
 async function managedStudent(
   ctx: TrialCtx,
   userId: Id<"users">,
@@ -157,6 +163,117 @@ async function upcomingSessions(ctx: TrialCtx, classItem: Doc<"classes">) {
         left.date.localeCompare(right.date) ||
         (left.startTime || "").localeCompare(right.startTime || ""),
     );
+}
+
+async function assertTrialRequestAvailable(
+  ctx: TrialCtx,
+  {
+    student,
+    classItem,
+    session,
+  }: {
+    student: Doc<"students">;
+    classItem: Doc<"classes">;
+    session: Doc<"sessions">;
+  },
+) {
+  if (
+    !isEligibleTrialSession({
+      sessionClassId: session.classId,
+      requestedClassId: classItem._id,
+      sessionDate: session.date,
+      today: todayValue(classItem.timezone),
+      active: session.active,
+      status: session.status,
+    })
+  ) {
+    throw new Error("The selected session is unavailable.");
+  }
+  if (await hasActiveTrialForClass(ctx, student._id, classItem._id)) {
+    throw new Error(
+      "This student already has an active trial request for this class.",
+    );
+  }
+  const existingSignup = await ctx.db
+    .query("classSessionSignups")
+    .withIndex("bySessionStudent", (q) =>
+      q.eq("session", session._id).eq("student", student._id),
+    )
+    .unique();
+  if (existingSignup && occupiesSessionCapacity(existingSignup.status)) {
+    throw new Error("This student is already connected to that session.");
+  }
+  const enrollment = await ctx.db
+    .query("classEnrollments")
+    .withIndex("byClassStudent", (q) =>
+      q.eq("classId", classItem._id).eq("student", student._id),
+    )
+    .unique();
+  if (
+    enrollment &&
+    (enrollment.status === "enrolled" || enrollment.status === "pending") &&
+    (!enrollment.startDate || enrollment.startDate <= session.date) &&
+    (!enrollment.endDate || enrollment.endDate >= session.date)
+  ) {
+    throw new Error("This student is already connected to this class.");
+  }
+}
+
+async function createPendingTrialRequest(
+  ctx: MutationCtx,
+  {
+    actorId,
+    requestedBy,
+    householdId,
+    student,
+    classItem,
+    session,
+  }: {
+    actorId: Id<"users">;
+    requestedBy: Id<"users">;
+    householdId: Id<"households">;
+    student: Doc<"students">;
+    classItem: Doc<"classes">;
+    session: Doc<"sessions">;
+  },
+) {
+  const now = Date.now();
+  const trialRequestId = await ctx.db.insert("trialRequests", {
+    requestedBy,
+    householdId,
+    studentId: student._id,
+    classId: classItem._id,
+    sessionId: session._id,
+    status: "pending",
+    createdAt: now,
+    updatedAt: now,
+  });
+  await createAdminNotifications(
+    ctx,
+    pendingTrialNotification({
+      trialRequestId,
+      requestedBy,
+      studentName: studentName(student),
+      className: classItem.title,
+      sessionDate: session.date,
+    }),
+    actorId,
+  );
+  await recordActivityEvent(ctx, {
+    entityType: "trialRequest",
+    entityId: trialRequestId,
+    actorId,
+    eventType: "trial_requested",
+    summary: `${studentName(student)} requested a paid trial for ${classItem.title}.`,
+    metadata: {
+      studentId: student._id,
+      classId: classItem._id,
+      sessionId: session._id,
+      householdId,
+      requestedBy,
+    },
+  });
+  return trialRequestId;
 }
 
 export const listMyStudents = query({
@@ -313,76 +430,180 @@ export const submit = mutation({
       throw new Error("The selected trial is unavailable.");
     }
     await validateTrialClassForStudent(ctx, classItem, student);
-    if (
-      !isEligibleTrialSession({
-        sessionClassId: session.classId,
-        requestedClassId: classId,
-        sessionDate: session.date,
-        today: todayValue(classItem.timezone),
-        active: session.active,
-        status: session.status,
-      })
-    ) {
-      throw new Error("The selected session is unavailable.");
-    }
-    if (await hasActiveTrialForClass(ctx, studentId, classId)) {
-      throw new Error("This student already has an active trial request for this class.");
-    }
-    const existingSignup = await ctx.db
-      .query("classSessionSignups")
-      .withIndex("bySessionStudent", (q) =>
-        q.eq("session", sessionId).eq("student", studentId),
-      )
-      .unique();
-    if (existingSignup && occupiesSessionCapacity(existingSignup.status)) {
-      throw new Error("This student is already connected to that session.");
-    }
-    const enrollment = await ctx.db
-      .query("classEnrollments")
-      .withIndex("byClassStudent", (q) =>
-        q.eq("classId", classId).eq("student", studentId),
-      )
-      .unique();
-    if (
-      enrollment &&
-      (enrollment.status === "enrolled" || enrollment.status === "pending") &&
-      (!enrollment.startDate || enrollment.startDate <= session.date) &&
-      (!enrollment.endDate || enrollment.endDate >= session.date)
-    ) {
-      throw new Error("This student is already connected to this class.");
-    }
+    await assertTrialRequestAvailable(ctx, { student, classItem, session });
     const householdId = await requesterHousehold(ctx, user._id);
-    const now = Date.now();
-    const trialRequestId = await ctx.db.insert("trialRequests", {
+    return await createPendingTrialRequest(ctx, {
+      actorId: user._id,
       requestedBy: user._id,
       householdId,
-      studentId,
-      classId,
-      sessionId,
-      status: "pending",
-      createdAt: now,
-      updatedAt: now,
+      student,
+      classItem,
+      session,
     });
-    await createAdminNotifications(
-      ctx,
-      pendingTrialNotification({
-        trialRequestId,
-        requestedBy: user._id,
-        studentName: studentName(student),
-        className: classItem.title,
-        sessionDate: session.date,
-      }),
-      user._id,
-    );
-    await recordActivityEvent(ctx, {
-      entityType: "trialRequest",
-      entityId: trialRequestId,
-      actorId: user._id,
-      eventType: "trial_requested",
-      summary: `${studentName(student)} requested a paid trial for ${classItem.title}.`,
-      metadata: { studentId, classId, sessionId, householdId },
+  },
+});
+
+export const adminGetCreateOptions = query({
+  args: {
+    classId: v.optional(v.id("classes")),
+    studentId: v.optional(v.id("students")),
+  },
+  handler: async (ctx, { classId, studentId }) => {
+    await requireAdmin(ctx);
+    const [allClasses, allStudents] = await Promise.all([
+      ctx.db.query("classes").collect(),
+      ctx.db.query("students").collect(),
+    ]);
+    const classes = allClasses
+      .filter((classItem) => classAllowsTrials(classItem.allowTrials))
+      .sort((left, right) =>
+        (left.scheduleSummary || left.title).localeCompare(
+          right.scheduleSummary || right.title,
+        ),
+      )
+      .map((classItem) => ({
+        id: classItem._id,
+        title: classItem.title,
+        scheduleSummary: classItem.scheduleSummary,
+      }));
+    const selectedClass = classId ? await ctx.db.get(classId) : null;
+    const sessions =
+      selectedClass && classAllowsTrials(selectedClass.allowTrials)
+        ? (await upcomingSessions(ctx, selectedClass)).map((session) => ({
+            id: session._id,
+            date: session.date,
+            startTime: session.startTime,
+            endTime: session.endTime,
+            location: session.location,
+          }))
+        : [];
+
+    const billingContacts = studentId
+      ? (
+          await Promise.all(
+            (
+              await ctx.db
+                .query("studentContacts")
+                .withIndex("byStudent", (q) => q.eq("student", studentId))
+                .collect()
+            )
+              .filter((contact) => contact.canManage && contact.user)
+              .map(async (contact) => {
+                const userId = contact.user!;
+                const [user, memberships] = await Promise.all([
+                  ctx.db.get(userId),
+                  ctx.db
+                    .query("householdMembers")
+                    .withIndex("byUser", (q) => q.eq("userId", userId))
+                    .collect(),
+                ]);
+                if (!user) return [];
+                const households = await Promise.all(
+                  memberships.map((membership) =>
+                    ctx.db.get(membership.householdId),
+                  ),
+                );
+                return memberships.flatMap((membership, index) => {
+                  const household = households[index];
+                  return household
+                    ? [
+                        {
+                          requestedBy: userId,
+                          householdId: household._id,
+                          label: `${accountName(user)} · ${household.name}`,
+                          isPrimary: contact.isPrimary,
+                        },
+                      ]
+                    : [];
+                });
+              }),
+          )
+        )
+          .flat()
+          .sort(
+            (left, right) =>
+              Number(right.isPrimary) - Number(left.isPrimary) ||
+              left.label.localeCompare(right.label),
+          )
+      : [];
+
+    return {
+      classes,
+      selectedClass: selectedClass
+        ? {
+            id: selectedClass._id,
+            title: selectedClass.title,
+            scheduleSummary: selectedClass.scheduleSummary,
+            allowTrials: classAllowsTrials(selectedClass.allowTrials),
+          }
+        : null,
+      students: allStudents
+        .filter((student) => student.status === "active")
+        .sort((left, right) =>
+          studentName(left).localeCompare(studentName(right)),
+        )
+        .map((student) => ({
+          id: student._id,
+          name: studentName(student),
+          fullName: `${student.firstName} ${student.lastName}`.trim(),
+        })),
+      sessions,
+      billingContacts,
+    };
+  },
+});
+
+export const adminCreate = mutation({
+  args: {
+    studentId: v.id("students"),
+    classId: v.id("classes"),
+    sessionId: v.id("sessions"),
+    requestedBy: v.id("users"),
+    householdId: v.id("households"),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const [student, classItem, session, contact, membership, household] =
+      await Promise.all([
+        ctx.db.get(args.studentId),
+        ctx.db.get(args.classId),
+        ctx.db.get(args.sessionId),
+        ctx.db
+          .query("studentContacts")
+          .withIndex("byStudent", (q) => q.eq("student", args.studentId))
+          .filter((q) => q.eq(q.field("user"), args.requestedBy))
+          .first(),
+        ctx.db
+          .query("householdMembers")
+          .withIndex("byHouseholdUser", (q) =>
+            q
+              .eq("householdId", args.householdId)
+              .eq("userId", args.requestedBy),
+          )
+          .first(),
+        ctx.db.get(args.householdId),
+      ]);
+    if (!student || student.status !== "active") {
+      throw new Error("Active student not found.");
+    }
+    if (!classItem || !classAllowsTrials(classItem.allowTrials)) {
+      throw new Error("The selected class does not allow trials.");
+    }
+    if (!session) throw new Error("The selected session is unavailable.");
+    if (!contact?.canManage || !membership || !household) {
+      throw new Error(
+        "Choose a managing contact with a valid household for this student.",
+      );
+    }
+    await assertTrialRequestAvailable(ctx, { student, classItem, session });
+    return await createPendingTrialRequest(ctx, {
+      actorId: admin._id,
+      requestedBy: args.requestedBy,
+      householdId: args.householdId,
+      student,
+      classItem,
+      session,
     });
-    return trialRequestId;
   },
 });
 

@@ -59,9 +59,14 @@ describe("paid trial request policy", () => {
   it("preserves rejected history and only reviews pending requests", () => {
     assert.equal(trialRequestNextStatus("pending", "approve"), "approved");
     assert.equal(trialRequestNextStatus("pending", "reject"), "rejected");
+    assert.equal(trialRequestNextStatus("approved", "cancel"), "cancelled");
     assert.throws(
       () => trialRequestNextStatus("rejected", "approve"),
       /Only pending/,
+    );
+    assert.throws(
+      () => trialRequestNextStatus("pending", "cancel"),
+      /Only approved/,
     );
   });
 

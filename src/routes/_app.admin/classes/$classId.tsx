@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { resolvedClassEnrollmentOpen } from "../../../../shared/class-enrollment-selection";
 import { resolvedClassEnrollmentMode } from "../../../../shared/per-session-signup";
 import { DataTable } from "~/components/data-table";
+import { AdminCancelTrialButton } from "~/components/admin-cancel-trial-button";
 import { EnrollmentTuitionTreatmentSelect } from "~/components/enrollment-tuition-treatment-select";
 import { RoleGate } from "~/components/role-gate";
 import {
@@ -1224,6 +1225,19 @@ function ClassTrialsTab({
           {row.original.request.status}
         </Badge>
       ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      enableHiding: false,
+      cell: ({ row }) =>
+        row.original.request.status === "approved" ? (
+          <AdminCancelTrialButton
+            trialRequestId={row.original.request._id}
+          />
+        ) : (
+          "—"
+        ),
     },
   ];
 

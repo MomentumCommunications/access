@@ -35,6 +35,7 @@ const trialStatusValidator = v.union(
 const trialReviewActionValidator = v.union(
   v.literal("approve"),
   v.literal("reject"),
+  v.literal("cancel"),
 );
 
 type TrialCtx = QueryCtx | MutationCtx;
@@ -872,6 +873,37 @@ export const adminReview = mutation({
         reviewedAt: now,
         updatedAt: now,
       });
+    } else if (action === "cancel") {
+      let signup = request.sessionSignupId
+        ? await ctx.db.get(request.sessionSignupId)
+        : null;
+      if (!signup) {
+        const candidate = await ctx.db
+          .query("classSessionSignups")
+          .withIndex("bySessionStudent", (q) =>
+            q.eq("session", request.sessionId).eq("student", request.studentId),
+          )
+          .unique();
+        signup = candidate?.trialRequestId === trialRequestId ? candidate : null;
+      }
+      if (
+        signup &&
+        signup.classId === request.classId &&
+        signup.session === request.sessionId &&
+        signup.student === request.studentId
+      ) {
+        signupId = signup._id;
+        await ctx.db.patch(signup._id, {
+          status: "cancelled",
+          updatedAt: now,
+        });
+      }
+      await ctx.db.patch(trialRequestId, {
+        status: nextStatus,
+        reviewedBy: admin._id,
+        reviewedAt: now,
+        updatedAt: now,
+      });
     } else {
       await ctx.db.patch(trialRequestId, {
         status: nextStatus,
@@ -895,7 +927,12 @@ export const adminReview = mutation({
       entityType: "trialRequest",
       entityId: trialRequestId,
       actorId: admin._id,
-      eventType: action === "approve" ? "trial_approved" : "trial_rejected",
+      eventType:
+        action === "approve"
+          ? "trial_approved"
+          : action === "cancel"
+            ? "trial_cancelled"
+            : "trial_rejected",
       summary: `${studentName(student)}'s paid trial for ${classItem.title} was ${nextStatus}.`,
       metadata: {
         studentId: request.studentId,

@@ -4,7 +4,7 @@ export type TrialRequestStatus =
   | "rejected"
   | "cancelled";
 
-export type TrialReviewAction = "approve" | "reject";
+export type TrialReviewAction = "approve" | "reject" | "cancel";
 
 export function isTrialAccountReady(onboardingStatus?: "pending" | "complete") {
   return onboardingStatus !== "pending";
@@ -25,6 +25,12 @@ export function trialRequestNextStatus(
   current: TrialRequestStatus,
   action: TrialReviewAction,
 ) {
+  if (action === "cancel") {
+    if (current !== "approved") {
+      throw new Error("Only approved trials can be cancelled.");
+    }
+    return "cancelled";
+  }
   if (current !== "pending") {
     throw new Error("Only pending trial requests can be reviewed.");
   }

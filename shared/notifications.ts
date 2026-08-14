@@ -174,18 +174,25 @@ export function trialOutcomeNotification({
 }: {
   trialRequestId: string;
   actorUserId: string;
-  outcome: "approved" | "rejected";
+  outcome: "approved" | "rejected" | "cancelled";
   studentName: string;
   className: string;
   sessionDate: string;
 }): NotificationEventInput {
   const approved = outcome === "approved";
+  const cancelled = outcome === "cancelled";
   return {
     type: `trial.${outcome}`,
-    title: approved ? "Paid trial approved" : "Trial request declined",
+    title: approved
+      ? "Paid trial approved"
+      : cancelled
+        ? "Paid trial cancelled"
+        : "Trial request declined",
     body: approved
       ? `${studentName}'s trial for ${className} on ${sessionDate} is approved.`
-      : `${studentName}'s trial request for ${className} on ${sessionDate} was not approved.`,
+      : cancelled
+        ? `${studentName}'s trial for ${className} on ${sessionDate} was cancelled.`
+        : `${studentName}'s trial request for ${className} on ${sessionDate} was not approved.`,
     href: "/trial",
     actorUserId,
     entityType: "trialRequest",

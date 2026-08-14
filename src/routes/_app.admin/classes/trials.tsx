@@ -9,6 +9,7 @@ import type { FunctionReturnType } from "convex/server";
 import { Check, Plus, XCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { AdminCancelTrialButton } from "~/components/admin-cancel-trial-button";
 import { RoleGate } from "~/components/role-gate";
 import {
   AlertDialog,
@@ -230,15 +231,21 @@ function AdminTrialsPage() {
                           <Button size="sm" variant="outline" onClick={() => openApproval(row)}><Check />Approve</Button>
                           <Button size="sm" variant="destructive" onClick={() => setRejectRow(row)}><XCircle />Reject</Button>
                         </div>
-                      ) : row.request.status === "approved" &&
-                        !row.request.stripeInvoiceId ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openApproval(row)}
-                        >
-                          Prepare invoice
-                        </Button>
+                      ) : row.request.status === "approved" ? (
+                        <div className="flex justify-end gap-2">
+                          {!row.request.stripeInvoiceId ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openApproval(row)}
+                            >
+                              Prepare invoice
+                            </Button>
+                          ) : null}
+                          <AdminCancelTrialButton
+                            trialRequestId={row.request._id}
+                          />
+                        </div>
                       ) : "—"}
                     </TableCell>
                   </TableRow>

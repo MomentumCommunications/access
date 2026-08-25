@@ -4572,50 +4572,176 @@ export const sendIncompleteAttendanceReminders = internalMutation({
     }
 
     const { date: today, minutesSinceMidnight } = zonedDateTimeParts(current);
-    const sessions = await ctx.db.query("sessions").collect();
-    const rows = await Promise.all(
-      sessions.map((session) => getStaffAttendanceSessionRow(ctx, session)),
+    const sessions = (
+      await ctx.db
+        .query("sessions")
+        .withIndex("byDate", (q) => q.lte("date", today))
+        .collect()
+    ).filter(
+      (session) => session.active && session.status !== "cancelled",
+    );
+    const classIds = [...new Set(sessions.map((session) => session.classId))];
+    const classItems = new Map(
+      (
+        await Promise.all(
+          classIds.map(async (classId) => [classId, await ctx.db.get(classId)] as const),
+        )
+      ).filter(
+        (entry): entry is readonly [Id<"classes">, Doc<"classes">] =>
+          entry[1] !== null,
+      ),
+    );
+    const enrollmentsByClass = new Map(
+      await Promise.all(
+        classIds.map(async (classId) => [
+          classId,
+          await ctx.db
+            .query("classEnrollments")
+            .withIndex("byClass", (q) => q.eq("classId", classId))
+            .collect(),
+        ] as const),
+      ),
+    );
+    const sessionData = await Promise.all(
+      sessions.map(async (session) => {
+        const [signups, addedStudents, attendance] = await Promise.all([
+          ctx.db
+            .query("classSessionSignups")
+            .withIndex("bySession", (q) => q.eq("session", session._id))
+            .collect(),
+          ctx.db
+            .query("sessionStudents")
+            .withIndex("bySession", (q) => q.eq("session", session._id))
+            .collect(),
+          ctx.db
+            .query("attendanceRecords")
+            .withIndex("bySession", (q) => q.eq("session", session._id))
+            .collect(),
+        ]);
+        return { session, signups, addedStudents, attendance };
+      }),
+    );
+    const studentIds = new Set<Id<"students">>();
+    for (const enrollments of enrollmentsByClass.values()) {
+      for (const enrollment of enrollments) {
+        if (
+          enrollment.status === "enrolled" ||
+          enrollment.status === "pending"
+        ) {
+          studentIds.add(enrollment.student);
+        }
+      }
+    }
+    for (const row of sessionData) {
+      for (const signup of row.signups) studentIds.add(signup.student);
+      for (const addedStudent of row.addedStudents) {
+        studentIds.add(addedStudent.student);
+      }
+    }
+    const students = new Map(
+      (
+        await Promise.all(
+          [...studentIds].map(async (studentId) => [
+            studentId,
+            await ctx.db.get(studentId),
+          ] as const),
+        )
+      ).filter(
+        (entry): entry is readonly [Id<"students">, Doc<"students">] =>
+          entry[1] !== null,
+      ),
     );
 
-    let notificationCount = 0;
-    for (const row of rows) {
+    const eligibleRows = sessionData.flatMap((row) => {
+      const classItem = classItems.get(row.session.classId);
+      if (!classItem) return [];
+      const rosterStudentIds = new Set<Id<"students">>();
+      const perSession =
+        resolvedClassEnrollmentMode(classItem.enrollmentMode) === "per_session";
+      if (!perSession) {
+        for (const enrollment of enrollmentsByClass.get(classItem._id) || []) {
+          if (
+            (enrollment.status === "enrolled" ||
+              enrollment.status === "pending") &&
+            students.get(enrollment.student)?.status === "active" &&
+            isDateBetween(
+              row.session.date,
+              enrollment.startDate,
+              enrollment.endDate,
+            )
+          ) {
+            rosterStudentIds.add(enrollment.student);
+          }
+        }
+      }
+      for (const signup of row.signups) {
+        if (
+          (perSession || signup.trialRequestId !== undefined) &&
+          (signup.status === "enrolled" || signup.status === "pending") &&
+          students.get(signup.student)?.status === "active"
+        ) {
+          rosterStudentIds.add(signup.student);
+        }
+      }
+      for (const addedStudent of row.addedStudents) {
+        if (students.has(addedStudent.student)) {
+          rosterStudentIds.add(addedStudent.student);
+        }
+      }
+      const enrollmentCount = rosterStudentIds.size;
+      const attendanceCount = row.attendance.length;
       if (
-        !row.classItem ||
         !isIncompleteAttendanceReminderEligible(
           {
             active: row.session.active,
             date: row.session.date,
             status: row.session.status,
             endTime: row.session.endTime,
-            enrollmentCount: row.enrollments.length,
-            attendanceCount: row.attendance.length,
+            enrollmentCount,
+            attendanceCount,
           },
           { today, minutesSinceMidnight },
         )
       ) {
-        continue;
+        return [];
       }
+      return [{ ...row, classItem, enrollmentCount, attendanceCount }];
+    });
 
-      const recipientIds = attendanceReminderRecipientIds({
+    const recipientIds = new Set<Id<"users">>();
+    for (const row of eligibleRows) {
+      for (const recipientId of attendanceReminderRecipientIds({
         sessionAssignedStaff: row.session.assignedStaff,
         sessionSubstitute: row.session.substitute,
         classAssignedStaff: row.classItem.assignedStaff,
-      }) as Id<"users">[];
-      const recipients = (
+      }) as Id<"users">[]) {
+        recipientIds.add(recipientId);
+      }
+    }
+    const activeRecipientIds = new Set(
+      (
         await Promise.all(
-          recipientIds.map(async (recipientId) => {
+          [...recipientIds].map(async (recipientId) => {
             const user = await ctx.db.get(recipientId);
-            if (
-              user &&
+            return user &&
               resolveAccountStatus(user.status) === "active" &&
               (hasUserRole(user, "staff") || hasUserRole(user, "admin"))
-            ) {
-              return user._id;
-            }
-            return null;
+              ? user._id
+              : null;
           }),
         )
-      ).filter((userId): userId is Id<"users"> => userId !== null);
+      ).filter((userId): userId is Id<"users"> => userId !== null),
+    );
+
+    let notificationCount = 0;
+    for (const row of eligibleRows) {
+      const recipients = (attendanceReminderRecipientIds({
+        sessionAssignedStaff: row.session.assignedStaff,
+        sessionSubstitute: row.session.substitute,
+        classAssignedStaff: row.classItem.assignedStaff,
+      }) as Id<"users">[]).filter((recipientId) =>
+        activeRecipientIds.has(recipientId),
+      );
 
       if (recipients.length === 0) continue;
 
@@ -4627,8 +4753,8 @@ export const sendIncompleteAttendanceReminders = internalMutation({
           classId: row.classItem._id,
           className: row.classItem.title || "Class",
           sessionDate: row.session.date,
-          attendanceCount: row.attendance.length,
-          enrollmentCount: row.enrollments.length,
+          attendanceCount: row.attendanceCount,
+          enrollmentCount: row.enrollmentCount,
         }),
       });
       notificationCount += notificationIds.length;

@@ -34,6 +34,7 @@ export const Route = createFileRoute("/_app/admin/accounts")({
 
 type AccountStatusFilter = AccountStatus | "all";
 type AccountRoleFilter = UserRole | "all";
+type AccountGroupFilter = Id<"groups"> | "all" | "none";
 
 function AdminAccountsPage() {
   const accounts = useConvexQuery(api.classes.adminListAccounts, {});
@@ -42,7 +43,7 @@ function AdminAccountsPage() {
   const [statusFilter, setStatusFilter] =
     useState<AccountStatusFilter>("active");
   const [roleFilter, setRoleFilter] = useState<AccountRoleFilter>("all");
-  const [groupFilter, setGroupFilter] = useState("all");
+  const [groupFilter, setGroupFilter] = useState<AccountGroupFilter>("all");
   const [nameFilter, setNameFilter] = useState("");
 
   const filteredAccounts = useMemo(() => {
@@ -56,7 +57,9 @@ function AdminAccountsPage() {
         roleFilter === "all" || resolveUserRoles(account).includes(roleFilter);
       const matchesGroup =
         groupFilter === "all" ||
-        account.group?.includes(groupFilter as Id<"groups">);
+        (groupFilter === "none"
+          ? !account.group || account.group.length === 0
+          : account.group?.includes(groupFilter));
       const matchesName =
         normalizedNameFilter.length === 0 ||
         getAccountName(account).toLowerCase().includes(normalizedNameFilter);
@@ -74,7 +77,9 @@ function AdminAccountsPage() {
         },
       ),
     );
-    return [...new Map(emails.map((email) => [email.toLowerCase(), email])).values()];
+    return [
+      ...new Map(emails.map((email) => [email.toLowerCase(), email])).values(),
+    ];
   }, [filteredAccounts]);
 
   async function copyEmails() {
@@ -255,7 +260,12 @@ function AdminAccountsPage() {
                   </Select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Select value={groupFilter} onValueChange={setGroupFilter}>
+                  <Select
+                    value={groupFilter}
+                    onValueChange={(value) =>
+                      setGroupFilter(value as AccountGroupFilter)
+                    }
+                  >
                     <SelectTrigger className="h-9 w-40">
                       <SelectValue />
                     </SelectTrigger>
@@ -266,6 +276,7 @@ function AdminAccountsPage() {
                           {group.name}
                         </SelectItem>
                       ))}
+                      <SelectItem value="none">No groups</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

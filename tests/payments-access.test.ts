@@ -23,6 +23,7 @@ const payer = {
   userId: "user-1",
   active: true,
   isPrimary: true,
+  autopayEnabled: true,
   createdAt: 1,
 };
 
@@ -45,8 +46,17 @@ describe("payments access resolution", () => {
       status: "ready",
       householdId: "household-1",
       billingResponsibleUserId: "user-1",
+      householdPayerId: "payer-1",
+      autopayEnabled: true,
       stripeCustomerId: "cus_123",
     });
+  });
+
+  it("treats missing legacy autopay values as disabled", () => {
+    const result = resolve({
+      payers: [{ ...payer, autopayEnabled: undefined }],
+    });
+    assert.equal(result.autopayEnabled, false);
   });
 
   it("resolves another household member as not billable", () => {

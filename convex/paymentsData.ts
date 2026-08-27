@@ -1,9 +1,12 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import {
   internalQuery,
+  mutation,
   query,
   type QueryCtx,
 } from "./_generated/server";
+import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { resolvePaymentsAccess } from "../shared/payments-access";
 import { hasUserRole } from "./lib/roles";
 
@@ -62,6 +65,7 @@ async function resolveCurrentUserPaymentsAccess(ctx: QueryCtx) {
       userId: payer.userId,
       active: payer.active,
       isPrimary: payer.isPrimary,
+      autopayEnabled: payer.autopayEnabled,
       createdAt: payer.createdAt,
     })),
   });
@@ -76,9 +80,40 @@ export const getCurrentAccess = query({
         status: access.status,
         householdId: access.householdId,
         billingResponsibleUserId: access.billingResponsibleUserId,
+        autopayEnabled: access.autopayEnabled === true,
       };
     }
     return access;
+  },
+});
+
+export const setCurrentUserAutopay = mutation({
+  args: { enabled: v.boolean() },
+  handler: async (ctx, { enabled }) => {
+    const access = await resolveCurrentUserPaymentsAccess(ctx);
+    if (access.status !== "ready" || !access.householdPayerId) {
+      throw new Error(
+        "Automatic payments can only be changed by the active primary payment account.",
+      );
+    }
+
+    const payerId = access.householdPayerId as Id<"householdPayers">;
+    const payer = await ctx.db.get(payerId);
+    if (
+      !payer ||
+      !payer.active ||
+      !payer.isPrimary ||
+      payer.userId !== access.billingResponsibleUserId
+    ) {
+      throw new Error(
+        "Automatic payment access changed. Refresh and try again.",
+      );
+    }
+
+    await ctx.db.patch(payerId, {
+      autopayEnabled: enabled,
+      updatedAt: Date.now(),
+    });
   },
 });
 

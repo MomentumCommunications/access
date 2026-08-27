@@ -1,12 +1,24 @@
 import {
   useConvexAction,
+  useConvexMutation,
   useConvexQuery,
 } from "@convex-dev/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
-import { CreditCard, ExternalLink } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { CreditCard, ExternalLink, ReceiptText } from "lucide-react";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -15,7 +27,10 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { Label } from "~/components/ui/label";
+import { Separator } from "~/components/ui/separator";
 import { Spinner } from "~/components/ui/spinner";
+import { Switch } from "~/components/ui/switch";
 
 export const Route = createFileRoute("/_app/payments")({
   validateSearch: z.object({
@@ -52,13 +67,16 @@ const fallbackCopy = {
 } as const;
 
 function PaymentsRoute() {
-  const { portal } = Route.useSearch();
   const access = useConvexQuery(api.paymentsData.getCurrentAccess, {});
   const createPortalSession = useConvexAction(
     api.payments.createCurrentUserStripePortalSession,
   );
-  const attemptedLaunch = useRef(false);
+  const setAutopay = useConvexMutation(
+    api.paymentsData.setCurrentUserAutopay,
+  );
   const [isLaunching, setIsLaunching] = useState(false);
+  const [isSavingAutopay, setIsSavingAutopay] = useState(false);
+  const [confirmAutopay, setConfirmAutopay] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
 
   const launchPortal = useCallback(async () => {
@@ -81,19 +99,30 @@ function PaymentsRoute() {
     }
   }, [createPortalSession]);
 
-  useEffect(() => {
-    if (
-      access?.status !== "ready" ||
-      portal === "returned" ||
-      attemptedLaunch.current
-    ) {
-      return;
-    }
-    attemptedLaunch.current = true;
-    void launchPortal();
-  }, [access?.status, launchPortal, portal]);
+  const updateAutopay = useCallback(
+    async (enabled: boolean) => {
+      setIsSavingAutopay(true);
+      try {
+        await setAutopay({ enabled });
+        toast.success(
+          enabled
+            ? "Automatic payments are on."
+            : "Automatic payments are off.",
+        );
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Automatic payments could not be updated.",
+        );
+      } finally {
+        setIsSavingAutopay(false);
+      }
+    },
+    [setAutopay],
+  );
 
-  if (access === undefined || (access.status === "ready" && isLaunching)) {
+  if (access === undefined) {
     return (
       <main className="flex flex-1 items-center justify-center p-4">
         <div
@@ -101,9 +130,7 @@ function PaymentsRoute() {
           role="status"
         >
           <Spinner className="size-5" />
-          {access === undefined
-            ? "Checking payment access..."
-            : "Opening payment portal..."}
+          Checking payment access...
         </div>
       </main>
     );
@@ -117,28 +144,110 @@ function PaymentsRoute() {
   }
 
   return (
-    <PaymentsCard
-      title={
-        launchError ? "Payment portal unavailable" : "Manage payments"
-      }
-      description={
-        launchError ||
-        "Open Stripe's secure portal to manage payment methods and billing details."
-      }
-    >
-      <Button
-        className="w-full sm:w-auto"
-        disabled={isLaunching}
-        onClick={() => void launchPortal()}
-      >
-        {isLaunching ? (
-          <Spinner className="size-4" />
-        ) : (
-          <ExternalLink className="size-4" />
-        )}
-        {isLaunching ? "Opening..." : "Open payment portal"}
-      </Button>
-    </PaymentsCard>
+    <>
+      <main className="mx-auto flex w-full max-w-2xl flex-1 items-center p-4 lg:p-8">
+        <div className="w-full space-y-4">
+          <div>
+            <h1 className="text-3xl font-bold">Payments</h1>
+            <p className="text-muted-foreground">
+              Manage how your household pays invoices and update billing
+              details.
+            </p>
+          </div>
+          <Card>
+            <CardContent className="space-y-5 pt-6">
+              <section className="flex items-start justify-between gap-4">
+                <div className="min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <ReceiptText className="size-5 text-muted-foreground" />
+                    <Label htmlFor="member-autopay" className="font-semibold">
+                      Automatic payments
+                    </Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Charge future billing invoices to your default payment
+                    method. If no usable default method is available, we will
+                    send the invoice for manual payment instead.
+                  </p>
+                </div>
+                <Switch
+                  id="member-autopay"
+                  className="shrink-0"
+                  checked={access.autopayEnabled === true}
+                  disabled={isSavingAutopay}
+                  onCheckedChange={(enabled) => {
+                    if (enabled) {
+                      setConfirmAutopay(true);
+                    } else {
+                      void updateAutopay(false);
+                    }
+                  }}
+                />
+              </section>
+
+              <Separator />
+
+              <section className="space-y-3">
+                <div className="flex items-start gap-2">
+                  <CreditCard className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+                  <div>
+                    <h2 className="font-semibold">
+                      Payment methods and billing details
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Use Stripe&apos;s secure portal to update your payment
+                      method, billing information, and invoice history.
+                    </p>
+                  </div>
+                </div>
+                {launchError ? (
+                  <p className="text-sm text-destructive">{launchError}</p>
+                ) : null}
+                <Button
+                  className="w-full sm:w-auto"
+                  disabled={isLaunching}
+                  onClick={() => void launchPortal()}
+                >
+                  {isLaunching ? (
+                    <Spinner className="size-4" />
+                  ) : (
+                    <ExternalLink className="size-4" />
+                  )}
+                  {isLaunching ? "Opening..." : "Manage payment methods"}
+                </Button>
+              </section>
+            </CardContent>
+          </Card>
+          <Button variant="outline" asChild>
+            <Link to="/home">Back to home</Link>
+          </Button>
+        </div>
+      </main>
+
+      <AlertDialog open={confirmAutopay} onOpenChange={setConfirmAutopay}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Turn on automatic payments?</AlertDialogTitle>
+            <AlertDialogDescription>
+              By turning this on, you authorize future billing invoices to be
+              charged automatically using your default payment method. You can
+              turn automatic payments off here at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSavingAutopay}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isSavingAutopay}
+              onClick={() => void updateAutopay(true)}
+            >
+              Turn on automatic payments
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

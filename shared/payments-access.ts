@@ -21,6 +21,7 @@ type HouseholdPayer = {
   userId: string;
   active: boolean;
   isPrimary: boolean;
+  autopayEnabled?: boolean;
   createdAt: number;
 };
 
@@ -28,6 +29,8 @@ export type PaymentsAccessResult = {
   status: PaymentsAccessStatus;
   householdId?: string;
   billingResponsibleUserId?: string;
+  householdPayerId?: string;
+  autopayEnabled?: boolean;
   stripeCustomerId?: string;
 };
 
@@ -106,6 +109,8 @@ export function resolvePaymentsAccess({
     status: "ready",
     householdId: membership.householdId,
     billingResponsibleUserId: primaryPayer.userId,
+    householdPayerId: primaryPayer.id,
+    autopayEnabled: primaryPayer.autopayEnabled === true,
     stripeCustomerId: stripeCustomerId.trim(),
   };
 }

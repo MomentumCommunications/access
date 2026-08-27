@@ -3,8 +3,9 @@ import { ColumnDef } from "@tanstack/react-table";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Doc, Id } from "convex/_generated/dataModel";
-import { ArrowUpDown, Plus } from "lucide-react";
+import { ArrowUpDown, Copy, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
 import { RoleGate } from "~/components/role-gate";
 import { Badge } from "~/components/ui/badge";
@@ -42,9 +43,11 @@ function AdminAccountsPage() {
     useState<AccountStatusFilter>("active");
   const [roleFilter, setRoleFilter] = useState<AccountRoleFilter>("all");
   const [groupFilter, setGroupFilter] = useState("all");
+  const [nameFilter, setNameFilter] = useState("");
 
   const filteredAccounts = useMemo(() => {
     if (!accounts) return accounts;
+    const normalizedNameFilter = nameFilter.trim().toLowerCase();
     return accounts.filter((account) => {
       const matchesStatus =
         statusFilter === "all" ||
@@ -54,10 +57,36 @@ function AdminAccountsPage() {
       const matchesGroup =
         groupFilter === "all" ||
         account.group?.includes(groupFilter as Id<"groups">);
+      const matchesName =
+        normalizedNameFilter.length === 0 ||
+        getAccountName(account).toLowerCase().includes(normalizedNameFilter);
 
-      return matchesStatus && matchesRole && matchesGroup;
+      return matchesStatus && matchesRole && matchesGroup && matchesName;
     });
-  }, [accounts, groupFilter, roleFilter, statusFilter]);
+  }, [accounts, groupFilter, nameFilter, roleFilter, statusFilter]);
+
+  const filteredEmails = useMemo(() => {
+    const emails = (filteredAccounts || []).flatMap((account) =>
+      (Array.isArray(account.email) ? account.email : [account.email]).flatMap(
+        (email) => {
+          const value = email?.trim();
+          return value ? [value] : [];
+        },
+      ),
+    );
+    return [...new Map(emails.map((email) => [email.toLowerCase(), email])).values()];
+  }, [filteredAccounts]);
+
+  async function copyEmails() {
+    try {
+      await navigator.clipboard.writeText(filteredEmails.join("\n"));
+      toast.success(
+        `${filteredEmails.length} ${filteredEmails.length === 1 ? "email" : "emails"} copied.`,
+      );
+    } catch {
+      toast.error("The email addresses could not be copied.");
+    }
+  }
 
   const columns: ColumnDef<Doc<"users">>[] = [
     {
@@ -157,12 +186,24 @@ function AdminAccountsPage() {
               Review user accounts and update sidebar access roles.
             </p>
           </div>
-          <Button asChild>
-            <Link to="/admin/accounts/create">
-              <Plus />
-              New account
-            </Link>
-          </Button>
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 sm:flex-none"
+              disabled={filteredEmails.length === 0}
+              onClick={() => void copyEmails()}
+            >
+              <Copy />
+              Copy emails
+            </Button>
+            <Button asChild className="flex-1 sm:flex-none">
+              <Link to="/admin/accounts/create">
+                <Plus />
+                New account
+              </Link>
+            </Button>
+          </div>
         </div>
         {accounts === undefined ? (
           <div className="min-h-40 flex items-center justify-center">
@@ -174,6 +215,8 @@ function AdminAccountsPage() {
             data={filteredAccounts ?? []}
             filterColumn="name"
             filterPlaceholder="Filter accounts..."
+            filterValue={nameFilter}
+            onFilterValueChange={setNameFilter}
             toolbar={
               <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
                 <div className="flex items-center gap-2">

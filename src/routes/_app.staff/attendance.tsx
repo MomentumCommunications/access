@@ -135,13 +135,13 @@ function AttendancePage() {
                     <div className="rounded-md border p-3">
                       <div className="text-muted-foreground">Students</div>
                       <div className="text-xl font-semibold">
-                        {row.enrollments.length}
+                        {row.enrollmentCount}
                       </div>
                     </div>
                     <div className="rounded-md border p-3">
                       <div className="text-muted-foreground">Marked</div>
                       <div className="text-xl font-semibold">
-                        {row.attendance.length}
+                        {row.attendanceCount}
                       </div>
                     </div>
                   </div>

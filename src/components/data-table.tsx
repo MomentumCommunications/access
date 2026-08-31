@@ -161,8 +161,6 @@ export function DataTable<TData, TValue>({
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto shrink-0 px-3 sm:px-4">
               <SlidersHorizontal />
-              <span className="hidden sm:inline">View</span>
-              <ChevronDown className="hidden sm:block" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

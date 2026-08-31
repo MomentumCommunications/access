@@ -61,11 +61,15 @@ function AttendancePage() {
     api.classes.adminSetSessionSubstitute,
   );
 
-  const datedSessions = useConvexQuery(api.classes.adminListSessionsByDate, {
-    date,
-  });
+  const datedSessions = useConvexQuery(
+    api.classes.adminListSessionsByDate,
+    showUnmarked ? "skip" : { date },
+  );
 
-  const unmarkedSessions = useConvexQuery(api.classes.listUnmarkedAttendance);
+  const unmarkedSessions = useConvexQuery(
+    api.classes.listUnmarkedAttendance,
+    showUnmarked ? {} : "skip",
+  );
 
   const sessions = showUnmarked ? unmarkedSessions : datedSessions;
 
@@ -214,12 +218,12 @@ function AttendancePage() {
                         <Badge
                           className={cn(
                             "text-muted-foreground",
-                            row.attendance.length === row.enrollments.length &&
+                            row.attendanceCount === row.enrollmentCount &&
                               "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300",
-                            row.attendance.length !== row.enrollments.length &&
+                            row.attendanceCount !== row.enrollmentCount &&
                               "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300",
                           )}
-                        >{`${row.attendance.length}/${row.enrollments.length}`}</Badge>
+                        >{`${row.attendanceCount}/${row.enrollmentCount}`}</Badge>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -1079,11 +1079,118 @@ async function getStaffAttendanceSessionRow(
   };
 }
 
+async function getAttendanceSessionSummaryRows(
+  ctx: QueryCtx,
+  sessions: Doc<"sessions">[],
+) {
+  const classIds = [...new Set(sessions.map((session) => session.classId))];
+  const classItems = new Map(
+    await Promise.all(
+      classIds.map(async (classId) => [classId, await ctx.db.get(classId)] as const),
+    ),
+  );
+  const enrollmentsByClass = new Map(
+    await Promise.all(
+      classIds.map(async (classId) => [
+        classId,
+        await ctx.db
+          .query("classEnrollments")
+          .withIndex("byClass", (q) => q.eq("classId", classId))
+          .collect(),
+      ] as const),
+    ),
+  );
+  const sessionData = await Promise.all(
+    sessions.map(async (session) => {
+      const [signups, addedStudents, attendance] = await Promise.all([
+        ctx.db
+          .query("classSessionSignups")
+          .withIndex("bySession", (q) => q.eq("session", session._id))
+          .collect(),
+        ctx.db
+          .query("sessionStudents")
+          .withIndex("bySession", (q) => q.eq("session", session._id))
+          .collect(),
+        ctx.db
+          .query("attendanceRecords")
+          .withIndex("bySession", (q) => q.eq("session", session._id))
+          .collect(),
+      ]);
+      return { session, signups, addedStudents, attendance };
+    }),
+  );
+  const studentIds = new Set<Id<"students">>();
+  for (const enrollments of enrollmentsByClass.values()) {
+    for (const enrollment of enrollments) studentIds.add(enrollment.student);
+  }
+  for (const row of sessionData) {
+    for (const signup of row.signups) studentIds.add(signup.student);
+    for (const addedStudent of row.addedStudents) {
+      studentIds.add(addedStudent.student);
+    }
+  }
+  const students = new Map(
+    await Promise.all(
+      [...studentIds].map(async (studentId) => [
+        studentId,
+        await ctx.db.get(studentId),
+      ] as const),
+    ),
+  );
+
+  return sessionData.map((row) => {
+    const classItem = classItems.get(row.session.classId) || null;
+    const classMode = resolvedClassEnrollmentMode(classItem?.enrollmentMode);
+    const rosterStudentIds = new Set<Id<"students">>();
+
+    if (classMode !== "per_session") {
+      for (const enrollment of enrollmentsByClass.get(row.session.classId) || []) {
+        if (
+          (enrollment.status === "enrolled" ||
+            enrollment.status === "pending") &&
+          students.get(enrollment.student)?.status === "active" &&
+          isDateBetween(
+            row.session.date,
+            enrollment.startDate,
+            enrollment.endDate,
+          )
+        ) {
+          rosterStudentIds.add(enrollment.student);
+        }
+      }
+    }
+    for (const signup of row.signups) {
+      if (
+        (classMode === "per_session" || signup.trialRequestId !== undefined) &&
+        (signup.status === "enrolled" || signup.status === "pending") &&
+        students.get(signup.student)?.status === "active"
+      ) {
+        rosterStudentIds.add(signup.student);
+      }
+    }
+    for (const addedStudent of row.addedStudents) {
+      if (students.get(addedStudent.student)) {
+        rosterStudentIds.add(addedStudent.student);
+      }
+    }
+
+    return {
+      session: row.session,
+      classItem,
+      enrollmentCount: rosterStudentIds.size,
+      attendanceCount: row.attendance.length,
+    };
+  });
+}
+
 function canAccessAttendanceSession(
   user: Doc<"users">,
-  row: Awaited<ReturnType<typeof getStaffAttendanceSessionRow>>,
+  row: {
+    session: Pick<Doc<"sessions">, "assignedStaff" | "substitute">;
+    classItem: Pick<Doc<"classes">, "assignedStaff"> | null;
+  },
 ) {
-  return (
+  return Boolean(
     isAdmin(user) ||
     row.session.assignedStaff?.includes(user._id) ||
     row.session.substitute === user._id ||
@@ -4466,26 +4573,31 @@ async function staffListSessionsHandler(
   },
 ) {
   const user = await requireStaff(ctx);
+  const today = todayValue();
   const sessions = incomplete
-    ? await ctx.db.query("sessions").collect()
+    ? await ctx.db
+        .query("sessions")
+        .withIndex("byDate", (q) => q.lt("date", today))
+        .collect()
     : await ctx.db
         .query("sessions")
         .withIndex("byDate", (q) => q.eq("date", date))
         .collect();
+  const activeSessions = sessions.filter((session) => session.active);
 
-  const sessionRows = await Promise.all(
-    sessions.map((session) => getStaffAttendanceSessionRow(ctx, session)),
+  const sessionRows = await getAttendanceSessionSummaryRows(
+    ctx,
+    activeSessions,
   );
 
-  const today = todayValue();
   return sessionRows.filter(
     (row) =>
       matchesStaffAttendanceMode(
         {
           active: row.session.active,
           date: row.session.date,
-          enrollmentCount: row.enrollments.length,
-          attendanceCount: row.attendance.length,
+          enrollmentCount: row.enrollmentCount,
+          attendanceCount: row.attendanceCount,
         },
         { date, incomplete, today },
       ) &&
@@ -4513,46 +4625,35 @@ export const adminListSessionsByDate = query({
     date: v.string(),
   },
   handler: async (ctx, { date }) => {
+    await requireAdmin(ctx);
     const sessions = await ctx.db
       .query("sessions")
       .withIndex("byDate", (q) => q.eq("date", date))
       .collect();
     const activeSessions = sessions.filter((session) => session.active);
 
-    const sessionRows = await Promise.all(
-      activeSessions.map((session) =>
-        getStaffAttendanceSessionRow(ctx, session),
-      ),
-    );
-
-    return sessionRows;
+    return await getAttendanceSessionSummaryRows(ctx, activeSessions);
   },
 });
 
 export const listUnmarkedAttendance = query({
   args: {},
   handler: async (ctx) => {
-    const sessions = await ctx.db.query("sessions").collect();
+    await requireAdmin(ctx);
+    const today = todayValue();
+    const sessions = await ctx.db
+      .query("sessions")
+      .withIndex("byDate", (q) => q.lt("date", today))
+      .collect();
     const activeSessions = sessions.filter((session) => session.active);
-
-    const sessionRows = await Promise.all(
-      activeSessions.map((session) =>
-        getStaffAttendanceSessionRow(ctx, session),
-      ),
+    const sessionRows = await getAttendanceSessionSummaryRows(
+      ctx,
+      activeSessions,
     );
 
-    // get sessionRows where date was before today
-
-    const priorSessions = sessionRows.filter((row) => {
-      const date = new Date(row.session.date);
-      const today = new Date();
-      return date < today;
-    });
-
-    const incompleteAttendance = priorSessions.filter((row) => {
-      return row.enrollments.length !== row.attendance.length;
-    });
-    return incompleteAttendance;
+    return sessionRows.filter(
+      (row) => row.enrollmentCount !== row.attendanceCount,
+    );
   },
 });
 

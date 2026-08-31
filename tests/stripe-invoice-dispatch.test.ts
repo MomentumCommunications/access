@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  BILLING_RUN_INVOICE_DAYS_UNTIL_DUE,
   buildBillingRunStripeInvoiceLines,
   dispatchBillingRunItemToStripe,
   resolveHouseholdStripeBillingTarget,
@@ -84,6 +85,10 @@ describe("Stripe billing target resolution", () => {
 });
 
 describe("Stripe invoice collection policy", () => {
+  it("defaults manually paid billing-run invoices to three days", () => {
+    assert.equal(BILLING_RUN_INVOICE_DAYS_UNTIL_DUE, 3);
+  });
+
   it("auto-charges only when autopay and a default payment method are ready", () => {
     assert.deepEqual(
       resolveInvoiceCollectionMethod({

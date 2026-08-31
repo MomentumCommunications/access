@@ -4,6 +4,8 @@ export type StripeCollectionMethod =
   | "charge_automatically"
   | "send_invoice";
 
+export const BILLING_RUN_INVOICE_DAYS_UNTIL_DUE = 3;
+
 export type HouseholdStripeBillingTarget =
   | {
       status: "ready";

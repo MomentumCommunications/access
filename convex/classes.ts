@@ -4873,16 +4873,12 @@ export const staffGetAttendanceSession = query({
     session: v.id("sessions"),
   },
   handler: async (ctx, { session }) => {
-    const user = await requireStaff(ctx);
+    await requireStaff(ctx);
     const sessionDoc = await ctx.db.get(session);
     if (!sessionDoc || !sessionDoc.active) {
       return null;
     }
-    const row = await getStaffAttendanceSessionRow(ctx, sessionDoc);
-    if (!canAccessAttendanceSession(user, row)) {
-      throw new Error("Unauthorized");
-    }
-    return row;
+    return await getStaffAttendanceSessionRow(ctx, sessionDoc);
   },
 });
 
@@ -4898,16 +4894,6 @@ export const markAttendance = mutation({
     const sessionDoc = await ctx.db.get(session);
     if (!sessionDoc) {
       throw new Error("Session not found");
-    }
-    if (
-      !isAdmin(user) &&
-      !sessionDoc.assignedStaff?.includes(user._id) &&
-      sessionDoc.substitute !== user._id
-    ) {
-      const classItem = await ctx.db.get(sessionDoc.classId);
-      if (!classItem?.assignedStaff?.includes(user._id)) {
-        throw new Error("Unauthorized");
-      }
     }
 
     const existing = await ctx.db
@@ -4950,16 +4936,6 @@ export const updateAttendanceReason = mutation({
     if (!sessionDoc) {
       throw new Error("Session not found");
     }
-    if (
-      !isAdmin(user) &&
-      !sessionDoc.assignedStaff?.includes(user._id) &&
-      sessionDoc.substitute !== user._id
-    ) {
-      const classItem = await ctx.db.get(sessionDoc.classId);
-      if (!classItem?.assignedStaff?.includes(user._id)) {
-        throw new Error("Unauthorized");
-      }
-    }
 
     const attendance = await ctx.db
       .query("attendanceRecords")
@@ -4986,20 +4962,10 @@ export const clearAttendance = mutation({
     student: v.id("students"),
   },
   handler: async (ctx, { session, student }) => {
-    const user = await requireStaff(ctx);
+    await requireStaff(ctx);
     const sessionDoc = await ctx.db.get(session);
     if (!sessionDoc) {
       throw new Error("Session not found");
-    }
-    if (
-      !isAdmin(user) &&
-      !sessionDoc.assignedStaff?.includes(user._id) &&
-      sessionDoc.substitute !== user._id
-    ) {
-      const classItem = await ctx.db.get(sessionDoc.classId);
-      if (!classItem?.assignedStaff?.includes(user._id)) {
-        throw new Error("Unauthorized");
-      }
     }
 
     const existing = await ctx.db
@@ -5026,16 +4992,6 @@ export const addStudentToSession = mutation({
     const studentDoc = await ctx.db.get(student);
     if (!sessionDoc || !studentDoc) {
       throw new Error("Session or student not found");
-    }
-    if (
-      !isAdmin(user) &&
-      !sessionDoc.assignedStaff?.includes(user._id) &&
-      sessionDoc.substitute !== user._id
-    ) {
-      const classItem = await ctx.db.get(sessionDoc.classId);
-      if (!classItem?.assignedStaff?.includes(user._id)) {
-        throw new Error("Unauthorized");
-      }
     }
 
     const enrollment = await ctx.db
@@ -5095,20 +5051,10 @@ export const removeStudentFromSession = mutation({
     student: v.id("students"),
   },
   handler: async (ctx, { session, student }) => {
-    const user = await requireStaff(ctx);
+    await requireStaff(ctx);
     const sessionDoc = await ctx.db.get(session);
     if (!sessionDoc) {
       throw new Error("Session not found");
-    }
-    if (
-      !isAdmin(user) &&
-      !sessionDoc.assignedStaff?.includes(user._id) &&
-      sessionDoc.substitute !== user._id
-    ) {
-      const classItem = await ctx.db.get(sessionDoc.classId);
-      if (!classItem?.assignedStaff?.includes(user._id)) {
-        throw new Error("Unauthorized");
-      }
     }
 
     const sessionStudent = await ctx.db
@@ -5144,16 +5090,6 @@ export const markSessionPresent = mutation({
     const sessionDoc = await ctx.db.get(session);
     if (!sessionDoc) {
       throw new Error("Session not found");
-    }
-    if (
-      !isAdmin(user) &&
-      !sessionDoc.assignedStaff?.includes(user._id) &&
-      sessionDoc.substitute !== user._id
-    ) {
-      const classItem = await ctx.db.get(sessionDoc.classId);
-      if (!classItem?.assignedStaff?.includes(user._id)) {
-        throw new Error("Unauthorized");
-      }
     }
 
     const classItem = await ctx.db.get(sessionDoc.classId);

@@ -8,6 +8,7 @@ import type { Id } from "./_generated/dataModel";
 import { action, type ActionCtx } from "./_generated/server";
 import { getStripeClient } from "./lib/stripe";
 import {
+  BILLING_RUN_INVOICE_DAYS_UNTIL_DUE,
   dispatchBillingRunItemToStripe,
   resolveStripeInvoiceRecovery,
   type PaymentMethodReadiness,
@@ -162,7 +163,10 @@ export const adminDispatchBillingRunItems = action({
                 description: input.description,
                 metadata: input.metadata,
                 ...(input.collectionMethod === "send_invoice"
-                  ? { days_until_due: 30 }
+                  ? {
+                      days_until_due:
+                        BILLING_RUN_INVOICE_DAYS_UNTIL_DUE,
+                    }
                   : {}),
               },
               { idempotencyKey: input.idempotencyKey },

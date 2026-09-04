@@ -129,6 +129,8 @@ These are used by Convex actions/functions:
 
 - `CONVEX_SITE_URL` — site URL used by auth configuration
 - `RESEND_API_KEY` — email delivery for verification and password reset flows
+- `MAILCHIMP_API_KEY` — Mailchimp Marketing API access for completed-client audience sync
+- `MAILCHIMP_AUDIENCE_ID` — target Mailchimp audience for completed clients
 - `STRIPE_SECRET_KEY` or `STRIPE_API_KEY` — Stripe server API access
 - `WEB_PUSH_PUBLIC_KEY` — VAPID public key used for push delivery
 - `WEB_PUSH_PRIVATE_KEY` — VAPID private key kept in Convex

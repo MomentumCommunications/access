@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { makeFunctionReference } from "convex/server";
 import type { Id } from "./_generated/dataModel";
 import {
   internalMutation,
@@ -26,6 +27,11 @@ const onboardingStepValidator = v.union(
 
 const RECREATIONAL_CONTRACT_TYPE = "recreational";
 const RECREATIONAL_CONTRACT_VERSION = "1";
+
+const syncCompletedClientToMailchimp = makeFunctionReference<
+  "action",
+  { userId: Id<"users">; attempt: number }
+>("mailchimpActions:syncCompletedClient");
 
 const studentGenderValidator = v.union(
   v.literal(""),
@@ -333,6 +339,10 @@ export const complete = mutation({
 
     const roles = resolveUserRoles(user);
     const workforce = isWorkforceAccount(roles);
+    const wasComplete =
+      user.onboardingStatus === "complete" ||
+      onboarding.currentStep === "complete" ||
+      onboarding.completedAt !== undefined;
     const students = await getConnectedStudents(ctx, user._id);
     if (!workforce && students.length === 0) {
       throw new Error("Add at least one student before completing onboarding.");
@@ -357,5 +367,11 @@ export const complete = mutation({
       currentStep: "complete",
       completedAt,
     });
+    if (!workforce && !wasComplete) {
+      await ctx.scheduler.runAfter(0, syncCompletedClientToMailchimp, {
+        userId: user._id,
+        attempt: 0,
+      });
+    }
   },
 });

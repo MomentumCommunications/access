@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import {
   attendanceReminderRecipientIds,
   canViewStaffAttendanceSession,
+  compareAttendanceSessionsByOccurrence,
+  isAttendanceClassEligible,
   isIncompleteAttendanceReminderEligible,
   isIncompleteAttendanceSession,
   isWeekdayIncompleteAttendanceSweepTime,
@@ -11,6 +13,39 @@ import {
 } from "../shared/staff-attendance.ts";
 
 describe("staff attendance session filtering", () => {
+  it("excludes sessions for archived or missing classes", () => {
+    assert.equal(isAttendanceClassEligible({ status: "published" }), true);
+    assert.equal(isAttendanceClassEligible({ status: "draft" }), true);
+    assert.equal(isAttendanceClassEligible({ status: "archived" }), false);
+    assert.equal(isAttendanceClassEligible(null), false);
+  });
+
+  it("orders attendance sessions by date and start time", () => {
+    const sessions = [
+      { _id: "later-created", date: "2026-06-27", startTime: "18:00" },
+      { _id: "next-day", date: "2026-06-28", startTime: "09:00" },
+      { _id: "earlier-created", date: "2026-06-27", startTime: "09:30" },
+      { _id: "middle", date: "2026-06-27", startTime: "14:00" },
+    ];
+
+    assert.deepEqual(
+      sessions.sort(compareAttendanceSessionsByOccurrence).map(({ _id }) => _id),
+      ["earlier-created", "middle", "later-created", "next-day"],
+    );
+  });
+
+  it("uses the session id to keep matching occurrence times deterministic", () => {
+    const sessions = [
+      { _id: "session-b", date: "2026-06-27", startTime: "09:30" },
+      { _id: "session-a", date: "2026-06-27", startTime: "09:30" },
+    ];
+
+    assert.deepEqual(
+      sessions.sort(compareAttendanceSessionsByOccurrence).map(({ _id }) => _id),
+      ["session-a", "session-b"],
+    );
+  });
+
   it("matches active sessions on the selected date in dated mode", () => {
     assert.equal(
       matchesStaffAttendanceMode(

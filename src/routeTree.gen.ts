@@ -76,7 +76,7 @@ import { Route as AppAdminBillingPrivateChargesRouteImport } from './routes/_app
 import { Route as AppAdminBillingPricingRouteImport } from './routes/_app.admin/billing/pricing'
 import { Route as AppAdminBillingChargesRouteImport } from './routes/_app.admin/billing/charges'
 import { Route as AppAdminBillingAdjustmentsRouteImport } from './routes/_app.admin/billing/adjustments'
-import { Route as AppAdminAttendanceSessionIdRouteImport } from './routes/_app.admin/attendance_.$sessionId'
+import { Route as AppAdminAttendanceSessionIdRouteImport } from './routes/_app.admin/attendance.$sessionId'
 import { Route as AppAdminAccountsCreateRouteImport } from './routes/_app.admin/accounts_.create'
 import { Route as AppAdminAccountsUserIdRouteImport } from './routes/_app.admin/accounts_.$userId'
 import { Route as AppAdminStudentsStudentIdReportRouteImport } from './routes/_app.admin/students/$studentId_.report'
@@ -435,9 +435,9 @@ const AppAdminBillingAdjustmentsRoute =
   } as any)
 const AppAdminAttendanceSessionIdRoute =
   AppAdminAttendanceSessionIdRouteImport.update({
-    id: '/admin/attendance_/$sessionId',
-    path: '/admin/attendance/$sessionId',
-    getParentRoute: () => AppRoute,
+    id: '/$sessionId',
+    path: '/$sessionId',
+    getParentRoute: () => AppAdminAttendanceRoute,
   } as any)
 const AppAdminAccountsCreateRoute = AppAdminAccountsCreateRouteImport.update({
   id: '/admin/accounts_/create',
@@ -538,7 +538,7 @@ export interface FileRoutesByFullPath {
   '/register/students': typeof RegisterStudentsRoute
   '/register/': typeof RegisterIndexRoute
   '/admin/accounts': typeof AppAdminAccountsRoute
-  '/admin/attendance': typeof AppAdminAttendanceRoute
+  '/admin/attendance': typeof AppAdminAttendanceRouteWithChildren
   '/admin/groups': typeof AppAdminGroupsRoute
   '/admin/scheduling': typeof AppAdminSchedulingRoute
   '/calendar/$bulletinId': typeof AppCalendarBulletinIdRoute
@@ -619,7 +619,7 @@ export interface FileRoutesByTo {
   '/register/students': typeof RegisterStudentsRoute
   '/register': typeof RegisterIndexRoute
   '/admin/accounts': typeof AppAdminAccountsRoute
-  '/admin/attendance': typeof AppAdminAttendanceRoute
+  '/admin/attendance': typeof AppAdminAttendanceRouteWithChildren
   '/admin/groups': typeof AppAdminGroupsRoute
   '/admin/scheduling': typeof AppAdminSchedulingRoute
   '/calendar/$bulletinId': typeof AppCalendarBulletinIdRoute
@@ -703,7 +703,7 @@ export interface FileRoutesById {
   '/register/students': typeof RegisterStudentsRoute
   '/register/': typeof RegisterIndexRoute
   '/_app/admin/accounts': typeof AppAdminAccountsRoute
-  '/_app/admin/attendance': typeof AppAdminAttendanceRoute
+  '/_app/admin/attendance': typeof AppAdminAttendanceRouteWithChildren
   '/_app/admin/groups': typeof AppAdminGroupsRoute
   '/_app/admin/scheduling': typeof AppAdminSchedulingRoute
   '/_app/calendar/$bulletinId': typeof AppCalendarBulletinIdRoute
@@ -726,7 +726,7 @@ export interface FileRoutesById {
   '/_app/trial/': typeof AppTrialIndexRoute
   '/_app/admin/accounts_/$userId': typeof AppAdminAccountsUserIdRoute
   '/_app/admin/accounts_/create': typeof AppAdminAccountsCreateRoute
-  '/_app/admin/attendance_/$sessionId': typeof AppAdminAttendanceSessionIdRoute
+  '/_app/admin/attendance/$sessionId': typeof AppAdminAttendanceSessionIdRoute
   '/_app/admin/billing/adjustments': typeof AppAdminBillingAdjustmentsRoute
   '/_app/admin/billing/charges': typeof AppAdminBillingChargesRoute
   '/_app/admin/billing/pricing': typeof AppAdminBillingPricingRoute
@@ -974,7 +974,7 @@ export interface FileRouteTypes {
     | '/_app/trial/'
     | '/_app/admin/accounts_/$userId'
     | '/_app/admin/accounts_/create'
-    | '/_app/admin/attendance_/$sessionId'
+    | '/_app/admin/attendance/$sessionId'
     | '/_app/admin/billing/adjustments'
     | '/_app/admin/billing/charges'
     | '/_app/admin/billing/pricing'
@@ -1494,12 +1494,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminBillingAdjustmentsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/admin/attendance_/$sessionId': {
-      id: '/_app/admin/attendance_/$sessionId'
-      path: '/admin/attendance/$sessionId'
+    '/_app/admin/attendance/$sessionId': {
+      id: '/_app/admin/attendance/$sessionId'
+      path: '/$sessionId'
       fullPath: '/admin/attendance/$sessionId'
       preLoaderRoute: typeof AppAdminAttendanceSessionIdRouteImport
-      parentRoute: typeof AppRoute
+      parentRoute: typeof AppAdminAttendanceRoute
     }
     '/_app/admin/accounts_/create': {
       id: '/_app/admin/accounts_/create'
@@ -1595,6 +1595,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppAdminAttendanceRouteChildren {
+  AppAdminAttendanceSessionIdRoute: typeof AppAdminAttendanceSessionIdRoute
+}
+
+const AppAdminAttendanceRouteChildren: AppAdminAttendanceRouteChildren = {
+  AppAdminAttendanceSessionIdRoute: AppAdminAttendanceSessionIdRoute,
+}
+
+const AppAdminAttendanceRouteWithChildren =
+  AppAdminAttendanceRoute._addFileChildren(AppAdminAttendanceRouteChildren)
+
 interface AppRouteChildren {
   AppAccountRoute: typeof AppAccountRoute
   AppContactRoute: typeof AppContactRoute
@@ -1605,7 +1616,7 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppTuitionPlanRoute: typeof AppTuitionPlanRoute
   AppAdminAccountsRoute: typeof AppAdminAccountsRoute
-  AppAdminAttendanceRoute: typeof AppAdminAttendanceRoute
+  AppAdminAttendanceRoute: typeof AppAdminAttendanceRouteWithChildren
   AppAdminGroupsRoute: typeof AppAdminGroupsRoute
   AppAdminSchedulingRoute: typeof AppAdminSchedulingRoute
   AppCalendarBulletinIdRoute: typeof AppCalendarBulletinIdRoute
@@ -1627,7 +1638,6 @@ interface AppRouteChildren {
   AppTrialIndexRoute: typeof AppTrialIndexRoute
   AppAdminAccountsUserIdRoute: typeof AppAdminAccountsUserIdRoute
   AppAdminAccountsCreateRoute: typeof AppAdminAccountsCreateRoute
-  AppAdminAttendanceSessionIdRoute: typeof AppAdminAttendanceSessionIdRoute
   AppAdminBillingAdjustmentsRoute: typeof AppAdminBillingAdjustmentsRoute
   AppAdminBillingChargesRoute: typeof AppAdminBillingChargesRoute
   AppAdminBillingPricingRoute: typeof AppAdminBillingPricingRoute
@@ -1675,7 +1685,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppTuitionPlanRoute: AppTuitionPlanRoute,
   AppAdminAccountsRoute: AppAdminAccountsRoute,
-  AppAdminAttendanceRoute: AppAdminAttendanceRoute,
+  AppAdminAttendanceRoute: AppAdminAttendanceRouteWithChildren,
   AppAdminGroupsRoute: AppAdminGroupsRoute,
   AppAdminSchedulingRoute: AppAdminSchedulingRoute,
   AppCalendarBulletinIdRoute: AppCalendarBulletinIdRoute,
@@ -1697,7 +1707,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppTrialIndexRoute: AppTrialIndexRoute,
   AppAdminAccountsUserIdRoute: AppAdminAccountsUserIdRoute,
   AppAdminAccountsCreateRoute: AppAdminAccountsCreateRoute,
-  AppAdminAttendanceSessionIdRoute: AppAdminAttendanceSessionIdRoute,
   AppAdminBillingAdjustmentsRoute: AppAdminBillingAdjustmentsRoute,
   AppAdminBillingChargesRoute: AppAdminBillingChargesRoute,
   AppAdminBillingPricingRoute: AppAdminBillingPricingRoute,

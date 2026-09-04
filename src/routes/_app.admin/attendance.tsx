@@ -1,12 +1,14 @@
-import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useConvexQuery } from "@convex-dev/react-query";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useMatchRoute,
+} from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
-import { Id } from "convex/_generated/dataModel";
 import { ChevronLeft, ChevronRight, Scan } from "lucide-react";
 import { useState } from "react";
-import AttendanceSession from "~/components/attendance-session";
 import { RoleGate } from "~/components/role-gate";
-import { SessionSubstituteCombobox } from "~/components/session-substitute-combobox";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -27,11 +29,9 @@ import { Label } from "~/components/ui/label";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
-import { useIsMobile } from "~/hooks/use-mobile";
 import { format } from "date-fns";
 import { cn } from "~/lib/utils";
 import { Badge } from "~/components/ui/badge";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/admin/attendance")({
   component: AttendancePage,
@@ -49,17 +49,13 @@ function shiftDate(date: string, days: number) {
 
 function AttendancePage() {
   const [date, setDate] = useState(() => toDateInputValue(new Date()));
-  const [targetSessionId, setTargetSessionId] = useState<string | null>();
   const [showUnmarked, setShowUnmarked] = useState(false);
-  const [savingSubstituteSessionId, setSavingSubstituteSessionId] = useState<
-    string | null
-  >(null);
 
-  const isMobile = useIsMobile();
-  const accounts = useConvexQuery(api.classes.adminListAccounts, {});
-  const setSessionSubstitute = useConvexMutation(
-    api.classes.adminSetSessionSubstitute,
-  );
+  const matchRoute = useMatchRoute();
+  const sessionMatch = matchRoute({
+    to: "/admin/attendance/$sessionId",
+  });
+  const targetSessionId = sessionMatch ? sessionMatch.sessionId : undefined;
 
   const datedSessions = useConvexQuery(
     api.classes.adminListSessionsByDate,
@@ -73,27 +69,12 @@ function AttendancePage() {
 
   const sessions = showUnmarked ? unmarkedSessions : datedSessions;
 
-  async function handleSubstituteChange(
-    session: Id<"sessions">,
-    substitute: Id<"users"> | null,
-  ) {
-    setSavingSubstituteSessionId(session);
-    try {
-      await setSessionSubstitute({ session, substitute });
-      toast.success("Substitute updated.");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Unable to update substitute.",
-      );
-    } finally {
-      setSavingSubstituteSessionId(null);
-    }
-  }
-
   return (
     <RoleGate allow="admin">
       <div className="grid grid-cols-1 sm:grid-cols-2">
-        <ScrollArea className="h-screen pb-12">
+        <ScrollArea
+          className={cn("h-screen pb-12", targetSessionId && "hidden sm:block")}
+        >
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 lg:p-8">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
@@ -154,7 +135,6 @@ function AttendancePage() {
                   <TableRow>
                     <TableHead>Class</TableHead>
                     <TableHead>DateTime</TableHead>
-                    <TableHead>Substitute</TableHead>
                     <TableHead>Marked</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -168,51 +148,23 @@ function AttendancePage() {
                       )}
                     >
                       <TableCell className="flex px-0 place-items-start justify-start">
-                        {isMobile && (
-                          <Button
-                            asChild
-                            variant="link"
-                            className="h-auto w-full justify-start cursor-pointer px-1"
-                          >
-                            <Link
-                              to="/staff/attendance/$sessionId"
-                              params={{ sessionId: row.session._id }}
-                            >
-                              {row.classItem?.title || "Untitled class"}
-                            </Link>
-                          </Button>
-                        )}
-                        {!isMobile && (
-                          <Button
-                            variant="link"
-                            className="h-auto p-1"
-                            onClick={() => setTargetSessionId(row.session._id)}
+                        <Button
+                          asChild
+                          variant="link"
+                          className="h-auto w-full cursor-pointer justify-start px-1"
+                        >
+                          <Link
+                            to="/admin/attendance/$sessionId"
+                            params={{ sessionId: row.session._id }}
                           >
                             {row.classItem?.title || "Untitled class"}
-                          </Button>
-                        )}
+                          </Link>
+                        </Button>
                       </TableCell>
                       <TableCell>
                         {format(row.session.date, "MM/dd/yy") || "Date TBD"}
                         {" · "}
                         {row.session.startTime}
-                      </TableCell>
-                      <TableCell className="min-w-56">
-                        <SessionSubstituteCombobox
-                          accounts={accounts}
-                          value={row.session.substitute}
-                          onValueChange={(substitute) =>
-                            void handleSubstituteChange(
-                              row.session._id,
-                              substitute,
-                            )
-                          }
-                          disabled={
-                            accounts === undefined ||
-                            savingSubstituteSessionId === row.session._id
-                          }
-                          className="w-min min-w-40"
-                        />
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -232,21 +184,22 @@ function AttendancePage() {
             )}
           </div>
         </ScrollArea>
-        <div className="hidden w-full px-6 pt-6 md:block">
-          <Card className="rounded-lg h-[calc(100svh-120px)]">
-            <ScrollArea className="h-full">
+        <div
+          className={cn(
+            "w-full sm:px-6 sm:pt-6",
+            !targetSessionId && "hidden sm:block",
+          )}
+        >
+          <div className="bg-card text-card-foreground h-auto sm:h-[calc(100svh-120px)] sm:rounded-lg sm:border sm:py-6 sm:shadow-sm">
+            <ScrollArea className="h-auto sm:h-full">
               {!targetSessionId && (
                 <div className="flex h-[calc(100svh-120px)] items-center justify-center">
                   <Scan className="size-12 text-muted-foreground" />
                 </div>
               )}
-              {targetSessionId && (
-                <AttendanceSession
-                  sessionId={targetSessionId as Id<"sessions">}
-                />
-              )}
+              <Outlet />
             </ScrollArea>
-          </Card>
+          </div>
         </div>
       </div>
     </RoleGate>

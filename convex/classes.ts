@@ -99,6 +99,8 @@ import {
 import {
   attendanceReminderRecipientIds,
   canViewStaffAttendanceSession,
+  compareAttendanceSessionsByOccurrence,
+  isAttendanceClassEligible,
   isIncompleteAttendanceReminderEligible,
   isWeekdayIncompleteAttendanceSweepTime,
   matchesStaffAttendanceMode,
@@ -1083,15 +1085,27 @@ async function getAttendanceSessionSummaryRows(
   ctx: QueryCtx,
   sessions: Doc<"sessions">[],
 ) {
-  const classIds = [...new Set(sessions.map((session) => session.classId))];
+  const orderedSessions = [...sessions].sort(
+    compareAttendanceSessionsByOccurrence,
+  );
+  const classIds = [
+    ...new Set(orderedSessions.map((session) => session.classId)),
+  ];
   const classItems = new Map(
     await Promise.all(
       classIds.map(async (classId) => [classId, await ctx.db.get(classId)] as const),
     ),
   );
+  const eligibleClassIds = classIds.filter((classId) =>
+    isAttendanceClassEligible(classItems.get(classId)),
+  );
+  const eligibleClassIdSet = new Set(eligibleClassIds);
+  const eligibleSessions = orderedSessions.filter((session) =>
+    eligibleClassIdSet.has(session.classId),
+  );
   const enrollmentsByClass = new Map(
     await Promise.all(
-      classIds.map(async (classId) => [
+      eligibleClassIds.map(async (classId) => [
         classId,
         await ctx.db
           .query("classEnrollments")
@@ -1101,7 +1115,7 @@ async function getAttendanceSessionSummaryRows(
     ),
   );
   const sessionData = await Promise.all(
-    sessions.map(async (session) => {
+    eligibleSessions.map(async (session) => {
       const [signups, addedStudents, attendance] = await Promise.all([
         ctx.db
           .query("classSessionSignups")

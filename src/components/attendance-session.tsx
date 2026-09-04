@@ -1,11 +1,23 @@
 import { useConvexMutation, useConvexQuery } from "@convex-dev/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
-import { Check, CheckCheck, UserPlus, X } from "lucide-react";
+import { Check, CheckCheck, MinusCircle, UserPlus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AttendanceRowActions } from "~/components/attendance-row-actions";
 import { RoleGate } from "~/components/role-gate";
+import { SessionSubstituteCombobox } from "~/components/session-substitute-combobox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import {
@@ -23,23 +35,31 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "~/components/ui/combobox";
+import { Label } from "~/components/ui/label";
 import { Spinner } from "~/components/ui/spinner";
 import { formatMDYYYY, formatTimeRange, isBirthday } from "~/lib/date-utils";
 import { cn } from "~/lib/utils";
+import { toast } from "sonner";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 type QuickAttendanceStatus = "present" | "absent";
 
 function AttendanceSession({ sessionId }: { sessionId: Id<"sessions"> }) {
+  const navigate = useNavigate();
   const sessionData = useConvexQuery(api.classes.staffGetAttendanceSession, {
     session: sessionId as Id<"sessions">,
   });
+  const accounts = useConvexQuery(api.classes.adminListAccounts, {});
   const markAttendance = useConvexMutation(api.classes.markAttendance);
   const clearAttendance = useConvexMutation(api.classes.clearAttendance);
   const markSessionPresent = useConvexMutation(api.classes.markSessionPresent);
   const addStudentToSession = useConvexMutation(
     api.classes.addStudentToSession,
   );
+  const setSessionSubstitute = useConvexMutation(
+    api.classes.adminSetSessionSubstitute,
+  );
+  const setSessionActive = useConvexMutation(api.classes.adminSetSessionActive);
   const [localAttendance, setLocalAttendance] = useState<
     Map<string, AttendanceStatus>
   >(new Map());
@@ -47,6 +67,8 @@ function AttendanceSession({ sessionId }: { sessionId: Id<"sessions"> }) {
   const [isMarkingAll, setIsMarkingAll] = useState(false);
   const [selectedAddStudent, setSelectedAddStudent] = useState("");
   const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [isSavingSubstitute, setIsSavingSubstitute] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
   const attendanceByStudent = useMemo(() => {
     const map = new Map<string, AttendanceStatus>();
     sessionData?.attendance.forEach((record) => {
@@ -184,6 +206,40 @@ function AttendanceSession({ sessionId }: { sessionId: Id<"sessions"> }) {
     }
   }
 
+  async function handleSubstituteChange(substitute: Id<"users"> | null) {
+    if (isSavingSubstitute) return;
+
+    setIsSavingSubstitute(true);
+    try {
+      await setSessionSubstitute({ session: sessionId, substitute });
+      toast.success("Substitute updated.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to update substitute.",
+      );
+    } finally {
+      setIsSavingSubstitute(false);
+    }
+  }
+
+  async function deactivateSession() {
+    if (isDeactivating) return;
+
+    setIsDeactivating(true);
+    try {
+      await setSessionActive({ session: sessionId, active: false });
+      toast.success("Session deactivated.");
+      await navigate({ to: "/admin/attendance" });
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to deactivate session.",
+      );
+      setIsDeactivating(false);
+    }
+  }
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       const target = event.target;
@@ -209,7 +265,7 @@ function AttendanceSession({ sessionId }: { sessionId: Id<"sessions"> }) {
   }, [markAllPresent]);
 
   return (
-    <RoleGate allow="staff">
+    <RoleGate allow="admin">
       {sessionData === undefined ? (
         <main className="flex min-h-[calc(100svh-54px)] items-center justify-center">
           <Spinner className="size-5" />
@@ -251,6 +307,56 @@ function AttendanceSession({ sessionId }: { sessionId: Id<"sessions"> }) {
               </p>
             </div>
           </div>
+
+          <Card className="rounded-lg">
+            <CardContent className="flex gap-4 flex-row items-end justify-between">
+              <div className="w-full space-y-2 sm:max-w-sm">
+                <Label>Substitute</Label>
+                <SessionSubstituteCombobox
+                  accounts={accounts}
+                  value={sessionData.session.substitute}
+                  onValueChange={(substitute) =>
+                    void handleSubstituteChange(substitute)
+                  }
+                  disabled={accounts === undefined || isSavingSubstitute}
+                  className="w-full"
+                />
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button type="button" variant="destructive" className="mb-2">
+                    <MinusCircle />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Deactivate this session?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This session will be hidden from attendance lists. Any
+                      attendance already recorded for it will remain saved.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isDeactivating}>
+                      Keep active
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-white hover:bg-destructive/90"
+                      disabled={isDeactivating}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        void deactivateSession();
+                      }}
+                    >
+                      {isDeactivating ? "Deactivating..." : "Deactivate"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </CardContent>
+          </Card>
 
           <Card className="rounded-lg px-0">
             <CardHeader className="flex flex-row items-center justify-between">

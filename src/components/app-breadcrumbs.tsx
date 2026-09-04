@@ -81,7 +81,8 @@ function getDynamicIds(pathname: string) {
       ? segments[2]
       : undefined;
   const attendanceSessionId =
-    segments[0] === "staff" && segments[1] === "attendance"
+    (segments[0] === "staff" || segments[0] === "admin") &&
+    segments[1] === "attendance"
       ? segments[2]
       : undefined;
   const privateId =
@@ -256,7 +257,7 @@ export function AppBreadcrumbs() {
     ...(ids.attendanceSessionId
       ? {
           [ids.attendanceSessionId]: attendanceData
-            ? `${attendanceData.classItem?.title || "Session"} · ${formatMDYYYY(
+            ? `${attendanceData.classItem?.title || "Session"} ・ ${formatMDYYYY(
                 attendanceData.session.date,
               )}`
             : "Session",

@@ -1,7 +1,7 @@
 import { useConvexMutation } from "@convex-dev/react-query";
 import { api } from "convex/_generated/api";
 import { Id } from "convex/_generated/dataModel";
-import { MoreVertical, Trash2 } from "lucide-react";
+import { CircleX, MoreVertical, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   AlertDialog,
@@ -15,19 +15,11 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "~/components/ui/drawer";
-import { Label } from "~/components/ui/label";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "~/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -35,7 +27,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "~/components/ui/sheet";
+import { Label } from "~/components/ui/label";
 import { useIsMobile } from "~/hooks/use-mobile";
+import { cn } from "~/lib/utils";
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 type AttendanceReason =
@@ -146,7 +149,7 @@ export function AttendanceRowActions({
     </Button>
   );
 
-  const content = (
+  const desktopContent = (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor={`absence-reason-${student}`}>Absence reason</Label>
@@ -196,19 +199,86 @@ export function AttendanceRowActions({
     </div>
   );
 
+  const mobileReasonContent = (
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <Label>Absence reason</Label>
+        <RadioGroup
+          value={selectedReason}
+          onValueChange={(value) =>
+            void handleReasonChange(value as AttendanceReason)
+          }
+          disabled={status !== "absent" || isSavingReason}
+          aria-label={`Absence reason for ${studentName}`}
+        >
+          {reasonOptions.map((option) => {
+            const optionId = `absence-reason-${student}-${option.value}`;
+            return (
+              <Label
+                key={option.value}
+                htmlFor={optionId}
+                className={cn(
+                  "has-data-[state=checked]:border-primary has-data-[state=checked]:bg-muted/50 flex min-h-12 cursor-pointer items-center gap-3 rounded-md border p-3 font-normal",
+                  (status !== "absent" || isSavingReason) &&
+                    "cursor-not-allowed opacity-50",
+                )}
+              >
+                <RadioGroupItem id={optionId} value={option.value} />
+                <span>{option.label}</span>
+              </Label>
+            );
+          })}
+        </RadioGroup>
+        {status !== "absent" ? (
+          <p className="text-muted-foreground text-xs">
+            Mark this student absent to add a reason.
+          </p>
+        ) : null}
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full cursor-pointer"
+        disabled={
+          status !== "absent" || selectedReason === "none" || isSavingReason
+        }
+        onClick={() => void handleReasonChange("none")}
+      >
+        <CircleX />
+        Clear reason
+      </Button>
+    </div>
+  );
+
   return (
     <>
       {isMobile ? (
-        <Drawer open={open} onOpenChange={setOpen}>
-          <DrawerTrigger asChild>{trigger}</DrawerTrigger>
-          <DrawerContent className="h-1/2">
-            <DrawerHeader>
-              <DrawerTitle>Attendance options</DrawerTitle>
-              <DrawerDescription>{studentName}</DrawerDescription>
-            </DrawerHeader>
-            <div className="px-4 pb-6">{content}</div>
-          </DrawerContent>
-        </Drawer>
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>{trigger}</SheetTrigger>
+          <SheetContent side="right" className="w-[90%] sm:max-w-sm">
+            <SheetHeader className="text-left">
+              <SheetTitle>Attendance options</SheetTitle>
+              <SheetDescription>{studentName}</SheetDescription>
+            </SheetHeader>
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
+              {mobileReasonContent}
+            </div>
+            {canRemove ? (
+              <SheetFooter className="border-t">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="w-full cursor-pointer"
+                  onClick={() => setConfirmOpen(true)}
+                >
+                  <Trash2 />
+                  Remove from session
+                </Button>
+              </SheetFooter>
+            ) : null}
+          </SheetContent>
+        </Sheet>
       ) : (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>{trigger}</PopoverTrigger>
@@ -217,7 +287,7 @@ export function AttendanceRowActions({
               <p className="font-medium">Attendance options</p>
               <p className="text-muted-foreground text-sm">{studentName}</p>
             </div>
-            {content}
+            {desktopContent}
           </PopoverContent>
         </Popover>
       )}

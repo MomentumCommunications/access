@@ -16,6 +16,29 @@ export type AttendanceReminderSessionState = StaffAttendanceSessionState & {
   endTime?: string;
 };
 
+export type AttendanceSessionOccurrence = {
+  _id?: string;
+  date: string;
+  startTime?: string;
+};
+
+export function compareAttendanceSessionsByOccurrence(
+  left: AttendanceSessionOccurrence,
+  right: AttendanceSessionOccurrence,
+) {
+  return (
+    left.date.localeCompare(right.date) ||
+    (left.startTime || "").localeCompare(right.startTime || "") ||
+    (left._id || "").localeCompare(right._id || "")
+  );
+}
+
+export function isAttendanceClassEligible(
+  classItem: { status?: string } | null | undefined,
+) {
+  return Boolean(classItem && classItem.status !== "archived");
+}
+
 export function canViewStaffAttendanceSession({
   isAdmin = false,
   showAll,

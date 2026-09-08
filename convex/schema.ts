@@ -402,6 +402,7 @@ export default defineSchema({
     stripeInvoiceId: v.optional(v.string()),
     reviewedBy: v.optional(v.id("users")),
     reviewedAt: v.optional(v.number()),
+    followUpNotes: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

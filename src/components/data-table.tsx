@@ -10,7 +10,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "~/components/ui/button";
 import {

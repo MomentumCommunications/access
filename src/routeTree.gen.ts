@@ -63,6 +63,8 @@ import { Route as AppStaffClassesClassIdRouteImport } from './routes/_app.staff/
 import { Route as AppStaffAttendanceSessionIdRouteImport } from './routes/_app.staff/attendance_.$sessionId'
 import { Route as AppAdminStudentsCreateRouteImport } from './routes/_app.admin/students/create'
 import { Route as AppAdminStudentsStudentIdRouteImport } from './routes/_app.admin/students/$studentId'
+import { Route as AppAdminReportsOverviewRouteImport } from './routes/_app.admin/reports/overview'
+import { Route as AppAdminReportsOnboardingRouteImport } from './routes/_app.admin/reports/onboarding'
 import { Route as AppAdminPrivatesCreateRouteImport } from './routes/_app.admin/privates/create'
 import { Route as AppAdminPrivatesPrivateIdRouteImport } from './routes/_app.admin/privates/$privateId'
 import { Route as AppAdminClassesTrialsRouteImport } from './routes/_app.admin/classes/trials'
@@ -364,6 +366,17 @@ const AppAdminStudentsStudentIdRoute =
     path: '/admin/students/$studentId',
     getParentRoute: () => AppRoute,
   } as any)
+const AppAdminReportsOverviewRoute = AppAdminReportsOverviewRouteImport.update({
+  id: '/admin/reports/overview',
+  path: '/admin/reports/overview',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminReportsOnboardingRoute =
+  AppAdminReportsOnboardingRouteImport.update({
+    id: '/admin/reports/onboarding',
+    path: '/admin/reports/onboarding',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAdminPrivatesCreateRoute = AppAdminPrivatesCreateRouteImport.update({
   id: '/admin/privates/create',
   path: '/admin/privates/create',
@@ -575,6 +588,8 @@ export interface FileRoutesByFullPath {
   '/admin/classes/trials': typeof AppAdminClassesTrialsRoute
   '/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/admin/privates/create': typeof AppAdminPrivatesCreateRoute
+  '/admin/reports/onboarding': typeof AppAdminReportsOnboardingRoute
+  '/admin/reports/overview': typeof AppAdminReportsOverviewRoute
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
   '/admin/students/create': typeof AppAdminStudentsCreateRoute
   '/staff/attendance/$sessionId': typeof AppStaffAttendanceSessionIdRoute
@@ -656,6 +671,8 @@ export interface FileRoutesByTo {
   '/admin/classes/trials': typeof AppAdminClassesTrialsRoute
   '/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/admin/privates/create': typeof AppAdminPrivatesCreateRoute
+  '/admin/reports/onboarding': typeof AppAdminReportsOnboardingRoute
+  '/admin/reports/overview': typeof AppAdminReportsOverviewRoute
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
   '/admin/students/create': typeof AppAdminStudentsCreateRoute
   '/staff/attendance/$sessionId': typeof AppStaffAttendanceSessionIdRoute
@@ -740,6 +757,8 @@ export interface FileRoutesById {
   '/_app/admin/classes/trials': typeof AppAdminClassesTrialsRoute
   '/_app/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/_app/admin/privates/create': typeof AppAdminPrivatesCreateRoute
+  '/_app/admin/reports/onboarding': typeof AppAdminReportsOnboardingRoute
+  '/_app/admin/reports/overview': typeof AppAdminReportsOverviewRoute
   '/_app/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
   '/_app/admin/students/create': typeof AppAdminStudentsCreateRoute
   '/_app/staff/attendance_/$sessionId': typeof AppStaffAttendanceSessionIdRoute
@@ -824,6 +843,8 @@ export interface FileRouteTypes {
     | '/admin/classes/trials'
     | '/admin/privates/$privateId'
     | '/admin/privates/create'
+    | '/admin/reports/onboarding'
+    | '/admin/reports/overview'
     | '/admin/students/$studentId'
     | '/admin/students/create'
     | '/staff/attendance/$sessionId'
@@ -905,6 +926,8 @@ export interface FileRouteTypes {
     | '/admin/classes/trials'
     | '/admin/privates/$privateId'
     | '/admin/privates/create'
+    | '/admin/reports/onboarding'
+    | '/admin/reports/overview'
     | '/admin/students/$studentId'
     | '/admin/students/create'
     | '/staff/attendance/$sessionId'
@@ -988,6 +1011,8 @@ export interface FileRouteTypes {
     | '/_app/admin/classes/trials'
     | '/_app/admin/privates/$privateId'
     | '/_app/admin/privates/create'
+    | '/_app/admin/reports/onboarding'
+    | '/_app/admin/reports/overview'
     | '/_app/admin/students/$studentId'
     | '/_app/admin/students/create'
     | '/_app/staff/attendance_/$sessionId'
@@ -1403,6 +1428,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminStudentsStudentIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/reports/overview': {
+      id: '/_app/admin/reports/overview'
+      path: '/admin/reports/overview'
+      fullPath: '/admin/reports/overview'
+      preLoaderRoute: typeof AppAdminReportsOverviewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/reports/onboarding': {
+      id: '/_app/admin/reports/onboarding'
+      path: '/admin/reports/onboarding'
+      fullPath: '/admin/reports/onboarding'
+      preLoaderRoute: typeof AppAdminReportsOnboardingRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/privates/create': {
       id: '/_app/admin/privates/create'
       path: '/admin/privates/create'
@@ -1651,6 +1690,8 @@ interface AppRouteChildren {
   AppAdminClassesTrialsRoute: typeof AppAdminClassesTrialsRoute
   AppAdminPrivatesPrivateIdRoute: typeof AppAdminPrivatesPrivateIdRoute
   AppAdminPrivatesCreateRoute: typeof AppAdminPrivatesCreateRoute
+  AppAdminReportsOnboardingRoute: typeof AppAdminReportsOnboardingRoute
+  AppAdminReportsOverviewRoute: typeof AppAdminReportsOverviewRoute
   AppAdminStudentsStudentIdRoute: typeof AppAdminStudentsStudentIdRoute
   AppAdminStudentsCreateRoute: typeof AppAdminStudentsCreateRoute
   AppStaffAttendanceSessionIdRoute: typeof AppStaffAttendanceSessionIdRoute
@@ -1720,6 +1761,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminClassesTrialsRoute: AppAdminClassesTrialsRoute,
   AppAdminPrivatesPrivateIdRoute: AppAdminPrivatesPrivateIdRoute,
   AppAdminPrivatesCreateRoute: AppAdminPrivatesCreateRoute,
+  AppAdminReportsOnboardingRoute: AppAdminReportsOnboardingRoute,
+  AppAdminReportsOverviewRoute: AppAdminReportsOverviewRoute,
   AppAdminStudentsStudentIdRoute: AppAdminStudentsStudentIdRoute,
   AppAdminStudentsCreateRoute: AppAdminStudentsCreateRoute,
   AppStaffAttendanceSessionIdRoute: AppStaffAttendanceSessionIdRoute,

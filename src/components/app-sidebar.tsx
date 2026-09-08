@@ -293,19 +293,6 @@ const AppSidebarComponent = memo(() => {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild
-                      isActive={isActivePath(pathname, "/admin/reports")}
-                      tooltip="Reports"
-                      onClick={closeMobileSidebar}
-                    >
-                      <Link to="/admin/reports">
-                        <BarChart3 />
-                        <span>Reports</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild
                       isActive={isActivePath(pathname, "/admin/scheduling")}
                       tooltip="Scheduling"
                       onClick={closeMobileSidebar}
@@ -332,6 +319,17 @@ const AppSidebarComponent = memo(() => {
                     icon={DollarSign}
                     isActive={isActivePath(pathname, "/admin/billing")}
                     items={ADMIN_BILLING_ITEMS.map(([label, to]) => ({
+                      label,
+                      to,
+                      isActive: isActivePath(pathname, to),
+                    }))}
+                    onNavigate={closeMobileSidebar}
+                  />
+                  <SidebarCollapsibleGroup
+                    label="Reports"
+                    icon={BarChart3}
+                    isActive={isActivePath(pathname, "/admin/reports")}
+                    items={ADMIN_REPORT_ITEMS.map(([label, to]) => ({
                       label,
                       to,
                       isActive: isActivePath(pathname, to),
@@ -469,6 +467,11 @@ const ADMIN_BILLING_ITEMS = [
   ["Tuitions", "/admin/billing/tuitions"],
   ["Charges", "/admin/billing/charges"],
   ["Runs", "/admin/billing/runs"],
+] as const;
+
+const ADMIN_REPORT_ITEMS = [
+  ["Overview", "/admin/reports/overview"],
+  ["Onboarding", "/admin/reports/onboarding"],
 ] as const;
 
 type SidebarCollapsibleGroupProps = {

@@ -476,6 +476,9 @@ export const adminCreatePrivateLesson = mutation({
     }
     validateNotes(args.notes);
     await validateStudents(ctx, args.studentIds);
+    if (args.studentIds.length === 0) {
+      throw new Error("Select at least one student.");
+    }
 
     const duplicate = await ctx.db
       .query("privateLessons")

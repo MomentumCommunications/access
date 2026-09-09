@@ -7,6 +7,7 @@ import { Pencil, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
+import { CreatePrivateLessonDialog } from "~/components/create-private-lesson-dialog";
 import { RoleGate } from "~/components/role-gate";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -232,14 +233,25 @@ function PrivateDetailPage() {
                     Generated and manually adjusted lesson occurrences.
                   </p>
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={handleGenerate}
-                  disabled={isGenerating}
-                >
-                  <RefreshCw className={isGenerating ? "animate-spin" : ""} />
-                  Sync Schedule
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleGenerate}
+                    disabled={isGenerating}
+                  >
+                    <RefreshCw className={isGenerating ? "animate-spin" : ""} />
+                    Sync Schedule
+                  </Button>
+                  <CreatePrivateLessonDialog
+                    privateId={data.private._id}
+                    defaultDurationMinutes={data.private.defaultDurationMinutes}
+                    timezone={schedule?.timezone || "America/New_York"}
+                    startTime={schedule?.startTime || "16:00"}
+                    students={data.defaultStudents.filter(
+                      (student): student is Doc<"students"> => student !== null,
+                    )}
+                  />
+                </div>
               </div>
               <DataTable
                 columns={columns}

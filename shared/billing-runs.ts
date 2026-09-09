@@ -6,6 +6,7 @@ import {
   type BillingAdjustmentReasonCode,
 } from "./billing-adjustments.ts";
 import type { SiblingDiscountConfig } from "./tuition-pricing.ts";
+import type { TuitionEnrollmentSnapshot } from "./billing-audit.ts";
 
 export const billingRunSourceModes = ["tuition", "charges", "both"] as const;
 export type BillingRunSourceMode = (typeof billingRunSourceModes)[number];
@@ -22,6 +23,7 @@ export type BillingRunTuitionSource = {
     studentName: string;
     baseTuitionCents?: number;
   }[];
+  enrollmentSnapshots?: TuitionEnrollmentSnapshot[];
   siblingDiscount?: SiblingDiscountConfig;
   householdTuitionAdjustmentTotalCents?: number;
 };
@@ -89,6 +91,7 @@ export type BillingRunBundle = {
     perSessionChargeIds: string[];
   };
   sourceComponents: BillingRunSourceComponents;
+  tuitionEnrollmentSnapshots?: TuitionEnrollmentSnapshot[];
 };
 
 export function buildBillingRunItemSnapshot(
@@ -203,6 +206,7 @@ export function buildBillingRunBundles({
         perSessionChargesCents: 0,
         householdTuitionAdjustmentTotalCents: 0,
       },
+      tuitionEnrollmentSnapshots: [],
     };
     grouped.set(householdId, bundle);
     return bundle;
@@ -219,6 +223,9 @@ export function buildBillingRunBundles({
       bundle.sourceComponents.siblingDiscount = tuition.siblingDiscount;
       bundle.sourceComponents.householdTuitionAdjustmentTotalCents =
         tuition.householdTuitionAdjustmentTotalCents || 0;
+      bundle.tuitionEnrollmentSnapshots = [
+        ...(tuition.enrollmentSnapshots || []),
+      ];
       if (includesCharges(sourceMode)) {
         for (const student of tuition.students || []) {
           if (
@@ -308,6 +315,11 @@ export function buildBillingRunBundles({
             left.studentId.localeCompare(right.studentId),
         ),
       },
+      tuitionEnrollmentSnapshots: [
+        ...(bundle.tuitionEnrollmentSnapshots || []),
+      ].sort(
+        (left, right) => left.enrollmentId.localeCompare(right.enrollmentId),
+      ),
     }))
     .sort(
       (left, right) =>

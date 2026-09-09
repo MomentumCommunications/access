@@ -11,6 +11,7 @@ import {
 } from "../shared/billing-adjustments";
 import { resolveHouseholdStripeBillingTarget } from "../shared/stripe-invoice-dispatch";
 import { resolveBillingRunItemSourceComponents } from "./lib/billing/runSourceComponents";
+import { ensureBillingRunAuditRecord } from "./lib/billing/auditRecords";
 
 async function requireAdmin(ctx: Parameters<typeof getCurrentUserOrThrow>[0]) {
   const user = await getCurrentUserOrThrow(ctx);
@@ -334,6 +335,16 @@ export const markBillingRunItemDispatched = internalMutation({
       item.status === "dispatched" &&
       item.stripeInvoiceId === args.stripeInvoiceId
     ) {
+      await ensureBillingRunAuditRecord(ctx, {
+        item,
+        stripeInvoiceId: args.stripeInvoiceId,
+        invoiceTotalCents:
+          item.dispatchedFinalTotalCents ?? args.finalTotalCents,
+        tuitionAmountCents:
+          item.dispatchedTuitionSubtotalCents ?? args.tuitionSubtotalCents,
+        recordedBy: item.dispatchedBy ?? actor._id,
+        recordedAt: item.dispatchedAt ?? Date.now(),
+      });
       return;
     }
     const now = Date.now();
@@ -353,6 +364,24 @@ export const markBillingRunItemDispatched = internalMutation({
       dispatchFailureReason: undefined,
       dispatchFailureAt: undefined,
       updatedAt: now,
+    });
+    await ensureBillingRunAuditRecord(ctx, {
+      item: {
+        ...item,
+        status: "dispatched",
+        dispatchedBy: actor._id,
+        dispatchedAt: now,
+        dispatchedFinalTotalCents: args.finalTotalCents,
+        dispatchedTuitionSubtotalCents: args.tuitionSubtotalCents,
+        dispatchedChargesSubtotalCents: args.chargesSubtotalCents,
+        stripeInvoiceId: args.stripeInvoiceId,
+        updatedAt: now,
+      },
+      stripeInvoiceId: args.stripeInvoiceId,
+      invoiceTotalCents: args.finalTotalCents,
+      tuitionAmountCents: args.tuitionSubtotalCents,
+      recordedBy: actor._id,
+      recordedAt: now,
     });
     await recordActivityEvent(ctx, {
       entityType: "billing_run_item",

@@ -24,6 +24,23 @@ const tuition = [
   },
 ];
 
+const enrollmentSnapshots = [
+  {
+    enrollmentId: "enrollment-b",
+    studentId: "student-b",
+    classId: "class-b",
+    classTitle: "Ballet",
+    fingerprint: "fingerprint-b",
+  },
+  {
+    enrollmentId: "enrollment-a",
+    studentId: "student-a",
+    classId: "class-a",
+    classTitle: "Acro",
+    fingerprint: "fingerprint-a",
+  },
+];
+
 const charges = [
   {
     householdId: "household-a",
@@ -147,6 +164,24 @@ describe("billing run bundle generation", () => {
 
     assert.equal(snapshot.periodStart, "2026-07-01");
     assert.equal(snapshot.periodEnd, "2026-07-31");
+  });
+
+  it("preserves deterministic exact enrollment coverage in tuition items", () => {
+    const [bundle] = buildBillingRunBundles({
+      sourceMode: "tuition",
+      tuitionHouseholds: [{ ...tuition[0], enrollmentSnapshots }],
+      charges: [],
+    });
+
+    assert.deepEqual(
+      bundle.tuitionEnrollmentSnapshots?.map((row) => row.enrollmentId),
+      ["enrollment-a", "enrollment-b"],
+    );
+    assert.deepEqual(
+      buildBillingRunItemSnapshot(bundle, "2026-07-01", "2026-07-31")
+        .tuitionEnrollmentSnapshots,
+      bundle.tuitionEnrollmentSnapshots,
+    );
   });
 });
 

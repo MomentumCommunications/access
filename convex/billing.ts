@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { fromZonedTime } from "date-fns-tz";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
@@ -15,6 +16,7 @@ import {
 } from "./lib/billing/weeklyClassHours";
 import {
   calculatePeriodTuitionsWithExclusions,
+  contributingTuitionEnrollmentInputs,
   type TuitionCalculationInput,
 } from "./lib/billing/tuitionCalculation";
 import {
@@ -69,6 +71,7 @@ import {
 } from "../shared/billing-runs";
 import { recordActivityEvent } from "./lib/activityLog";
 import { resolveBillingRunItemSourceComponents } from "./lib/billing/runSourceComponents";
+import { ensureBillingRunAuditRecord } from "./lib/billing/auditRecords";
 import { todayValue } from "./lib/scheduling";
 import {
   availableTuitionMonths,
@@ -78,6 +81,10 @@ import {
   selectHouseholdTuitionBreakdown,
   tuitionMonthNavigation,
 } from "../shared/tuition-plan";
+import {
+  buildTuitionEnrollmentSnapshot,
+  resolveBillingCoverageStatus,
+} from "../shared/billing-audit";
 
 function accountName(account: {
   firstName?: string;
@@ -573,6 +580,11 @@ async function getPeriodTuitionReview(
     periodEnd,
   );
   const calculations = calculationResult.tuitions;
+  const contributingInputs = contributingTuitionEnrollmentInputs(
+    inputs,
+    periodStart,
+    periodEnd,
+  );
 
   const householdData =
     context?.householdData ?? (await getHouseholdResolutionData(ctx));
@@ -605,6 +617,12 @@ async function getPeriodTuitionReview(
         pricingSource: `${activeSchema.name} v${activeSchema.version}`,
         isProrated:
           pricedDays < calculation.periodDays || pricedAmounts.size > 1,
+        tuitionEnrollmentSnapshots: contributingInputs
+          .filter((input) => input.studentId === calculation.studentId)
+          .flatMap((input) => {
+            const snapshot = buildTuitionEnrollmentSnapshot(input);
+            return snapshot ? [snapshot] : [];
+          }),
       };
     }),
   );
@@ -768,6 +786,81 @@ async function getPeriodTuitionReviewContext(
   };
 }
 
+async function getBillingAuditRecordsForPeriod(
+  ctx: BillingCtx,
+  periodStart: string,
+  periodEnd: string,
+) {
+  return await ctx.db
+    .query("billingAuditRecords")
+    .withIndex("byPeriodHousehold", (q) =>
+      q.eq("periodStart", periodStart).eq("periodEnd", periodEnd),
+    )
+    .collect();
+}
+
+function buildBillingAuditHouseholds(
+  review: Awaited<ReturnType<typeof getPeriodTuitionReview>>,
+  records: Doc<"billingAuditRecords">[],
+) {
+  const householdIds = new Set([
+    ...review.households.map((household) => household.householdId),
+    ...records.map((record) => record.householdId),
+  ]);
+  return [...householdIds]
+    .map((householdId) => {
+      const household = review.households.find(
+        (candidate) => candidate.householdId === householdId,
+      );
+      const householdRecords = records
+        .filter((record) => record.householdId === householdId)
+        .sort((left, right) => right.recordedAt - left.recordedAt);
+      const activeRecords = householdRecords.filter(
+        (record) => record.status === "active",
+      );
+      const expectedEnrollments =
+        household?.students.flatMap((student) =>
+          student.tuitionEnrollmentSnapshots.map((snapshot) => ({
+            ...snapshot,
+            studentName: student.studentName,
+          })),
+        ) || [];
+      const covered = activeRecords.flatMap(
+        (record) => record.enrollmentSnapshots,
+      );
+      const hasHistoricalCoverage = activeRecords.some(
+        (record) => record.attributionQuality !== "exact",
+      );
+      const status = resolveBillingCoverageStatus({
+        expected: expectedEnrollments,
+        covered,
+        hasHistoricalCoverage,
+      });
+      return {
+        householdId,
+        householdName:
+          household?.householdName ||
+          householdRecords[0]?.householdName ||
+          "Unknown household",
+        status,
+        expectedEnrollments,
+        coveredEnrollmentCount: new Set(
+          covered.map((snapshot) => snapshot.enrollmentId),
+        ).size,
+        records: householdRecords,
+        activeTuitionAmountCents: activeRecords.reduce(
+          (total, record) => total + record.tuitionAmountCents,
+          0,
+        ),
+      };
+    })
+    .sort(
+      (left, right) =>
+        left.householdName.localeCompare(right.householdName) ||
+        left.householdId.localeCompare(right.householdId),
+    );
+}
+
 export const adminPeriodTuitionReview = query({
   args: {
     periodStart: v.string(),
@@ -775,7 +868,55 @@ export const adminPeriodTuitionReview = query({
   },
   handler: async (ctx, { periodStart, periodEnd }) => {
     await requireAdmin(ctx);
-    return await getPeriodTuitionReview(ctx, periodStart, periodEnd);
+    const [review, records] = await Promise.all([
+      getPeriodTuitionReview(ctx, periodStart, periodEnd),
+      getBillingAuditRecordsForPeriod(ctx, periodStart, periodEnd),
+    ]);
+    const auditHouseholds = buildBillingAuditHouseholds(review, records);
+    const auditByHousehold = new Map(
+      auditHouseholds.map((household) => [household.householdId, household]),
+    );
+    return {
+      ...review,
+      households: review.households.map((household) => ({
+        ...household,
+        billingCoverage: auditByHousehold.get(household.householdId)!,
+      })),
+    };
+  },
+});
+
+export const adminBillingAudit = query({
+  args: {
+    periodStart: v.string(),
+    periodEnd: v.string(),
+  },
+  handler: async (ctx, { periodStart, periodEnd }) => {
+    await requireAdmin(ctx);
+    validateIsoDate(periodStart, "periodStart");
+    validateIsoDate(periodEnd, "periodEnd");
+    if (periodEnd < periodStart) {
+      throw new Error("periodEnd must be on or after periodStart.");
+    }
+    const [review, records] = await Promise.all([
+      getPeriodTuitionReview(ctx, periodStart, periodEnd),
+      getBillingAuditRecordsForPeriod(ctx, periodStart, periodEnd),
+    ]);
+    const households = buildBillingAuditHouseholds(review, records);
+    return {
+      households,
+      summary: {
+        billed: households.filter((row) => row.status === "billed").length,
+        partiallyCovered: households.filter(
+          (row) => row.status === "partially_covered",
+        ).length,
+        notBilled: households.filter((row) => row.status === "not_billed")
+          .length,
+        needsReview: households.filter(
+          (row) => row.status === "needs_review",
+        ).length,
+      },
+    };
   },
 });
 
@@ -1724,6 +1865,9 @@ async function buildCurrentBillingRunBundles(
             total + (adjustment.appliedAmountCents || 0),
           0,
         ),
+      enrollmentSnapshots: household.students.flatMap(
+        (student) => student.tuitionEnrollmentSnapshots,
+      ),
     })) || [];
   const privateChargeSources =
     chargesReview?.privateCharges.map((charge) => ({
@@ -2003,6 +2147,179 @@ export const adminGenerateMissingBillingRunItems = mutation({
       billingRunId,
       itemCount: missingBundles.length,
       skippedCount: currentBundles.length - missingBundles.length,
+    };
+  },
+});
+
+export const adminRecordExternalTuitionBilling = mutation({
+  args: {
+    householdId: v.string(),
+    periodStart: v.string(),
+    periodEnd: v.string(),
+    stripeInvoiceId: v.string(),
+    amountCents: v.number(),
+    enrollmentIds: v.array(v.id("classEnrollments")),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireAdmin(ctx);
+    validateIsoDate(args.periodStart, "periodStart");
+    validateIsoDate(args.periodEnd, "periodEnd");
+    if (args.periodEnd < args.periodStart) {
+      throw new Error("periodEnd must be on or after periodStart.");
+    }
+    if (!Number.isSafeInteger(args.amountCents) || args.amountCents <= 0) {
+      throw new Error("External billing amount must be a positive whole-cent value.");
+    }
+    const stripeInvoiceId = args.stripeInvoiceId.trim();
+    if (!stripeInvoiceId || stripeInvoiceId.length > 200) {
+      throw new Error("Stripe invoice ID is required and must be 200 characters or fewer.");
+    }
+    const note = args.note?.trim() || undefined;
+    if (note && note.length > 2000) {
+      throw new Error("Billing audit notes must be 2000 characters or fewer.");
+    }
+    const enrollmentIds = [...new Set(args.enrollmentIds)];
+    if (enrollmentIds.length === 0) {
+      throw new Error("Select at least one enrollment covered by this invoice.");
+    }
+    const existingInvoice = await ctx.db
+      .query("billingAuditRecords")
+      .withIndex("byStripeInvoice", (q) =>
+        q.eq("stripeInvoiceId", stripeInvoiceId),
+      )
+      .first();
+    if (existingInvoice) {
+      throw new Error("This Stripe invoice is already recorded in billing audit.");
+    }
+
+    const review = await getPeriodTuitionReview(
+      ctx,
+      args.periodStart,
+      args.periodEnd,
+    );
+    const household = review.households.find(
+      (candidate) => candidate.householdId === args.householdId,
+    );
+    if (!household) {
+      throw new Error("This household has no tuition obligations for the selected period.");
+    }
+    const availableSnapshots = household.students.flatMap(
+      (student) => student.tuitionEnrollmentSnapshots,
+    );
+    const selected = availableSnapshots.filter((snapshot) =>
+      enrollmentIds.includes(snapshot.enrollmentId as Id<"classEnrollments">),
+    );
+    if (selected.length !== enrollmentIds.length) {
+      throw new Error(
+        "One or more selected enrollments do not belong to this household or period.",
+      );
+    }
+    const now = Date.now();
+    const recordId = await ctx.db.insert("billingAuditRecords", {
+      householdId: household.householdId,
+      householdName: household.householdName,
+      periodStart: args.periodStart,
+      periodEnd: args.periodEnd,
+      source: "manual_stripe",
+      status: "active",
+      attributionQuality: "exact",
+      stripeInvoiceId,
+      invoiceTotalCents: args.amountCents,
+      tuitionAmountCents: args.amountCents,
+      enrollmentSnapshots: selected,
+      historicalStudentIds: [],
+      note,
+      recordedBy: actor._id,
+      recordedAt: now,
+    });
+    await recordActivityEvent(ctx, {
+      entityType: "billing_audit_record",
+      entityId: recordId,
+      actorId: actor._id,
+      eventType: "external_tuition_billing_recorded",
+      summary: `Recorded external Stripe tuition billing for ${household.householdName}.`,
+      metadata: {
+        householdId: household.householdId,
+        periodStart: args.periodStart,
+        periodEnd: args.periodEnd,
+        stripeInvoiceId,
+        amountCents: args.amountCents,
+        enrollmentCount: selected.length,
+      },
+    });
+    return { recordId };
+  },
+});
+
+export const adminVoidExternalTuitionBilling = mutation({
+  args: { billingAuditRecordId: v.id("billingAuditRecords") },
+  handler: async (ctx, { billingAuditRecordId }) => {
+    const actor = await requireAdmin(ctx);
+    const record = await ctx.db.get(billingAuditRecordId);
+    if (!record) throw new Error("Billing audit record not found.");
+    if (record.source !== "manual_stripe") {
+      throw new Error("Billing-run audit records are immutable.");
+    }
+    if (record.status === "voided") return { recordId: record._id };
+    const now = Date.now();
+    await ctx.db.patch(record._id, {
+      status: "voided",
+      voidedBy: actor._id,
+      voidedAt: now,
+    });
+    await recordActivityEvent(ctx, {
+      entityType: "billing_audit_record",
+      entityId: record._id,
+      actorId: actor._id,
+      eventType: "external_tuition_billing_voided",
+      summary: `Voided external Stripe tuition billing for ${record.householdName}.`,
+      metadata: {
+        householdId: record.householdId,
+        stripeInvoiceId: record.stripeInvoiceId,
+      },
+    });
+    return { recordId: record._id };
+  },
+});
+
+export const adminBackfillBillingAuditRecords = mutation({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { paginationOpts }) => {
+    const actor = await requireAdmin(ctx);
+    const page = await ctx.db
+      .query("billingRunItems")
+      .paginate(paginationOpts);
+    let createdCount = 0;
+    let skippedCount = 0;
+    for (const item of page.page) {
+      if (
+        item.status !== "dispatched" ||
+        !item.includeTuition ||
+        !item.stripeInvoiceId
+      ) {
+        skippedCount += 1;
+        continue;
+      }
+      const result = await ensureBillingRunAuditRecord(ctx, {
+        item,
+        stripeInvoiceId: item.stripeInvoiceId,
+        invoiceTotalCents:
+          item.dispatchedFinalTotalCents ??
+          item.subtotalBeforeRunAdjustmentsCents,
+        tuitionAmountCents:
+          item.dispatchedTuitionSubtotalCents ?? item.tuitionSubtotalCents,
+        recordedBy: item.dispatchedBy ?? actor._id,
+        recordedAt: item.dispatchedAt ?? item.updatedAt,
+      });
+      if (result.outcome === "created") createdCount += 1;
+      else skippedCount += 1;
+    }
+    return {
+      continueCursor: page.continueCursor,
+      isDone: page.isDone,
+      createdCount,
+      skippedCount,
     };
   },
 });

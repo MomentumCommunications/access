@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   calculatePeriodTuitions,
   calculatePeriodTuitionsWithExclusions,
+  contributingTuitionEnrollmentInputs,
   type TuitionCalculationInput,
 } from "../convex/lib/billing/tuitionCalculation.ts";
 import {
@@ -367,6 +368,49 @@ describe("calculatePeriodTuitions", () => {
         { enrollmentId: "enrollment-2", code: "invalid_start_date" },
         { enrollmentId: "enrollment-3", code: "reversed_date_range" },
       ],
+    );
+  });
+});
+
+describe("contributingTuitionEnrollmentInputs", () => {
+  it("captures only identified enrollments that contribute hours in the period", () => {
+    const contributing = row({
+      enrollmentId: "enrollment-1",
+      classId: "class-1",
+    });
+    const outsidePeriod = row({
+      enrollmentId: "enrollment-2",
+      classId: "class-2",
+      enrollmentStartDate: "2026-07-01",
+    });
+    const missingEnrollmentId = row({ classId: "class-3" });
+
+    assert.deepEqual(
+      contributingTuitionEnrollmentInputs(
+        [contributing, outsidePeriod, missingEnrollmentId],
+        "2026-06-01",
+        "2026-06-30",
+      ).map((input) => input.enrollmentId),
+      ["enrollment-1"],
+    );
+  });
+
+  it("captures full-period enrollments after confirming any period overlap", () => {
+    const input = row({
+      enrollmentId: "enrollment-1",
+      classId: "class-1",
+      enrollmentStartDate: "2026-06-30",
+      classStartDate: "2026-06-30",
+      prorateTuition: false,
+    });
+
+    assert.deepEqual(
+      contributingTuitionEnrollmentInputs(
+        [input],
+        "2026-06-01",
+        "2026-06-30",
+      ),
+      [input],
     );
   });
 });

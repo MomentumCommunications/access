@@ -11,6 +11,10 @@ import {
   parsePercentToBasisPoints,
 } from "../../../../shared/tuition-pricing";
 import { BillingDateRangePicker } from "~/components/billing-date-range-picker";
+import {
+  BillingCoverageBadge,
+  RecordExternalBillingDialog,
+} from "~/components/billing-coverage-controls";
 import { RoleGate } from "~/components/role-gate";
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import {
@@ -154,6 +158,7 @@ function HouseholdTuitionCard({
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
+            <BillingCoverageBadge status={household.billingCoverage.status} />
             {household.householdLinkSource !== "household" ? (
               <Badge variant="outline">Household link needed</Badge>
             ) : null}
@@ -163,6 +168,19 @@ function HouseholdTuitionCard({
             {household.hasIncompleteTuition ? (
               <Badge variant="destructive">Incomplete pricing</Badge>
             ) : null}
+            <RecordExternalBillingDialog
+              householdId={household.householdId}
+              householdName={household.householdName}
+              periodStart={periodStart}
+              periodEnd={periodEnd}
+              enrollments={household.students.flatMap((student) =>
+                student.tuitionEnrollmentSnapshots.map((snapshot) => ({
+                  enrollmentId: snapshot.enrollmentId,
+                  studentName: student.studentName,
+                  classTitle: snapshot.classTitle,
+                })),
+              )}
+            />
           </div>
         </div>
         {linkageWarning ? (

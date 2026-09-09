@@ -586,6 +586,17 @@ export default defineSchema({
         ),
       }),
     ),
+    tuitionEnrollmentSnapshots: v.optional(
+      v.array(
+        v.object({
+          enrollmentId: v.string(),
+          studentId: v.string(),
+          classId: v.string(),
+          classTitle: v.optional(v.string()),
+          fingerprint: v.string(),
+        }),
+      ),
+    ),
     dispatchedSourceAdjustments: v.optional(
       v.array(
         v.object({
@@ -642,6 +653,45 @@ export default defineSchema({
     .index("byRun", ["billingRunId"])
     .index("byRunStatus", ["billingRunId", "status"])
     .index("byPeriodHousehold", ["periodStart", "periodEnd", "householdId"]),
+  billingAuditRecords: defineTable({
+    householdId: v.string(),
+    householdName: v.string(),
+    periodStart: v.string(),
+    periodEnd: v.string(),
+    source: v.union(
+      v.literal("billing_run_dispatch"),
+      v.literal("manual_stripe"),
+    ),
+    status: v.union(v.literal("active"), v.literal("voided")),
+    attributionQuality: v.union(
+      v.literal("exact"),
+      v.literal("student_only"),
+      v.literal("household_only"),
+    ),
+    billingRunItemId: v.optional(v.id("billingRunItems")),
+    stripeInvoiceId: v.string(),
+    invoiceTotalCents: v.number(),
+    tuitionAmountCents: v.number(),
+    enrollmentSnapshots: v.array(
+      v.object({
+        enrollmentId: v.string(),
+        studentId: v.string(),
+        classId: v.string(),
+        classTitle: v.optional(v.string()),
+        fingerprint: v.string(),
+      }),
+    ),
+    historicalStudentIds: v.array(v.string()),
+    note: v.optional(v.string()),
+    recordedBy: v.id("users"),
+    recordedAt: v.number(),
+    voidedBy: v.optional(v.id("users")),
+    voidedAt: v.optional(v.number()),
+  })
+    .index("byPeriodHousehold", ["periodStart", "periodEnd", "householdId"])
+    .index("byBillingRunItem", ["billingRunItemId"])
+    .index("byStripeInvoice", ["stripeInvoiceId"])
+    .index("byStatus", ["status"]),
   privateRates: defineTable({
     name: v.string(),
     participants: v.union(v.literal(1), v.literal(2), v.literal(3)),

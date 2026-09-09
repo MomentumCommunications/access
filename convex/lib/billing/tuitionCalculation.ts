@@ -110,6 +110,24 @@ function rowsForPeriodCalculation(
   });
 }
 
+export function contributingTuitionEnrollmentInputs(
+  rows: TuitionCalculationInput[],
+  periodStart: string,
+  periodEnd: string,
+) {
+  return rows.filter((row) => {
+    if (!row.enrollmentId || !row.classId) return false;
+    const segments = calculateWeeklyClassMinuteSegments(
+      rowsForPeriodCalculation([row], periodStart, periodEnd),
+      periodStart,
+      periodEnd,
+    );
+    return segments.some((student) =>
+      student.segments.some((segment) => segment.weeklyMinutes > 0),
+    );
+  });
+}
+
 export function calculatePeriodTuitions(
   rows: TuitionCalculationInput[],
   tiers: NormalizedTuitionTier[],

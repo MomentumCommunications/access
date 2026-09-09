@@ -77,6 +77,7 @@ import { Route as AppAdminBillingRunsRouteImport } from './routes/_app.admin/bil
 import { Route as AppAdminBillingPrivateChargesRouteImport } from './routes/_app.admin/billing/private-charges'
 import { Route as AppAdminBillingPricingRouteImport } from './routes/_app.admin/billing/pricing'
 import { Route as AppAdminBillingChargesRouteImport } from './routes/_app.admin/billing/charges'
+import { Route as AppAdminBillingAuditRouteImport } from './routes/_app.admin/billing/audit'
 import { Route as AppAdminBillingAdjustmentsRouteImport } from './routes/_app.admin/billing/adjustments'
 import { Route as AppAdminAttendanceSessionIdRouteImport } from './routes/_app.admin/attendance.$sessionId'
 import { Route as AppAdminAccountsCreateRouteImport } from './routes/_app.admin/accounts_.create'
@@ -440,6 +441,11 @@ const AppAdminBillingChargesRoute = AppAdminBillingChargesRouteImport.update({
   path: '/admin/billing/charges',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminBillingAuditRoute = AppAdminBillingAuditRouteImport.update({
+  id: '/admin/billing/audit',
+  path: '/admin/billing/audit',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminBillingAdjustmentsRoute =
   AppAdminBillingAdjustmentsRouteImport.update({
     id: '/admin/billing/adjustments',
@@ -576,6 +582,7 @@ export interface FileRoutesByFullPath {
   '/admin/accounts/create': typeof AppAdminAccountsCreateRoute
   '/admin/attendance/$sessionId': typeof AppAdminAttendanceSessionIdRoute
   '/admin/billing/adjustments': typeof AppAdminBillingAdjustmentsRoute
+  '/admin/billing/audit': typeof AppAdminBillingAuditRoute
   '/admin/billing/charges': typeof AppAdminBillingChargesRoute
   '/admin/billing/pricing': typeof AppAdminBillingPricingRoute
   '/admin/billing/private-charges': typeof AppAdminBillingPrivateChargesRoute
@@ -659,6 +666,7 @@ export interface FileRoutesByTo {
   '/admin/accounts/create': typeof AppAdminAccountsCreateRoute
   '/admin/attendance/$sessionId': typeof AppAdminAttendanceSessionIdRoute
   '/admin/billing/adjustments': typeof AppAdminBillingAdjustmentsRoute
+  '/admin/billing/audit': typeof AppAdminBillingAuditRoute
   '/admin/billing/charges': typeof AppAdminBillingChargesRoute
   '/admin/billing/pricing': typeof AppAdminBillingPricingRoute
   '/admin/billing/private-charges': typeof AppAdminBillingPrivateChargesRoute
@@ -745,6 +753,7 @@ export interface FileRoutesById {
   '/_app/admin/accounts_/create': typeof AppAdminAccountsCreateRoute
   '/_app/admin/attendance/$sessionId': typeof AppAdminAttendanceSessionIdRoute
   '/_app/admin/billing/adjustments': typeof AppAdminBillingAdjustmentsRoute
+  '/_app/admin/billing/audit': typeof AppAdminBillingAuditRoute
   '/_app/admin/billing/charges': typeof AppAdminBillingChargesRoute
   '/_app/admin/billing/pricing': typeof AppAdminBillingPricingRoute
   '/_app/admin/billing/private-charges': typeof AppAdminBillingPrivateChargesRoute
@@ -831,6 +840,7 @@ export interface FileRouteTypes {
     | '/admin/accounts/create'
     | '/admin/attendance/$sessionId'
     | '/admin/billing/adjustments'
+    | '/admin/billing/audit'
     | '/admin/billing/charges'
     | '/admin/billing/pricing'
     | '/admin/billing/private-charges'
@@ -914,6 +924,7 @@ export interface FileRouteTypes {
     | '/admin/accounts/create'
     | '/admin/attendance/$sessionId'
     | '/admin/billing/adjustments'
+    | '/admin/billing/audit'
     | '/admin/billing/charges'
     | '/admin/billing/pricing'
     | '/admin/billing/private-charges'
@@ -999,6 +1010,7 @@ export interface FileRouteTypes {
     | '/_app/admin/accounts_/create'
     | '/_app/admin/attendance/$sessionId'
     | '/_app/admin/billing/adjustments'
+    | '/_app/admin/billing/audit'
     | '/_app/admin/billing/charges'
     | '/_app/admin/billing/pricing'
     | '/_app/admin/billing/private-charges'
@@ -1526,6 +1538,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminBillingChargesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/billing/audit': {
+      id: '/_app/admin/billing/audit'
+      path: '/admin/billing/audit'
+      fullPath: '/admin/billing/audit'
+      preLoaderRoute: typeof AppAdminBillingAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/billing/adjustments': {
       id: '/_app/admin/billing/adjustments'
       path: '/admin/billing/adjustments'
@@ -1678,6 +1697,7 @@ interface AppRouteChildren {
   AppAdminAccountsUserIdRoute: typeof AppAdminAccountsUserIdRoute
   AppAdminAccountsCreateRoute: typeof AppAdminAccountsCreateRoute
   AppAdminBillingAdjustmentsRoute: typeof AppAdminBillingAdjustmentsRoute
+  AppAdminBillingAuditRoute: typeof AppAdminBillingAuditRoute
   AppAdminBillingChargesRoute: typeof AppAdminBillingChargesRoute
   AppAdminBillingPricingRoute: typeof AppAdminBillingPricingRoute
   AppAdminBillingPrivateChargesRoute: typeof AppAdminBillingPrivateChargesRoute
@@ -1749,6 +1769,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminAccountsUserIdRoute: AppAdminAccountsUserIdRoute,
   AppAdminAccountsCreateRoute: AppAdminAccountsCreateRoute,
   AppAdminBillingAdjustmentsRoute: AppAdminBillingAdjustmentsRoute,
+  AppAdminBillingAuditRoute: AppAdminBillingAuditRoute,
   AppAdminBillingChargesRoute: AppAdminBillingChargesRoute,
   AppAdminBillingPricingRoute: AppAdminBillingPricingRoute,
   AppAdminBillingPrivateChargesRoute: AppAdminBillingPrivateChargesRoute,

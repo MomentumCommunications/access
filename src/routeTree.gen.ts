@@ -65,6 +65,7 @@ import { Route as AppAdminStudentsCreateRouteImport } from './routes/_app.admin/
 import { Route as AppAdminStudentsStudentIdRouteImport } from './routes/_app.admin/students/$studentId'
 import { Route as AppAdminReportsOverviewRouteImport } from './routes/_app.admin/reports/overview'
 import { Route as AppAdminReportsOnboardingRouteImport } from './routes/_app.admin/reports/onboarding'
+import { Route as AppAdminPrivatesDailyRouteImport } from './routes/_app.admin/privates/daily'
 import { Route as AppAdminPrivatesCreateRouteImport } from './routes/_app.admin/privates/create'
 import { Route as AppAdminPrivatesPrivateIdRouteImport } from './routes/_app.admin/privates/$privateId'
 import { Route as AppAdminClassesTrialsRouteImport } from './routes/_app.admin/classes/trials'
@@ -378,6 +379,11 @@ const AppAdminReportsOnboardingRoute =
     path: '/admin/reports/onboarding',
     getParentRoute: () => AppRoute,
   } as any)
+const AppAdminPrivatesDailyRoute = AppAdminPrivatesDailyRouteImport.update({
+  id: '/admin/privates/daily',
+  path: '/admin/privates/daily',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminPrivatesCreateRoute = AppAdminPrivatesCreateRouteImport.update({
   id: '/admin/privates/create',
   path: '/admin/privates/create',
@@ -595,6 +601,7 @@ export interface FileRoutesByFullPath {
   '/admin/classes/trials': typeof AppAdminClassesTrialsRoute
   '/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/admin/privates/create': typeof AppAdminPrivatesCreateRoute
+  '/admin/privates/daily': typeof AppAdminPrivatesDailyRoute
   '/admin/reports/onboarding': typeof AppAdminReportsOnboardingRoute
   '/admin/reports/overview': typeof AppAdminReportsOverviewRoute
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
@@ -679,6 +686,7 @@ export interface FileRoutesByTo {
   '/admin/classes/trials': typeof AppAdminClassesTrialsRoute
   '/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/admin/privates/create': typeof AppAdminPrivatesCreateRoute
+  '/admin/privates/daily': typeof AppAdminPrivatesDailyRoute
   '/admin/reports/onboarding': typeof AppAdminReportsOnboardingRoute
   '/admin/reports/overview': typeof AppAdminReportsOverviewRoute
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
@@ -766,6 +774,7 @@ export interface FileRoutesById {
   '/_app/admin/classes/trials': typeof AppAdminClassesTrialsRoute
   '/_app/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/_app/admin/privates/create': typeof AppAdminPrivatesCreateRoute
+  '/_app/admin/privates/daily': typeof AppAdminPrivatesDailyRoute
   '/_app/admin/reports/onboarding': typeof AppAdminReportsOnboardingRoute
   '/_app/admin/reports/overview': typeof AppAdminReportsOverviewRoute
   '/_app/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
@@ -853,6 +862,7 @@ export interface FileRouteTypes {
     | '/admin/classes/trials'
     | '/admin/privates/$privateId'
     | '/admin/privates/create'
+    | '/admin/privates/daily'
     | '/admin/reports/onboarding'
     | '/admin/reports/overview'
     | '/admin/students/$studentId'
@@ -937,6 +947,7 @@ export interface FileRouteTypes {
     | '/admin/classes/trials'
     | '/admin/privates/$privateId'
     | '/admin/privates/create'
+    | '/admin/privates/daily'
     | '/admin/reports/onboarding'
     | '/admin/reports/overview'
     | '/admin/students/$studentId'
@@ -1023,6 +1034,7 @@ export interface FileRouteTypes {
     | '/_app/admin/classes/trials'
     | '/_app/admin/privates/$privateId'
     | '/_app/admin/privates/create'
+    | '/_app/admin/privates/daily'
     | '/_app/admin/reports/onboarding'
     | '/_app/admin/reports/overview'
     | '/_app/admin/students/$studentId'
@@ -1454,6 +1466,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminReportsOnboardingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/privates/daily': {
+      id: '/_app/admin/privates/daily'
+      path: '/admin/privates/daily'
+      fullPath: '/admin/privates/daily'
+      preLoaderRoute: typeof AppAdminPrivatesDailyRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/privates/create': {
       id: '/_app/admin/privates/create'
       path: '/admin/privates/create'
@@ -1710,6 +1729,7 @@ interface AppRouteChildren {
   AppAdminClassesTrialsRoute: typeof AppAdminClassesTrialsRoute
   AppAdminPrivatesPrivateIdRoute: typeof AppAdminPrivatesPrivateIdRoute
   AppAdminPrivatesCreateRoute: typeof AppAdminPrivatesCreateRoute
+  AppAdminPrivatesDailyRoute: typeof AppAdminPrivatesDailyRoute
   AppAdminReportsOnboardingRoute: typeof AppAdminReportsOnboardingRoute
   AppAdminReportsOverviewRoute: typeof AppAdminReportsOverviewRoute
   AppAdminStudentsStudentIdRoute: typeof AppAdminStudentsStudentIdRoute
@@ -1782,6 +1802,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminClassesTrialsRoute: AppAdminClassesTrialsRoute,
   AppAdminPrivatesPrivateIdRoute: AppAdminPrivatesPrivateIdRoute,
   AppAdminPrivatesCreateRoute: AppAdminPrivatesCreateRoute,
+  AppAdminPrivatesDailyRoute: AppAdminPrivatesDailyRoute,
   AppAdminReportsOnboardingRoute: AppAdminReportsOnboardingRoute,
   AppAdminReportsOverviewRoute: AppAdminReportsOverviewRoute,
   AppAdminStudentsStudentIdRoute: AppAdminStudentsStudentIdRoute,

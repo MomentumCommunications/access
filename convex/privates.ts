@@ -14,6 +14,7 @@ import {
   privateParticipantPatch,
   privateParticipantTransition,
 } from "../shared/private-lesson-status";
+import { matchesDailyPrivateLesson } from "../shared/private-daily";
 
 const weekdayValidator = v.union(
   v.literal("sunday"),
@@ -358,6 +359,129 @@ export const listMyPrivateLessons = query({
     ).flat();
 
     return rows.sort((a, b) => a.lesson.startsAt - b.lesson.startsAt);
+  },
+});
+
+async function getDailyPrivateLessonBaseRows(
+  ctx: QueryCtx,
+  date: string,
+  incomplete: boolean,
+) {
+  if (!isIsoDate(date)) {
+    throw new Error("Private lesson date must be a valid YYYY-MM-DD value.");
+  }
+
+  const now = Date.now();
+  const dayStartUtc = new Date(`${date}T00:00:00Z`).getTime();
+  const lessons = incomplete
+    ? await ctx.db
+        .query("privateLessons")
+        .withIndex("byStartsAt", (q) => q.lt("startsAt", now))
+        .collect()
+    : await ctx.db
+        .query("privateLessons")
+        .withIndex("byStartsAt", (q) =>
+          q
+            .gte("startsAt", dayStartUtc - 14 * 60 * 60 * 1000)
+            .lt("startsAt", dayStartUtc + 38 * 60 * 60 * 1000),
+        )
+        .collect();
+  const privateIds = [...new Set(lessons.map((lesson) => lesson.privateId))];
+  const privateRows = await Promise.all(
+    privateIds.map((privateId) => ctx.db.get(privateId)),
+  );
+  const privatesById = new Map(
+    privateRows
+      .filter((privateSeries) => privateSeries !== null)
+      .map((privateSeries) => [privateSeries._id, privateSeries]),
+  );
+
+  return lessons
+    .flatMap((lesson) => {
+      const privateSeries = privatesById.get(lesson.privateId);
+      if (!privateSeries) return [];
+      const matches = matchesDailyPrivateLesson(
+        {
+          startsAt: lesson.startsAt,
+          status: lesson.status,
+          timezone: privateSeries.schedulePrompt.timezone,
+        },
+        { date, incomplete, now },
+      );
+      return matches ? [{ lesson, private: privateSeries }] : [];
+    })
+    .sort(
+      (left, right) =>
+        left.lesson.startsAt - right.lesson.startsAt ||
+        left.lesson._id.localeCompare(right.lesson._id),
+    );
+}
+
+export const adminDailyPrivateLessonSummary = query({
+  args: { date: v.string() },
+  handler: async (ctx, { date }) => {
+    await requireAdmin(ctx);
+    const rows = await getDailyPrivateLessonBaseRows(ctx, date, false);
+    return rows.map((row) => ({
+      privateId: row.private._id,
+      privateLessonId: row.lesson._id,
+      name: row.private.name,
+      startsAt: row.lesson.startsAt,
+      timezone: row.private.schedulePrompt.timezone,
+    }));
+  },
+});
+
+export const adminListDailyPrivateLessons = query({
+  args: {
+    date: v.string(),
+    incomplete: v.boolean(),
+  },
+  handler: async (ctx, { date, incomplete }) => {
+    await requireAdmin(ctx);
+    const baseRows = await getDailyPrivateLessonBaseRows(
+      ctx,
+      date,
+      incomplete,
+    );
+    const instructorIds = [
+      ...new Set(
+        baseRows.map((row) => row.private.instructorId),
+      ),
+    ];
+    const instructors = await Promise.all(
+      instructorIds.map((instructorId) => ctx.db.get(instructorId)),
+    );
+    const instructorsById = new Map(
+      instructors
+        .filter((instructor) => instructor !== null)
+        .map((instructor) => [instructor._id, instructor]),
+    );
+
+    const rows = await Promise.all(
+      baseRows.map(async ({ lesson, private: privateSeries }) => {
+        const participation = await ctx.db
+          .query("privateLessonStudents")
+          .withIndex("byPrivateLesson", (q) =>
+            q.eq("privateLessonId", lesson._id),
+          )
+          .collect();
+        const students = await Promise.all(
+          participation.map(async (row) => ({
+            participation: row,
+            student: await ctx.db.get(row.studentId),
+          })),
+        );
+        return {
+          lesson,
+          private: privateSeries,
+          instructor: instructorsById.get(privateSeries.instructorId) || null,
+          students,
+        };
+      }),
+    );
+
+    return rows;
   },
 });
 

@@ -2,10 +2,13 @@ import { useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   BarChart3,
+  CalendarClock,
   ClipboardCheck,
   ListChecks,
   PersonStanding,
 } from "lucide-react";
+import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { api } from "../../../convex/_generated/api";
 import type { ReactNode } from "react";
 import { RoleGate } from "~/components/role-gate";
@@ -35,30 +38,82 @@ function AdminHome() {
           </p>
         </div>
         <PushNotificationPrompt />
-        <PendingEnrollmentsCard />
-        <div className="grid gap-4 md:grid-cols-3">
-          <AdminCard
-            title="Attendance"
-            description="Review attendance records."
-            to="/admin/attendance"
-            icon={<ListChecks />}
-          />
-          <AdminCard
-            title="Students"
-            description="Manage student profiles."
-            to="/admin/students"
-            icon={<PersonStanding />}
-          />
-          <AdminCard
-            title="Reports"
-            description="Review enrollment trends and status mix."
-            to="/admin/reports"
-            icon={<BarChart3 />}
-          />
+        <div className="grid gap-4 md:grid-cols-2">
+          <PendingEnrollmentsCard />
+          <TodaysPrivatesCard />
         </div>
+        <Card className="px-6">
+          <CardTitle>Quick links</CardTitle>
+          <div className="grid gap-4 md:grid-cols-3">
+            <QuickLink
+              title="Attendance"
+              to="/admin/attendance"
+              icon={<ListChecks />}
+            />
+            <QuickLink
+              title="Students"
+              to="/admin/students"
+              icon={<PersonStanding />}
+            />
+            <QuickLink
+              title="Reports"
+              to="/admin/reports"
+              icon={<BarChart3 />}
+            />
+          </div>
+        </Card>
         <StudentBirthdaysWidget />
       </main>
     </RoleGate>
+  );
+}
+
+function TodaysPrivatesCard() {
+  const date = format(new Date(), "yyyy-MM-dd");
+  const rows = useConvexQuery(api.privates.adminDailyPrivateLessonSummary, {
+    date,
+  });
+
+  return (
+    <Card className="rounded-lg">
+      <CardHeader>
+        <CardTitle>Today&apos;s privates</CardTitle>
+        <CardDescription>
+          {rows === undefined
+            ? "Loading today’s schedule..."
+            : `${rows.length} private lesson${rows.length === 1 ? "" : "s"} scheduled.`}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex h-full flex-col gap-4">
+        {rows !== undefined && rows.length > 0 ? (
+          <ul className="divide-y text-sm">
+            {rows.map((row) => (
+              <li
+                key={row.privateLessonId}
+                className="flex items-center justify-between gap-4 py-2 first:pt-0"
+              >
+                <span className="truncate font-medium">{row.name}</span>
+                <time className="shrink-0 tabular-nums text-muted-foreground">
+                  {formatInTimeZone(row.startsAt, row.timezone, "h:mm a")}
+                </time>
+              </li>
+            ))}
+          </ul>
+        ) : rows === undefined ? (
+          <div className="h-6 w-full animate-pulse rounded bg-muted" />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No private lessons scheduled today.
+          </p>
+        )}
+        <Button asChild variant="outline" className="mt-auto self-start">
+          <Link to="/admin/privates/daily">
+            <CalendarClock />
+            Open daily privates
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -89,14 +144,12 @@ function PendingEnrollmentsCard() {
   );
 }
 
-function AdminCard({
+function QuickLink({
   title,
-  description,
   to,
   icon,
 }: {
   title: string;
-  description: string;
   to:
     | "/admin/attendance"
     | "/admin/accounts"
@@ -107,19 +160,11 @@ function AdminCard({
   icon: ReactNode;
 }) {
   return (
-    <Card className="rounded-lg">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex h-full flex-col items-start justify-end">
-        <Button asChild variant="outline">
-          <Link to={to}>
-            {icon}
-            Open
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
+    <Button asChild variant="outline">
+      <Link to={to}>
+        {icon}
+        {title}
+      </Link>
+    </Button>
   );
 }

@@ -459,6 +459,7 @@ const ADMIN_CLASS_ITEMS = [
   ["Enrollments", "/admin/classes/enrollments"],
   ["Trials", "/admin/classes/trials"],
   ["Privates", "/admin/privates"],
+  ["Daily Privates", "/admin/privates/daily"],
 ] as const;
 
 const ADMIN_BILLING_ITEMS = [
@@ -615,6 +616,12 @@ function isAdminClassesSubItemActive(pathname: string, target: string) {
       !isActivePath(pathname, "/admin/classes/create") &&
       !isActivePath(pathname, "/admin/classes/enrollments") &&
       !isActivePath(pathname, "/admin/classes/trials")
+    );
+  }
+  if (target === "/admin/privates") {
+    return (
+      isActivePath(pathname, "/admin/privates") &&
+      !isActivePath(pathname, "/admin/privates/daily")
     );
   }
   return isActivePath(pathname, target);

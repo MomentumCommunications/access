@@ -4,6 +4,8 @@ import {
   attendanceReminderRecipientIds,
   canViewStaffAttendanceSession,
   compareAttendanceSessionsByOccurrence,
+  countRosterAttendance,
+  isAttendanceEnrollmentExpectedOnDate,
   isAttendanceClassEligible,
   isIncompleteAttendanceReminderEligible,
   isIncompleteAttendanceSession,
@@ -13,6 +15,92 @@ import {
 } from "../shared/staff-attendance.ts";
 
 describe("staff attendance session filtering", () => {
+  it("keeps dropped enrollments on historical sessions through the end date", () => {
+    const enrollment = {
+      status: "dropped",
+      startDate: "2026-09-01",
+      endDate: "2026-09-15",
+    };
+
+    assert.equal(
+      isAttendanceEnrollmentExpectedOnDate(
+        enrollment,
+        "inactive",
+        "2026-09-14",
+      ),
+      true,
+    );
+    assert.equal(
+      isAttendanceEnrollmentExpectedOnDate(
+        enrollment,
+        "archived",
+        "2026-09-15",
+      ),
+      true,
+    );
+    assert.equal(
+      isAttendanceEnrollmentExpectedOnDate(
+        enrollment,
+        "active",
+        "2026-09-16",
+      ),
+      false,
+    );
+  });
+
+  it("excludes undated dropped enrollments and preserves active enrollment rules", () => {
+    assert.equal(
+      isAttendanceEnrollmentExpectedOnDate(
+        { status: "dropped", startDate: "2026-09-01" },
+        "active",
+        "2026-09-10",
+      ),
+      false,
+    );
+    assert.equal(
+      isAttendanceEnrollmentExpectedOnDate(
+        { status: "dropped", endDate: "not-a-date" },
+        "active",
+        "2026-09-10",
+      ),
+      false,
+    );
+    assert.equal(
+      isAttendanceEnrollmentExpectedOnDate(
+        { status: "enrolled", startDate: "2026-09-01" },
+        "active",
+        "2026-09-10",
+      ),
+      true,
+    );
+    assert.equal(
+      isAttendanceEnrollmentExpectedOnDate(
+        { status: "enrolled", startDate: "2026-09-01" },
+        "inactive",
+        "2026-09-10",
+      ),
+      false,
+    );
+    assert.equal(
+      isAttendanceEnrollmentExpectedOnDate(
+        { status: "pending", endDate: "2026-09-09" },
+        "active",
+        "2026-09-10",
+      ),
+      false,
+    );
+  });
+
+  it("counts only unique attendance marks for the expected roster", () => {
+    assert.equal(
+      countRosterAttendance(
+        ["student-1", "student-2", "student-2", "dropped-before-session"],
+        new Set(["student-1", "student-2", "student-3"]),
+      ),
+      2,
+    );
+  });
+
   it("excludes sessions for archived or missing classes", () => {
     assert.equal(isAttendanceClassEligible({ status: "published" }), true);
     assert.equal(isAttendanceClassEligible({ status: "draft" }), true);

@@ -4,6 +4,7 @@ import {
   BarChart3,
   CalendarClock,
   ClipboardCheck,
+  LinkIcon,
   ListChecks,
   PersonStanding,
 } from "lucide-react";
@@ -43,7 +44,10 @@ function AdminHome() {
           <TodaysPrivatesCard />
         </div>
         <Card className="px-6">
-          <CardTitle>Quick links</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <LinkIcon size={18} />
+            <span>Quick links</span>
+          </CardTitle>
           <div className="grid gap-4 md:grid-cols-3">
             <QuickLink
               title="Attendance"

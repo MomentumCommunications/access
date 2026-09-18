@@ -100,6 +100,8 @@ import {
   attendanceReminderRecipientIds,
   canViewStaffAttendanceSession,
   compareAttendanceSessionsByOccurrence,
+  countRosterAttendance,
+  isAttendanceEnrollmentExpectedOnDate,
   isAttendanceClassEligible,
   isIncompleteAttendanceReminderEligible,
   isWeekdayIncompleteAttendanceSweepTime,
@@ -999,13 +1001,10 @@ async function getStaffAttendanceSessionRow(
       : enrollments
           .filter(
             (enrollment) =>
-              (enrollment.status === "enrolled" ||
-                enrollment.status === "pending") &&
-              enrollment.student?.status === "active" &&
-              isDateBetween(
+              isAttendanceEnrollmentExpectedOnDate(
+                enrollment,
+                enrollment.student?.status,
                 session.date,
-                enrollment.startDate,
-                enrollment.endDate,
               ),
           )
           .map((enrollment) => ({ ...enrollment, isTrial: false }));
@@ -1077,7 +1076,9 @@ async function getStaffAttendanceSessionRow(
     classItem,
     enrollments: [...datedEnrollments, ...extraStudents],
     availableStudents,
-    attendance,
+    attendance: attendance.filter((record) =>
+      rosterStudentIds.has(record.student),
+    ),
   };
 }
 
@@ -1160,13 +1161,10 @@ async function getAttendanceSessionSummaryRows(
     if (classMode !== "per_session") {
       for (const enrollment of enrollmentsByClass.get(row.session.classId) || []) {
         if (
-          (enrollment.status === "enrolled" ||
-            enrollment.status === "pending") &&
-          students.get(enrollment.student)?.status === "active" &&
-          isDateBetween(
+          isAttendanceEnrollmentExpectedOnDate(
+            enrollment,
+            students.get(enrollment.student)?.status,
             row.session.date,
-            enrollment.startDate,
-            enrollment.endDate,
           )
         ) {
           rosterStudentIds.add(enrollment.student);
@@ -1192,7 +1190,10 @@ async function getAttendanceSessionSummaryRows(
       session: row.session,
       classItem,
       enrollmentCount: rosterStudentIds.size,
-      attendanceCount: row.attendance.length,
+      attendanceCount: countRosterAttendance(
+        row.attendance.map((record) => record.student),
+        rosterStudentIds,
+      ),
     };
   });
 }
@@ -4739,12 +4740,7 @@ export const sendIncompleteAttendanceReminders = internalMutation({
     const studentIds = new Set<Id<"students">>();
     for (const enrollments of enrollmentsByClass.values()) {
       for (const enrollment of enrollments) {
-        if (
-          enrollment.status === "enrolled" ||
-          enrollment.status === "pending"
-        ) {
-          studentIds.add(enrollment.student);
-        }
+        studentIds.add(enrollment.student);
       }
     }
     for (const row of sessionData) {
@@ -4776,13 +4772,10 @@ export const sendIncompleteAttendanceReminders = internalMutation({
       if (!perSession) {
         for (const enrollment of enrollmentsByClass.get(classItem._id) || []) {
           if (
-            (enrollment.status === "enrolled" ||
-              enrollment.status === "pending") &&
-            students.get(enrollment.student)?.status === "active" &&
-            isDateBetween(
+            isAttendanceEnrollmentExpectedOnDate(
+              enrollment,
+              students.get(enrollment.student)?.status,
               row.session.date,
-              enrollment.startDate,
-              enrollment.endDate,
             )
           ) {
             rosterStudentIds.add(enrollment.student);
@@ -4804,7 +4797,10 @@ export const sendIncompleteAttendanceReminders = internalMutation({
         }
       }
       const enrollmentCount = rosterStudentIds.size;
-      const attendanceCount = row.attendance.length;
+      const attendanceCount = countRosterAttendance(
+        row.attendance.map((record) => record.student),
+        rosterStudentIds,
+      );
       if (
         !isIncompleteAttendanceReminderEligible(
           {
@@ -5124,14 +5120,19 @@ export const markSessionPresent = mutation({
         .query("classEnrollments")
         .withIndex("byClass", (q) => q.eq("classId", sessionDoc.classId))
         .collect();
+      const enrollmentStudents = new Map(
+        await Promise.all(
+          [...new Set(enrollments.map((enrollment) => enrollment.student))].map(
+            async (studentId) => [studentId, await ctx.db.get(studentId)] as const,
+          ),
+        ),
+      );
       for (const enrollment of enrollments) {
         if (
-          (enrollment.status === "enrolled" ||
-            enrollment.status === "pending") &&
-          isDateBetween(
+          isAttendanceEnrollmentExpectedOnDate(
+            enrollment,
+            enrollmentStudents.get(enrollment.student)?.status,
             sessionDoc.date,
-            enrollment.startDate,
-            enrollment.endDate,
           )
         ) {
           rosterStudentIds.add(enrollment.student);

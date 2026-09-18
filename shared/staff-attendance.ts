@@ -22,6 +22,53 @@ export type AttendanceSessionOccurrence = {
   startTime?: string;
 };
 
+export type AttendanceEnrollment = {
+  status: string;
+  startDate?: string;
+  endDate?: string;
+};
+
+function isValidIsoDate(value: string | undefined) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const timestamp = Date.parse(`${value}T00:00:00Z`);
+  return (
+    Number.isFinite(timestamp) &&
+    new Date(timestamp).toISOString().slice(0, 10) === value
+  );
+}
+
+export function isAttendanceEnrollmentExpectedOnDate(
+  enrollment: AttendanceEnrollment,
+  studentStatus: string | undefined,
+  sessionDate: string,
+) {
+  if (!studentStatus) return false;
+  const withinEnrollmentDates =
+    (!enrollment.startDate || sessionDate >= enrollment.startDate) &&
+    (!enrollment.endDate || sessionDate <= enrollment.endDate);
+
+  if (enrollment.status === "dropped") {
+    return isValidIsoDate(enrollment.endDate) && withinEnrollmentDates;
+  }
+
+  return (
+    studentStatus === "active" &&
+    (enrollment.status === "enrolled" || enrollment.status === "pending") &&
+    withinEnrollmentDates
+  );
+}
+
+export function countRosterAttendance<StudentId>(
+  attendanceStudentIds: StudentId[],
+  rosterStudentIds: ReadonlySet<StudentId>,
+) {
+  return new Set(
+    attendanceStudentIds.filter((studentId) =>
+      rosterStudentIds.has(studentId),
+    ),
+  ).size;
+}
+
 export function compareAttendanceSessionsByOccurrence(
   left: AttendanceSessionOccurrence,
   right: AttendanceSessionOccurrence,

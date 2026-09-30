@@ -21,10 +21,12 @@ import { Route as RegisterReviewRouteImport } from './routes/register.review'
 import { Route as RegisterProfileRouteImport } from './routes/register.profile'
 import { Route as RegisterContractRouteImport } from './routes/register.contract'
 import { Route as RegisterCompleteRouteImport } from './routes/register.complete'
+import { Route as ReferralTokenRouteImport } from './routes/referral.$token'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as AppTuitionPlanRouteImport } from './routes/_app.tuition-plan'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppSearchRouteImport } from './routes/_app.search'
+import { Route as AppReferRouteImport } from './routes/_app.refer'
 import { Route as AppPaymentsRouteImport } from './routes/_app.payments'
 import { Route as AppHomeRouteImport } from './routes/_app.home'
 import { Route as AppHelpRouteImport } from './routes/_app.help'
@@ -154,6 +156,11 @@ const RegisterCompleteRoute = RegisterCompleteRouteImport.update({
   path: '/complete',
   getParentRoute: () => RegisterRoute,
 } as any)
+const ReferralTokenRoute = ReferralTokenRouteImport.update({
+  id: '/referral/$token',
+  path: '/referral/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InviteTokenRoute = InviteTokenRouteImport.update({
   id: '/invite/$token',
   path: '/invite/$token',
@@ -172,6 +179,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
 const AppSearchRoute = AppSearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReferRoute = AppReferRouteImport.update({
+  id: '/refer',
+  path: '/refer',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPaymentsRoute = AppPaymentsRouteImport.update({
@@ -552,10 +564,12 @@ export interface FileRoutesByFullPath {
   '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
   '/payments': typeof AppPaymentsRoute
+  '/refer': typeof AppReferRoute
   '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
   '/tuition-plan': typeof AppTuitionPlanRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/referral/$token': typeof ReferralTokenRoute
   '/register/complete': typeof RegisterCompleteRoute
   '/register/contract': typeof RegisterContractRoute
   '/register/profile': typeof RegisterProfileRoute
@@ -637,10 +651,12 @@ export interface FileRoutesByTo {
   '/help': typeof AppHelpRoute
   '/home': typeof AppHomeRoute
   '/payments': typeof AppPaymentsRoute
+  '/refer': typeof AppReferRoute
   '/search': typeof AppSearchRoute
   '/settings': typeof AppSettingsRoute
   '/tuition-plan': typeof AppTuitionPlanRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/referral/$token': typeof ReferralTokenRoute
   '/register/complete': typeof RegisterCompleteRoute
   '/register/contract': typeof RegisterContractRoute
   '/register/profile': typeof RegisterProfileRoute
@@ -725,10 +741,12 @@ export interface FileRoutesById {
   '/_app/help': typeof AppHelpRoute
   '/_app/home': typeof AppHomeRoute
   '/_app/payments': typeof AppPaymentsRoute
+  '/_app/refer': typeof AppReferRoute
   '/_app/search': typeof AppSearchRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/tuition-plan': typeof AppTuitionPlanRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/referral/$token': typeof ReferralTokenRoute
   '/register/complete': typeof RegisterCompleteRoute
   '/register/contract': typeof RegisterContractRoute
   '/register/profile': typeof RegisterProfileRoute
@@ -813,10 +831,12 @@ export interface FileRouteTypes {
     | '/help'
     | '/home'
     | '/payments'
+    | '/refer'
     | '/search'
     | '/settings'
     | '/tuition-plan'
     | '/invite/$token'
+    | '/referral/$token'
     | '/register/complete'
     | '/register/contract'
     | '/register/profile'
@@ -898,10 +918,12 @@ export interface FileRouteTypes {
     | '/help'
     | '/home'
     | '/payments'
+    | '/refer'
     | '/search'
     | '/settings'
     | '/tuition-plan'
     | '/invite/$token'
+    | '/referral/$token'
     | '/register/complete'
     | '/register/contract'
     | '/register/profile'
@@ -985,10 +1007,12 @@ export interface FileRouteTypes {
     | '/_app/help'
     | '/_app/home'
     | '/_app/payments'
+    | '/_app/refer'
     | '/_app/search'
     | '/_app/settings'
     | '/_app/tuition-plan'
     | '/invite/$token'
+    | '/referral/$token'
     | '/register/complete'
     | '/register/contract'
     | '/register/profile'
@@ -1069,6 +1093,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  ReferralTokenRoute: typeof ReferralTokenRoute
   AdminClassesPrintRoute: typeof AdminClassesPrintRoute
 }
 
@@ -1158,6 +1183,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegisterCompleteRouteImport
       parentRoute: typeof RegisterRoute
     }
+    '/referral/$token': {
+      id: '/referral/$token'
+      path: '/referral/$token'
+      fullPath: '/referral/$token'
+      preLoaderRoute: typeof ReferralTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/invite/$token': {
       id: '/invite/$token'
       path: '/invite/$token'
@@ -1184,6 +1216,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof AppSearchRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/refer': {
+      id: '/_app/refer'
+      path: '/refer'
+      fullPath: '/refer'
+      preLoaderRoute: typeof AppReferRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/payments': {
@@ -1689,6 +1728,7 @@ interface AppRouteChildren {
   AppHelpRoute: typeof AppHelpRoute
   AppHomeRoute: typeof AppHomeRoute
   AppPaymentsRoute: typeof AppPaymentsRoute
+  AppReferRoute: typeof AppReferRoute
   AppSearchRoute: typeof AppSearchRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppTuitionPlanRoute: typeof AppTuitionPlanRoute
@@ -1762,6 +1802,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppHelpRoute: AppHelpRoute,
   AppHomeRoute: AppHomeRoute,
   AppPaymentsRoute: AppPaymentsRoute,
+  AppReferRoute: AppReferRoute,
   AppSearchRoute: AppSearchRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppTuitionPlanRoute: AppTuitionPlanRoute,
@@ -1864,6 +1905,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   InviteTokenRoute: InviteTokenRoute,
+  ReferralTokenRoute: ReferralTokenRoute,
   AdminClassesPrintRoute: AdminClassesPrintRoute,
 }
 export const routeTree = rootRouteImport

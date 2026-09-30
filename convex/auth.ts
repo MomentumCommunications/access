@@ -1,3 +1,4 @@
+import { connectVerifiedReferral } from "./lib/referrals";
 import { convexAuth } from "@convex-dev/auth/server";
 import { Password } from "@convex-dev/auth/providers/Password";
 import { ResendOTPPasswordReset } from "./ResendOTPPasswordReset";
@@ -33,6 +34,10 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
           ...(emailVerified ? { emailVerificationTime: Date.now() } : {}),
           ...(phoneVerified ? { phoneVerificationTime: Date.now() } : {}),
         });
+        if (emailVerified) {
+          const updatedUser = await ctx.db.get(args.existingUserId);
+          if (updatedUser) await connectVerifiedReferral(ctx, updatedUser);
+        }
         return args.existingUserId;
       }
 
@@ -128,6 +133,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
 
       const registeredUser = await ctx.db.get(userId);
       if (registeredUser) {
+        if (emailVerified) await connectVerifiedReferral(ctx, registeredUser);
         const fullName = [
           registeredUser.firstName,
           registeredUser.lastName,

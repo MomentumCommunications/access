@@ -7,6 +7,7 @@ import {
   CalendarDays,
   CreditCard,
   Download,
+  Gift,
   PersonStanding,
   ReceiptText,
   TriangleAlert,
@@ -228,6 +229,21 @@ function MemberHome() {
           icon={<CreditCard />}
         />
       </div>
+      <Card className="rounded-lg border-primary/20 bg-primary/5">
+        <CardHeader>
+          <Gift className="mb-2 size-6 text-primary" />
+          <CardTitle>Refer a friend and earn $50 in credit</CardTitle>
+          <CardDescription>
+            Share Access Momentum with a friend and put a little credit toward
+            your classes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild>
+            <Link to="/refer">Refer a friend</Link>
+          </Button>
+        </CardContent>
+      </Card>
     </main>
   );
 }

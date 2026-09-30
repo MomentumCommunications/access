@@ -1,3 +1,4 @@
+import { AdminAccountReferrals } from "~/components/admin-account-referrals";
 import {
   useConvexAction,
   useConvexMutation,
@@ -14,6 +15,7 @@ import {
   BookOpen,
   Copy,
   History,
+  Gift,
   HouseIcon,
   LucideMail,
   Mail,
@@ -87,6 +89,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { PatternFormat } from "react-number-format";
 
 export const Route = createFileRoute("/_app/admin/accounts_/$userId")({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: AccountTabValue } => {
+    const tabs: AccountTabValue[] = [
+      "students",
+      "tuition",
+      "household",
+      "classes",
+      "referrals",
+      "notes",
+      "logs",
+    ];
+    return typeof search.tab === "string" &&
+      tabs.includes(search.tab as AccountTabValue)
+      ? { tab: search.tab as AccountTabValue }
+      : {};
+  },
   component: AdminAccountDetailPage,
 });
 
@@ -410,7 +429,8 @@ type AccountTabValue =
   | "household"
   | "classes"
   | "notes"
-  | "logs";
+  | "logs"
+  | "referrals";
 
 function getDefaultAccountTab(accountData: AdminAccountData): AccountTabValue {
   const roles = resolveUserRoles(accountData.account);
@@ -437,21 +457,23 @@ function AccountRoleTabs({
       ? (["students", "tuition", "household"] satisfies AccountTabValue[])
       : []),
     ...(showStaffTabs ? (["classes"] satisfies AccountTabValue[]) : []),
+    "referrals",
     "notes",
     "logs",
   ];
-  const [selectedTab, setSelectedTab] = useState<AccountTabValue>(defaultTab);
-
-  useEffect(() => {
-    if (!visibleTabs.includes(selectedTab)) {
-      setSelectedTab(defaultTab);
-    }
-  }, [defaultTab, selectedTab, visibleTabs]);
+  const { tab } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const selectedTab = tab && visibleTabs.includes(tab) ? tab : defaultTab;
 
   return (
     <Tabs
       value={selectedTab}
-      onValueChange={(value) => setSelectedTab(value as AccountTabValue)}
+      onValueChange={(value) =>
+        void navigate({
+          search: { tab: value as AccountTabValue },
+          replace: true,
+        })
+      }
       className="gap-4"
     >
       <TabsList className="text-muted-foreground h-auto w-full justify-start gap-6 overflow-x-auto rounded-none border-b bg-transparent p-0">
@@ -477,6 +499,10 @@ function AccountRoleTabs({
             Classes
           </TabsTrigger>
         ) : null}
+        <TabsTrigger value="referrals" className={accountTabTriggerClass}>
+          <Gift className="size-4" />
+          Referrals
+        </TabsTrigger>
         <TabsTrigger value="notes" className={accountTabTriggerClass}>
           <NotebookText />
           Notes
@@ -504,6 +530,9 @@ function AccountRoleTabs({
           <AccountInstructorClassesTab userId={typedUserId} />
         </TabsContent>
       ) : null}
+      <TabsContent value="referrals">
+        <AdminAccountReferrals key={typedUserId} userId={typedUserId} />
+      </TabsContent>
       <TabsContent value="notes" className="space-y-4">
         <AccountNotesTab account={accountData.account} />
       </TabsContent>

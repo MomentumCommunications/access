@@ -1,10 +1,11 @@
+import { connectVerifiedReferral } from "./lib/referrals";
 import {
   internalMutation,
   internalQuery,
   mutation,
   query,
   type DatabaseReader,
-  QueryCtx,
+  type QueryCtx,
 } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
@@ -506,6 +507,8 @@ export const completeEmailChange = internalMutation({
       status: "consumed",
       updatedAt: args.now,
     });
+    const updatedUser = await ctx.db.get(args.userId);
+    if (updatedUser) await connectVerifiedReferral(ctx, updatedUser);
     return { email: challenge.newEmail };
   },
 });

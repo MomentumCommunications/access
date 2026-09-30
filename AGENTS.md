@@ -39,6 +39,7 @@ This is **Access Momentum**, a client information portal built with:
 - Bulletin system for announcements with group targeting
 - Reaction system for messages and bulletins
 - Studio operations through `students`, `classes`, `sessions`, enrollments, and attendance records
+- Referral attribution and manual reward tracking through `referrals`, with delivery reservations in `referralSendAttempts` (separate from `accountInvitations`)
 
 **Authentication Flow**:
 - Convex Auth is configured in `convex/auth.ts` and provided to React by `ConvexAuthProvider`
@@ -50,6 +51,15 @@ This is **Access Momentum**, a client information portal built with:
 - TanStack Query + Convex Query Client for server state
 - Real-time updates via Convex subscriptions
 - Global router context exposes `queryClient`; Convex clients are created in `src/lib/query-client.ts`
+
+**Referral System**:
+- Client entry is `/refer`; public invitation links use `/referral/$token`. Admin review lives at `/admin/accounts/$userId?tab=referrals` and must remain directly linkable from notifications.
+- `convex/referrals.ts` owns queries, send reservations, and admin decisions; `convex/referralActions.ts` sends email through Resend. Shared policy/constants are in `shared/referrals.ts`; the reward is 5,000 cents.
+- Preserve server-side verified-email matching in `convex/lib/referrals.ts`, called from email verification in `convex/auth.ts`, verified email changes in `convex/users.ts`, and invitation creation for existing verified accounts. A referral link is an invitation reference, not an authentication credential. Legacy email arrays alone do not establish which address was verified.
+- Attribution is transactional and idempotent: normalize emails, reject self-referrals, reuse same-referrer invitations, preserve the earliest referral for an email, and allow only one referrer per referred account. Reserve send attempts transactionally before external delivery: 10 per referrer per rolling 24 hours and a 60-second recipient cooldown, including failed attempts.
+- Credit stays manual: payment for a full month of regular classes is required; trials and prorated partial months alone do not qualify. Existing trial accounts may qualify after admin review. Do not interpret `pending_review` as payment confirmation or add automatic Stripe credits as part of routine referral maintenance.
+- Only active members with completed onboarding can send/list their referrals. Enforce admin authorization for decisions and account referral views; keep notes/history out of member responses. Preserve credit confirmation, stale-update checks, idempotent decisions, and correction notes/history when reopening; reopening never reverses billing.
+- The deduplicated `referral.connected` event notifies admins through the existing notification/push pipeline when attribution connects, not when an invitation is merely sent. Backend handler and email transport tests are in `tests/referrals.test.ts`; they run with `npm test` without sending real email.
 
 **Component Patterns**:
 - All UI components use shadcn/ui from `~/components/ui/`
@@ -81,7 +91,8 @@ convex/               # Backend functions and schema
 Environment variables:
 - `VITE_CONVEX_URL` - Frontend connection to the Convex deployment
 - `CONVEX_SITE_URL` - Convex site URL used by auth configuration
-- `RESEND_API_KEY` - Convex deployment variable for verification and password reset email
+- `RESEND_API_KEY` - Convex deployment variable for verification, password reset, and account/referral invitation email
+- `ACCESS_APP_URL` - Convex deployment variable containing the public app origin for account/referral invitation links
 
 ### Development Patterns
 

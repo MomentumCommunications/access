@@ -15,7 +15,12 @@ import { safeInternalPath } from "../../shared/push-notifications";
 export const Route = createFileRoute("/register/")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { invite?: string; redirect?: string } => {
+  ): { invite?: string; redirect?: string; referral?: string } => {
+    const referral =
+      typeof search.referral === "string" &&
+      /^[A-Za-z0-9_-]{43}$/.test(search.referral)
+        ? search.referral
+        : undefined;
     const invite =
       typeof search.invite === "string" && search.invite.length <= 512
         ? search.invite
@@ -23,18 +28,26 @@ export const Route = createFileRoute("/register/")({
     const redirect = safeInternalPath(
       typeof search.redirect === "string" ? search.redirect : undefined,
     );
-    return { ...(invite ? { invite } : {}), ...(redirect ? { redirect } : {}) };
+    return {
+      ...(referral ? { referral } : {}),
+      ...(invite ? { invite } : {}),
+      ...(redirect ? { redirect } : {}),
+    };
   },
   component: RegisterAccountStep,
 });
 
 function RegisterAccountStep() {
   const { isAuthenticated, isLoading } = useConvexAuth();
-  const { invite, redirect } = Route.useSearch();
+  const { invite, redirect, referral } = Route.useSearch();
   const user = useConvexQuery(api.users.current, isAuthenticated ? {} : "skip");
   const onboarding = useConvexQuery(
     api.onboarding.getState,
     isAuthenticated && user?.onboardingStatus === "pending" ? {} : "skip",
+  );
+  const referralPreview = useConvexQuery(
+    api.referrals.preview,
+    referral ? { token: referral } : "skip",
   );
   const { signIn } = useAuthActions();
   const previewInvitation = useConvexAction(api.invitationActions.preview);
@@ -45,9 +58,9 @@ function RegisterAccountStep() {
   );
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [invitation, setInvitation] = useState<Awaited<
-    ReturnType<typeof previewInvitation>
-  > | null | undefined>(invite ? undefined : null);
+  const [invitation, setInvitation] = useState<
+    Awaited<ReturnType<typeof previewInvitation>> | null | undefined
+  >(invite ? undefined : null);
 
   useEffect(() => {
     if (!invite) {
@@ -66,6 +79,7 @@ function RegisterAccountStep() {
   if (
     isLoading ||
     invitation === undefined ||
+    (referral && referralPreview === undefined) ||
     (isAuthenticated && user === undefined) ||
     (user?.onboardingStatus === "pending" && onboarding === undefined)
   ) {
@@ -89,9 +103,9 @@ function RegisterAccountStep() {
           ? "/register/review"
           : step === "contract"
             ? "/register/contract"
-          : step === "complete"
-            ? "/register/complete"
-            : "/register/profile";
+            : step === "complete"
+              ? "/register/complete"
+              : "/register/profile";
     return <Navigate to={destination} replace />;
   }
 
@@ -146,7 +160,9 @@ function RegisterAccountStep() {
         <p className="mt-1 text-muted-foreground">
           {invitation?.status === "pending"
             ? `Accept the invitation for ${invitation.email}.`
-            : "We’ll check your email for an existing client record."}
+            : referralPreview
+              ? `Use ${referralPreview.email} to connect your friend’s referral.`
+              : "We’ll check your email for an existing client record."}
         </p>
       </div>
       {invite && (!invitation || invitation.status !== "pending") ? (
@@ -170,7 +186,7 @@ function RegisterAccountStep() {
         />
       ) : (
         <SignupForm
-          email={invitation?.email}
+          email={invitation?.email ?? referralPreview?.email}
           lockEmail={Boolean(invitation)}
           error={error}
           isSubmitting={isSubmitting}

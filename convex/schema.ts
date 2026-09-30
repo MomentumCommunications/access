@@ -109,6 +109,48 @@ export default defineSchema({
     .index("byTargetUser", ["targetUserId"])
     .index("byTokenHash", ["tokenHash"])
     .index("byHousehold", ["householdId"]),
+  referrals: defineTable({
+    referrerUserId: v.id("users"),
+    invitedEmail: v.string(),
+    referredUserId: v.optional(v.id("users")),
+    token: v.string(),
+    rewardCents: v.number(),
+    status: v.union(
+      v.literal("invited"),
+      v.literal("pending_review"),
+      v.literal("credit_applied"),
+      v.literal("not_eligible"),
+    ),
+    createdAt: v.number(),
+    connectedAt: v.optional(v.number()),
+    lastSentAt: v.optional(v.number()),
+    history: v.array(
+      v.object({
+        status: v.union(
+          v.literal("pending_review"),
+          v.literal("credit_applied"),
+          v.literal("not_eligible"),
+        ),
+        actorUserId: v.id("users"),
+        at: v.number(),
+        note: v.optional(v.string()),
+      }),
+    ),
+  })
+    .index("byReferrer", ["referrerUserId"])
+    .index("byInvitedEmail", ["invitedEmail"])
+    .index("byReferredUser", ["referredUserId"])
+    .index("byToken", ["token"]),
+  referralSendAttempts: defineTable({
+    referralId: v.id("referrals"),
+    referrerUserId: v.id("users"),
+    invitedEmail: v.string(),
+    attemptedAt: v.number(),
+    deliveredAt: v.optional(v.number()),
+    failedAt: v.optional(v.number()),
+  })
+    .index("byReferrerAndTime", ["referrerUserId", "attemptedAt"])
+    .index("byEmailAndTime", ["invitedEmail", "attemptedAt"]),
   notifications: defineTable({
     recipientUserId: v.id("users"),
     type: v.string(),

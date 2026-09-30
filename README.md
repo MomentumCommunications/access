@@ -34,6 +34,10 @@ Access currently includes workflows for:
 - **Communication**
   - bulletins and group-targeted announcements
   - in-app notifications
+- **Client referrals**
+  - email invitations and copyable referral links
+  - automatic attribution by verified email
+  - admin review and tracking of manually applied $50 credits
 
 ## Tech stack
 
@@ -76,7 +80,9 @@ A few notable route groups in `src/routes/`:
 - `/login`, `/signup`, `/register/*`, `/reset-password`
 - `/home`, `/account`, `/payments`, `/tuition-plan`
 - `/classes`, `/students`
+- `/refer`, `/referral/$token`
 - `/admin/*`
+  - `/admin/accounts/$userId?tab=referrals`
   - `/admin/students`
   - `/admin/classes`
   - `/admin/attendance`
@@ -128,14 +134,14 @@ These are read by the frontend:
 These are used by Convex actions/functions:
 
 - `CONVEX_SITE_URL` — site URL used by auth configuration
-- `RESEND_API_KEY` — email delivery for verification and password reset flows
+- `RESEND_API_KEY` — email delivery for verification, password resets, and account/referral invitations
 - `MAILCHIMP_API_KEY` — Mailchimp Marketing API access for completed-client audience sync
 - `MAILCHIMP_AUDIENCE_ID` — target Mailchimp audience for completed clients
 - `STRIPE_SECRET_KEY` or `STRIPE_API_KEY` — Stripe server API access
 - `WEB_PUSH_PUBLIC_KEY` — VAPID public key used for push delivery
 - `WEB_PUSH_PRIVATE_KEY` — VAPID private key kept in Convex
 - `WEB_PUSH_SUBJECT` — VAPID contact URI, such as `mailto:admin@example.com`
-- `ACCESS_APP_URL` — public Access origin used for invitation links, such as `https://access.example.com`
+- `ACCESS_APP_URL` — public Access origin used for account and referral invitation links, such as `https://access.example.com`
 
 > Note: some older deployment comments/files in the repo still reference Clerk-era variables. The active auth stack in the codebase is **Convex Auth**, not Clerk.
 
@@ -166,6 +172,23 @@ This is why the repo contains both:
 
 - detailed billing logic under `convex/billing*.ts`
 - Stripe integration under `convex/payments.ts`, `convex/stripe.ts`, and `convex/lib/stripe.ts`
+
+## Referral program
+
+Active members who have completed registration can invite friends from **Refer a friend** (`/refer`), available in the sidebar and from the homepage reward card. Each invitation sends an email and provides a copyable link to `/referral/$token`. If email delivery fails, the referral is retained and its link can still be shared.
+
+Referrals connect automatically when the invited email is verified, even when the friend registers without using the link. An existing verified account connects when its referral is created; existing trial accounts can qualify after review. The first referral claims the normalized email, self-referrals are rejected, and each referred account can have only one referrer. Invitations do not expire automatically.
+
+The reward is **$50 in account credit after payment for one full month of regular classes**. A trial or prorated partial month alone does not qualify. Eligibility review and credit application are manual:
+
+1. Admins receive an in-app notification, with push delivery when configured, when a referral connects to a verified account. Sending an invitation alone does not trigger a notification.
+2. Open the **Referrals** tab on either account (`/admin/accounts/$userId?tab=referrals`) to see **Referred by** and **Referrals sent**.
+3. Verify the full-month payment and apply the credit in billing, then select **Mark credit applied**. Alternatively, select **Mark not eligible**.
+4. To correct a decision, reopen it with a required correction note. Reopening does not reverse a billing credit. Admin identity, timestamps, and decision history are preserved.
+
+Members see **Invited**, **Pending review**, **Credit applied**, or **Not eligible** in their referral history. Pending review confirms the account connection, not payment or reward eligibility. Admin notes and billing details are not exposed in the member referral view. The referral feature does not create Stripe credits or poll payment status.
+
+Invitation sending uses the existing Convex `ACCESS_APP_URL` and `RESEND_API_KEY` settings. Send attempts are limited to 10 per referring account in a rolling 24-hour window, with a 60-second cooldown per recipient email; failed attempts count toward these limits. Deploy the Convex schema/functions together with the frontend; no historical referral backfill is required.
 
 ## Testing
 

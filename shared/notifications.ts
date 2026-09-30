@@ -224,3 +224,25 @@ export function markAllNotificationsRead<T extends { readAt?: number }>(
     markNotificationRead(notification, readAt),
   );
 }
+
+export function referralConnectedNotification({
+  referralId,
+  userId,
+  email,
+  referrerName,
+}: {
+  referralId: string;
+  userId: string;
+  email: string;
+  referrerName: string;
+}): NotificationEventInput {
+  return {
+    type: "referral.connected",
+    title: "Referral ready for review",
+    body: `${referrerName} referred ${email}. Check full-month payment before manually applying the $50 credit.`,
+    href: `/admin/accounts/${userId}?tab=referrals`,
+    dedupeKey: `referral.connected:${referralId}`,
+    entityType: "referral",
+    entityId: referralId,
+  };
+}

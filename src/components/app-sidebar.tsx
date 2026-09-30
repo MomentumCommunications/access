@@ -24,6 +24,7 @@ import {
   Calendar,
   CalendarPlus,
   Newspaper,
+  Gift,
 } from "lucide-react";
 import {
   Collapsible,
@@ -161,6 +162,19 @@ const AppSidebarComponent = memo(() => {
                       <Link to="/trial">
                         <CalendarPlus />
                         <span>Request a Trial</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActivePath(pathname, "/refer")}
+                      tooltip="Refer a friend"
+                      onClick={closeMobileSidebar}
+                    >
+                      <Link to="/refer">
+                        <Gift />
+                        <span>Refer a friend</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

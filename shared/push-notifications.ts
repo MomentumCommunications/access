@@ -1,5 +1,6 @@
 export const PUSH_NOTIFICATION_TYPES = new Set([
   "user.registered",
+  "referral.connected",
   "enrollment.pending",
   "enrollment.enrolled",
   "enrollment.waitlisted",

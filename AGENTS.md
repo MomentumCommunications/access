@@ -52,6 +52,13 @@ This is **Access Momentum**, a client information portal built with:
 - Real-time updates via Convex subscriptions
 - Global router context exposes `queryClient`; Convex clients are created in `src/lib/query-client.ts`
 
+**Public Account Help**:
+- `/account-help` is outside the authenticated shell and is linked beneath signup/login verification and both password-reset code inputs. Authenticated email-change screens are separate.
+- Preserve the same-tab return behavior in `shared/account-help.ts`, `src/lib/account-help.ts`, and `useCodeEntryEmail`: only the original email, flow, and allowed authentication return route are stored in session storage with an in-memory fallback. Keep invitation/referral/redirect/account-reset parameters, never passwords or OTP values. Clear context on successful verification or cancellation; editing the help form email must not change the original code-entry email.
+- `convex/contact.ts` shares fixed-recipient Resend delivery between authenticated `sendContactMessage` and public `sendAccountHelp`. Do not remove authentication from the former or add account-existence lookup/disclosure to the latter. All public contact information is unverified; existing-account recovery needs independent identity verification using trusted details already on file.
+- `convex/contactData.ts` transactionally reserves sending limits before email delivery: 60-second per-email cooldown, five attempts per rolling hour per normalized email, and 30 globally. `accountHelpThrottles` stores hashed email keys and timestamps only. Failed sends count; honeypot submissions are silently discarded without consuming quota. Never accept recipient addresses from visitors.
+- Tests in `tests/account-help.test.ts` exercise storage, validation, throttle reservations, fixed-recipient delivery, and authentication with mocked email transport. Do not send live help requests during tests.
+
 **Referral System**:
 - Client entry is `/refer`; public invitation links use `/referral/$token`. Admin review lives at `/admin/accounts/$userId?tab=referrals` and must remain directly linkable from notifications.
 - `convex/referrals.ts` owns queries, send reservations, and admin decisions; `convex/referralActions.ts` sends email through Resend. Shared policy/constants are in `shared/referrals.ts`; the reward is 5,000 cents.
@@ -93,6 +100,7 @@ Environment variables:
 - `CONVEX_SITE_URL` - Convex site URL used by auth configuration
 - `RESEND_API_KEY` - Convex deployment variable for verification, password reset, and account/referral invitation email
 - `ACCESS_APP_URL` - Convex deployment variable containing the public app origin for account/referral invitation links
+- `ACCESS_CONTACT_EMAIL` - Convex deployment variable for the studio inbox used by contact and public account-help forms (also requires `RESEND_API_KEY`)
 
 ### Development Patterns
 

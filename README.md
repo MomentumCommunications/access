@@ -78,6 +78,7 @@ Access currently includes workflows for:
 A few notable route groups in `src/routes/`:
 
 - `/login`, `/signup`, `/register/*`, `/reset-password`
+- `/account-help` — public help form for missing verification/reset codes
 - `/home`, `/account`, `/payments`, `/tuition-plan`
 - `/classes`, `/students`
 - `/refer`, `/referral/$token`
@@ -142,6 +143,7 @@ These are used by Convex actions/functions:
 - `WEB_PUSH_PRIVATE_KEY` — VAPID private key kept in Convex
 - `WEB_PUSH_SUBJECT` — VAPID contact URI, such as `mailto:admin@example.com`
 - `ACCESS_APP_URL` — public Access origin used for account and referral invitation links, such as `https://access.example.com`
+- `ACCESS_CONTACT_EMAIL` — studio inbox receiving authenticated contact messages and public account-help requests
 
 > Note: some older deployment comments/files in the repo still reference Clerk-era variables. The active auth stack in the codebase is **Convex Auth**, not Clerk.
 
@@ -189,6 +191,16 @@ The reward is **$50 in account credit after payment for one full month of regula
 Members see **Invited**, **Pending review**, **Credit applied**, or **Not eligible** in their referral history. Pending review confirms the account connection, not payment or reward eligibility. Admin notes and billing details are not exposed in the member referral view. The referral feature does not create Stripe credits or poll payment status.
 
 Invitation sending uses the existing Convex `ACCESS_APP_URL` and `RESEND_API_KEY` settings. Send attempts are limited to 10 per referring account in a rolling 24-hour window, with a 60-second cooldown per recipient email; failed attempts count toward these limits. Deploy the Convex schema/functions together with the frontend; no historical referral backfill is required.
+
+## Help with verification codes
+
+The verification and password-reset screens include **“Don’t see your code? Get help”**, opening `/account-help` without requiring sign-in. Visitors can check their email spelling, find inbox-search tips, and submit their name, account email, optional callback number, and optional message to the studio. The subject and account-access topic are supplied automatically.
+
+The original email, authentication flow, and return route are saved in tab-scoped session storage, with an in-memory fallback when storage is blocked. **“Back to enter your code”** restores the original step, including invitation, referral, redirect, or account-reset context. Passwords and code values are never saved; users must re-enter them. Correcting the contact email only changes where the team can follow up, not the original verification attempt. Successful verification or cancellation clears the saved context. Direct visitors can return to sign-in.
+
+Requests use the existing Resend sender, `RESEND_API_KEY`, and `ACCESS_CONTACT_EMAIL`. Delivery failures preserve the form for retry. A honeypot and server-side limits protect the public endpoint: one attempt per minute and five per rolling hour per normalized email, plus 30 per rolling hour globally. Failed deliveries count toward the limits. Convex stores only throttle timestamps and hashed email keys for this feature, not support message bodies. The existing authenticated contact endpoint remains protected.
+
+Submitted contact details are **unverified**. For recovery of an existing account, establish identity independently using trusted contact details already on file; a newly supplied phone number or knowledge of an email address is not proof of account ownership. This feature does not retrieve OTPs, bypass verification, modify credentials, or send SMS. Deploy the new Convex schema/functions with the frontend.
 
 ## Testing
 

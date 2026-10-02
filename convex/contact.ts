@@ -2,10 +2,16 @@
 
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Resend } from "resend";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
+import { createHash } from "node:crypto";
 import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { getResendApiKey, resendFromAddress } from "./resendConfig";
+
+import {
+  accountHelpFlowLabels,
+  accountHelpSchema,
+} from "../shared/account-help";
 
 const contactTopicValidator = v.union(
   v.literal("unspecified"),
@@ -26,6 +32,26 @@ function contactRecipientEmail() {
     );
   }
   return email;
+}
+
+async function sendStudioContactEmail({
+  subject,
+  text,
+  replyTo,
+}: {
+  subject: string;
+  text: string;
+  replyTo?: string;
+}) {
+  const resend = new Resend(getResendApiKey());
+  const { error } = await resend.emails.send({
+    from: resendFromAddress,
+    to: [contactRecipientEmail()],
+    subject: `[Access Contact] ${subject}`,
+    text,
+    ...(replyTo ? { replyTo } : {}),
+  });
+  if (error) throw new Error(error.message);
 }
 
 function userDisplayName(user: {
@@ -67,12 +93,8 @@ export const sendContactMessage = action({
       throw new Error("Message must be between 1 and 5000 characters.");
     }
 
-    const resend = new Resend(getResendApiKey());
-    const to = contactRecipientEmail();
-    const { error } = await resend.emails.send({
-      from: resendFromAddress,
-      to: [to],
-      subject: `[Access Contact] ${cleanSubject}`,
+    await sendStudioContactEmail({
+      subject: cleanSubject,
       text: [
         "A contact form message was submitted from Access Momentum.",
         "",
@@ -94,10 +116,61 @@ export const sendContactMessage = action({
         `Roles: ${(user.roles || [user.role || "member"]).join(", ")}`,
       ].join("\n"),
     });
-    if (error) {
-      throw new Error(error.message);
-    }
+    return { sent: true };
+  },
+});
 
+export const sendAccountHelp = action({
+  args: {
+    name: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    message: v.optional(v.string()),
+    flow: v.union(
+      v.literal("signup"),
+      v.literal("login"),
+      v.literal("password_reset"),
+      v.literal("account_password_reset"),
+      v.literal("unknown"),
+    ),
+    website: v.optional(v.string()),
+  },
+  handler: async (ctx, args): Promise<{ sent: true }> => {
+    // Silently discard bot submissions; never send a message or reserve quota.
+    if (args.website) return { sent: true };
+    const parsed = accountHelpSchema.safeParse(args);
+    if (!parsed.success) throw new ConvexError(parsed.error.issues[0].message);
+    const { name, phone, message, flow } = parsed.data;
+    const email = parsed.data.email.toLowerCase();
+    await ctx.runMutation(internal.contactData.reserveAccountHelpSend, {
+      emailHash: createHash("sha256").update(email).digest("hex"),
+    });
+    try {
+      await sendStudioContactEmail({
+        subject: `Account access help — ${accountHelpFlowLabels[flow]}`,
+        replyTo: email,
+        text: [
+          "A public account-help request was submitted from Access Momentum.",
+          "Contact details below are supplied by the visitor and are UNVERIFIED.",
+          "For existing-account recovery, establish identity independently using contact details already on file. Do not treat this request as proof of account ownership.",
+          "",
+          "Topic: account_access",
+          `Flow: ${accountHelpFlowLabels[flow]}`,
+          `Name: ${name}`,
+          `Account email (unverified): ${email}`,
+          `Callback number (unverified): ${phone || "Not provided"}`,
+          "",
+          "Message",
+          "-------",
+          message ||
+            "No additional message. The visitor needs help finding their code.",
+        ].join("\n"),
+      });
+    } catch {
+      throw new ConvexError(
+        "We couldn’t send your message right now. Your details are still here; please try again in a minute.",
+      );
+    }
     return { sent: true };
   },
 });

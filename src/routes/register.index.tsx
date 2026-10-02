@@ -1,3 +1,5 @@
+import { useCodeEntryEmail } from "~/hooks/use-code-entry-email";
+import { accountHelpStore } from "~/lib/account-help";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAction, useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
@@ -53,9 +55,7 @@ function RegisterAccountStep() {
   const previewInvitation = useConvexAction(api.invitationActions.preview);
   const consumeInvitation = useConvexAction(api.invitationActions.consume);
   const navigate = useNavigate();
-  const [verificationEmail, setVerificationEmail] = useState<string | null>(
-    null,
-  );
+  const [verificationEmail, setVerificationEmail] = useCodeEntryEmail("signup");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [invitation, setInvitation] = useState<
@@ -123,6 +123,7 @@ function RegisterAccountStep() {
     try {
       const result = await signIn("password", formData);
       if (result.signingIn) {
+        accountHelpStore.clear();
         if (invite) await consumeInvitation({ token: invite });
         await navigate({ to: "/register/profile" });
         return;
@@ -144,6 +145,7 @@ function RegisterAccountStep() {
 
     try {
       await signIn("password", new FormData(event.currentTarget));
+      accountHelpStore.clear();
       if (invite) await consumeInvitation({ token: invite });
       await navigate({ to: "/register/profile" });
     } catch (caught) {
@@ -175,6 +177,7 @@ function RegisterAccountStep() {
         </div>
       ) : verificationEmail ? (
         <EmailVerificationForm
+          helpFlow="signup"
           email={verificationEmail}
           error={error}
           isSubmitting={isSubmitting}

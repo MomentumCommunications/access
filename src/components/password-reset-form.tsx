@@ -1,3 +1,4 @@
+import { AccountCodeHelpLink } from "~/components/account-code-help-link";
 import { Link } from "@tanstack/react-router";
 import { Button } from "~/components/ui/button";
 import {
@@ -87,11 +88,17 @@ export function PasswordResetForm({
                       autoComplete="one-time-code"
                       required
                     />
+                    <AccountCodeHelpLink
+                      email={email!}
+                      flow={
+                        accountInitiated
+                          ? "account_password_reset"
+                          : "password_reset"
+                      }
+                    />
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor="new-password">
-                      New password
-                    </FieldLabel>
+                    <FieldLabel htmlFor="new-password">New password</FieldLabel>
                     <PasswordInput
                       id="new-password"
                       name="newPassword"

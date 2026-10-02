@@ -13,6 +13,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AccountHelpRouteImport } from './routes/account-help'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RegisterIndexRouteImport } from './routes/register.index'
@@ -115,6 +116,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountHelpRoute = AccountHelpRouteImport.update({
+  id: '/account-help',
+  path: '/account-help',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -555,6 +561,7 @@ const AppAdminAccountsUserIdStudentsCreateRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account-help': typeof AccountHelpRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
@@ -643,6 +650,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account-help': typeof AccountHelpRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
@@ -732,6 +740,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/account-help': typeof AccountHelpRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
@@ -822,6 +831,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account-help'
     | '/login'
     | '/register'
     | '/reset-password'
@@ -910,6 +920,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account-help'
     | '/login'
     | '/reset-password'
     | '/signup'
@@ -998,6 +1009,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/account-help'
     | '/login'
     | '/register'
     | '/reset-password'
@@ -1088,6 +1100,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  AccountHelpRoute: typeof AccountHelpRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -1125,6 +1138,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account-help': {
+      id: '/account-help'
+      path: '/account-help'
+      fullPath: '/account-help'
+      preLoaderRoute: typeof AccountHelpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -1900,6 +1920,7 @@ const RegisterRouteWithChildren = RegisterRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  AccountHelpRoute: AccountHelpRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,

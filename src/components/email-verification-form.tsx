@@ -1,3 +1,4 @@
+import { AccountCodeHelpLink } from "~/components/account-code-help-link";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -19,6 +20,7 @@ type EmailVerificationFormProps = Omit<
   "onSubmit"
 > & {
   email: string;
+  helpFlow?: "signup" | "login";
   error?: string | null;
   isSubmitting?: boolean;
   onCancel: () => void;
@@ -27,6 +29,7 @@ type EmailVerificationFormProps = Omit<
 
 export function EmailVerificationForm({
   email,
+  helpFlow = "login",
   error,
   isSubmitting,
   onCancel,
@@ -55,6 +58,7 @@ export function EmailVerificationForm({
                 autoComplete="one-time-code"
                 required
               />
+              <AccountCodeHelpLink email={email} flow={helpFlow} />
             </Field>
             {error ? (
               <FieldDescription className="text-destructive">

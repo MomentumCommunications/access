@@ -1,8 +1,7 @@
+import { useCodeEntryEmail } from "~/hooks/use-code-entry-email";
+import { accountHelpStore } from "~/lib/account-help";
 import { useAuthActions } from "@convex-dev/auth/react";
-import {
-  useConvexAction,
-  useConvexQuery,
-} from "@convex-dev/react-query";
+import { useConvexAction, useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
@@ -25,7 +24,9 @@ function ResetPasswordRoute() {
     api.stripe.confirmAccountPasswordReset,
   );
   const navigate = useNavigate();
-  const [resetEmail, setResetEmail] = useState<string | null>(null);
+  const [resetEmail, setResetEmail] = useCodeEntryEmail(
+    accountChallenge ? "account_password_reset" : "password_reset",
+  );
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const accountReset = useConvexQuery(
@@ -46,12 +47,14 @@ function ResetPasswordRoute() {
           code: String(formData.get("code") || ""),
           newPassword: String(formData.get("newPassword") || ""),
         });
+        accountHelpStore.clear();
         await navigate({ to: "/account" });
         return;
       }
       await signIn("password", formData);
 
       if (resetEmail) {
+        accountHelpStore.clear();
         await navigate({ to: "/home" });
         return;
       }
@@ -90,11 +93,12 @@ function ResetPasswordRoute() {
         </div>
         <PasswordResetForm
           email={
-            accountChallenge ? accountReset?.email : resetEmail ?? undefined
+            accountChallenge ? accountReset?.email : (resetEmail ?? undefined)
           }
           error={error}
           isSubmitting={isSubmitting}
           onCancelVerification={() => {
+            accountHelpStore.clear();
             if (accountChallenge) {
               void navigate({ to: "/account" });
               return;
@@ -107,8 +111,7 @@ function ResetPasswordRoute() {
           unavailable={
             accountChallenge && !accountReset
               ? "This password change request is invalid or is not associated with your current account."
-              : accountReset &&
-                  accountReset.status !== "pending"
+              : accountReset && accountReset.status !== "pending"
                 ? "This password change request is no longer active."
                 : undefined
           }

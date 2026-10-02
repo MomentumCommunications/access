@@ -1,3 +1,5 @@
+import { useCodeEntryEmail } from "~/hooks/use-code-entry-email";
+import { accountHelpStore } from "~/lib/account-help";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -7,9 +9,7 @@ import { getAuthErrorMessage } from "~/lib/auth-errors";
 import { safeInternalPath } from "../../shared/push-notifications";
 
 export const Route = createFileRoute("/login")({
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): { redirect?: string } => {
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
     const redirect = safeInternalPath(
       typeof search.redirect === "string" ? search.redirect : undefined,
     );
@@ -22,9 +22,7 @@ function LoginRoute() {
   const { redirect } = Route.useSearch();
   const { signIn } = useAuthActions();
   const navigate = useNavigate();
-  const [verificationEmail, setVerificationEmail] = useState<string | null>(
-    null,
-  );
+  const [verificationEmail, setVerificationEmail] = useCodeEntryEmail("login");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -37,6 +35,7 @@ function LoginRoute() {
       const formData = new FormData(event.currentTarget);
       const result = await signIn("password", formData);
       if (result.signingIn) {
+        accountHelpStore.clear();
         await navigate({ to: (redirect || "/home") as never });
         return;
       }
@@ -57,6 +56,7 @@ function LoginRoute() {
 
     try {
       await signIn("password", new FormData(event.currentTarget));
+      accountHelpStore.clear();
       await navigate({ to: (redirect || "/home") as never });
     } catch (err) {
       setError(getAuthErrorMessage(err, "Could not verify your email."));

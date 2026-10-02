@@ -52,6 +52,10 @@ export default defineSchema({
     .index("phone", ["phone"])
     .index("byStaffSlug", ["staffSlug"])
     .index("byExternalId", ["externalId"]),
+  accountHelpThrottles: defineTable({
+    key: v.string(),
+    attempts: v.array(v.number()),
+  }).index("byKey", ["key"]),
   accountSecurityChallenges: defineTable({
     userId: v.id("users"),
     type: v.union(v.literal("email_change"), v.literal("password_reset")),

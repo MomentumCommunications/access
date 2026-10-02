@@ -292,6 +292,15 @@ export const getPrivateLesson = query({
       private: privateSeries,
       instructor: await ctx.db.get(privateSeries.instructorId),
       availableStudents: await ctx.db.query("students").collect(),
+      availableStaff: (await ctx.db.query("users").collect())
+        .filter((account) => hasUserRole(account, "staff"))
+        .map(({ _id, firstName, lastName, name, email }) => ({
+          _id,
+          firstName,
+          lastName,
+          name,
+          email,
+        })),
       students: await Promise.all(
         participation.map(async (row) => ({
           participation: row,
@@ -635,13 +644,20 @@ export const adminCreatePrivateLesson = mutation({
 export const updatePrivateLesson = mutation({
   args: {
     privateLessonId: v.id("privateLessons"),
+    substitute: v.optional(v.union(v.id("users"), v.null())),
     startsAt: v.number(),
     durationMinutes: v.number(),
     status: lessonStatusValidator,
     notes: v.optional(v.string()),
   },
-  handler: async (ctx, { privateLessonId, ...patch }) => {
+  handler: async (ctx, { privateLessonId, substitute, ...patch }) => {
     const { lesson } = await requireLessonAccess(ctx, privateLessonId);
+    if (substitute) {
+      const teacher = await ctx.db.get(substitute);
+      if (!teacher || !hasUserRole(teacher, "staff")) {
+        throw new Error("Select a staff account as the substitute teacher.");
+      }
+    }
     validateDuration(patch.durationMinutes);
     if (!Number.isFinite(patch.startsAt)) {
       throw new Error("Lesson start time is invalid.");
@@ -694,6 +710,10 @@ export const updatePrivateLesson = mutation({
 
     await ctx.db.patch(privateLessonId, {
       ...patch,
+      // Other editors (including the daily page) omit this field.
+      ...(substitute !== undefined
+        ? { substitute: substitute ?? undefined }
+        : {}),
       generatedFromSchedule: false,
       notes: cleanOptionalText(patch.notes),
     });

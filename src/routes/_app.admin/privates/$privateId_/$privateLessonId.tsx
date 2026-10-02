@@ -62,6 +62,7 @@ import {
 } from "~/components/ui/table";
 import { Textarea } from "~/components/ui/textarea";
 import { formatDateTime, toDateTimeLocalValue } from "~/lib/date-utils";
+import { getAccountName } from "~/lib/account-name";
 
 export const Route = createFileRoute(
   "/_app/admin/privates/$privateId_/$privateLessonId",
@@ -91,6 +92,7 @@ const lessonFormSchema = z.object({
       "Duration must be a whole number between 1 and 480.",
     ),
   status: lessonStatusSchema,
+  substitute: z.string(),
   notes: z.string().max(2000),
 });
 
@@ -296,6 +298,7 @@ function PrivateLessonDetailPage() {
           startsAt: toDateTimeLocalValue(data.lesson.startsAt),
           durationMinutes: String(data.lesson.durationMinutes),
           status: data.lesson.status,
+          substitute: data.lesson.substitute || "",
           notes: data.lesson.notes || "",
         }
       : undefined,
@@ -303,6 +306,7 @@ function PrivateLessonDetailPage() {
       startsAt: "",
       durationMinutes: "60",
       status: "scheduled",
+      substitute: "",
       notes: "",
     },
   });
@@ -314,6 +318,12 @@ function PrivateLessonDetailPage() {
     data?.availableStudents
       .filter((student) => !existingStudentIds.has(student._id))
       .sort((a, b) => studentName(a).localeCompare(studentName(b))) || [];
+  const substituteOptions = [
+    { value: "none", label: "No substitute" },
+    ...(data?.availableStaff || [])
+      .map((account) => ({ value: account._id, label: getAccountName(account) }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  ];
 
   async function onSubmit(values: LessonFormValues) {
     form.clearErrors("root");
@@ -324,6 +334,7 @@ function PrivateLessonDetailPage() {
         startsAt,
         durationMinutes: Number(values.durationMinutes),
         status: values.status,
+        substitute: values.substitute ? (values.substitute as Id<"users">) : null,
         notes: values.notes.trim() || undefined,
       });
       toast.success("Lesson updated.");
@@ -434,6 +445,46 @@ function PrivateLessonDetailPage() {
                           </SelectContent>
                         </Select>
                         <FieldError errors={[form.formState.errors.status]} />
+                      </Field>
+                      <Field>
+                        <FieldLabel htmlFor="private-lesson-substitute">
+                          Substitute teacher
+                        </FieldLabel>
+                        <Combobox
+                          items={substituteOptions.map((option) => option.value)}
+                          value={form.watch("substitute") || "none"}
+                          onValueChange={(value) =>
+                            form.setValue(
+                              "substitute",
+                              value && value !== "none" ? value : "",
+                              { shouldDirty: true },
+                            )
+                          }
+                          itemToStringLabel={(value) =>
+                            substituteOptions.find(
+                              (option) => option.value === value,
+                            )?.label || ""
+                          }
+                          disabled={form.formState.isSubmitting}
+                        >
+                          <ComboboxInput
+                            id="private-lesson-substitute"
+                            className="w-full"
+                            placeholder="Select substitute"
+                          />
+                          <ComboboxContent>
+                            <ComboboxEmpty>No staff found.</ComboboxEmpty>
+                            <ComboboxList>
+                              {(value: string) => (
+                                <ComboboxItem key={value} value={value}>
+                                  {substituteOptions.find(
+                                    (option) => option.value === value,
+                                  )?.label}
+                                </ComboboxItem>
+                              )}
+                            </ComboboxList>
+                          </ComboboxContent>
+                        </Combobox>
                       </Field>
                       <Field data-invalid={!!form.formState.errors.notes}>
                         <FieldLabel htmlFor="private-lesson-notes">

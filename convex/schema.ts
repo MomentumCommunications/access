@@ -800,6 +800,7 @@ export default defineSchema({
     .index("byActive", ["isActive"]),
   privateLessons: defineTable({
     privateId: v.id("privates"),
+    substitute: v.optional(v.id("users")),
     startsAt: v.number(),
     durationMinutes: v.number(),
     status: v.union(

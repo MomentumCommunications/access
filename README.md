@@ -29,6 +29,7 @@ Access currently includes workflows for:
   - customer tuition-plan summaries
 - **Payments**
   - Stripe customer mapping
+  - autopay synchronization across linked Stripe subscriptions ([setup and operations](STRIPE_AUTOPAY.md))
   - Stripe-hosted customer portal launch from `/payments`
   - billing-attention states such as missing default payment method / delinquency
 - **Communication**
@@ -139,6 +140,7 @@ These are used by Convex actions/functions:
 - `MAILCHIMP_API_KEY` — Mailchimp Marketing API access for completed-client audience sync
 - `MAILCHIMP_AUDIENCE_ID` — target Mailchimp audience for completed clients
 - `STRIPE_SECRET_KEY` or `STRIPE_API_KEY` — Stripe server API access
+- `STRIPE_AUTOPAY_WEBHOOK_SECRET` — signature secret for the Stripe autopay webhook destination
 - `WEB_PUSH_PUBLIC_KEY` — VAPID public key used for push delivery
 - `WEB_PUSH_PRIVATE_KEY` — VAPID private key kept in Convex
 - `WEB_PUSH_SUBJECT` — VAPID contact URI, such as `mailto:admin@example.com`

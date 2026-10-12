@@ -13,5 +13,12 @@ crons.interval(
   sendIncompleteAttendanceReminders,
 );
 
+crons.interval(
+  "reconcile Stripe subscription autopay",
+  { hours: 1 },
+  makeFunctionReference<"mutation", { cursor?: string }>("stripeAutopayData:reconcile"),
+  {},
+);
+
 export default crons;
 

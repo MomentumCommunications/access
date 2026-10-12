@@ -8,6 +8,7 @@ import {
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { resolvePaymentsAccess } from "../shared/payments-access";
+import { autopayStatus, enqueuePayerAutopay } from "./lib/autopaySync";
 import { hasUserRole } from "./lib/roles";
 
 async function resolveCurrentUserPaymentsAccess(ctx: QueryCtx) {
@@ -81,9 +82,13 @@ export const getCurrentAccess = query({
         householdId: access.householdId,
         billingResponsibleUserId: access.billingResponsibleUserId,
         autopayEnabled: access.autopayEnabled === true,
+        autopaySync: await autopayStatus(
+          ctx,
+          access.billingResponsibleUserId as Id<"users">,
+        ),
       };
     }
-    return access;
+    return { ...access, autopaySync: null };
   },
 });
 
@@ -114,6 +119,7 @@ export const setCurrentUserAutopay = mutation({
       autopayEnabled: enabled,
       updatedAt: Date.now(),
     });
+    await enqueuePayerAutopay(ctx, payer.userId);
   },
 });
 
@@ -143,5 +149,21 @@ export const getCurrentBillingAttentionAccess = internalQuery({
     return access.status === "ready"
       ? access
       : { status: "ineligible" as const };
+  },
+});
+
+export const retryCurrentUserAutopay = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const access = await resolveCurrentUserPaymentsAccess(ctx);
+    if (access.status !== "ready" || !access.billingResponsibleUserId) {
+      throw new Error(
+        "Only the active primary payment account can retry synchronization.",
+      );
+    }
+    await enqueuePayerAutopay(
+      ctx,
+      access.billingResponsibleUserId as Id<"users">,
+    );
   },
 });

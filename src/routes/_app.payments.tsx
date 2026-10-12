@@ -1,3 +1,4 @@
+import { AutopaySyncStatus } from "~/components/autopay-sync-status";
 import {
   useConvexAction,
   useConvexMutation,
@@ -74,6 +75,9 @@ function PaymentsRoute() {
   const setAutopay = useConvexMutation(
     api.paymentsData.setCurrentUserAutopay,
   );
+  const retryAutopay = useConvexMutation(
+    api.paymentsData.retryCurrentUserAutopay,
+  );
   const [isLaunching, setIsLaunching] = useState(false);
   const [isSavingAutopay, setIsSavingAutopay] = useState(false);
   const [confirmAutopay, setConfirmAutopay] = useState(false);
@@ -105,9 +109,7 @@ function PaymentsRoute() {
       try {
         await setAutopay({ enabled });
         toast.success(
-          enabled
-            ? "Automatic payments are on."
-            : "Automatic payments are off.",
+          "Payment preference saved. Updating Stripe subscriptions…",
         );
       } catch (error) {
         toast.error(
@@ -165,9 +167,9 @@ function PaymentsRoute() {
                     </Label>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Charge future billing invoices to your default payment
-                    method. If no usable default method is available, we will
-                    send the invoice for manual payment instead.
+                    Apply automatic payments to future billing and subscription
+                    invoices. Without a default payment method, invoices are sent
+                    for manual payment. Existing invoices keep their payment settings.
                   </p>
                 </div>
                 <Switch
@@ -184,6 +186,11 @@ function PaymentsRoute() {
                   }}
                 />
               </section>
+
+              <AutopaySyncStatus
+                sync={access.autopaySync}
+                retry={() => retryAutopay({})}
+              />
 
               <Separator />
 
@@ -229,9 +236,10 @@ function PaymentsRoute() {
           <AlertDialogHeader>
             <AlertDialogTitle>Turn on automatic payments?</AlertDialogTitle>
             <AlertDialogDescription>
-              By turning this on, you authorize future billing invoices to be
-              charged automatically using your default payment method. You can
-              turn automatic payments off here at any time.
+              By turning this on, you authorize future billing and subscription
+              invoices to be charged automatically using a default payment method.
+              You can turn automatic payments off here at any time. Existing
+              invoices keep their payment settings.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

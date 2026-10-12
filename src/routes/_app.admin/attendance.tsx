@@ -32,6 +32,7 @@ import { Switch } from "~/components/ui/switch";
 import { format } from "date-fns";
 import { cn } from "~/lib/utils";
 import { Badge } from "~/components/ui/badge";
+import { formatMDYYYY } from "~/lib/date-utils";
 
 export const Route = createFileRoute("/_app/admin/attendance")({
   component: AttendancePage,
@@ -162,7 +163,7 @@ function AttendancePage() {
                         </Button>
                       </TableCell>
                       <TableCell>
-                        {format(row.session.date, "MM/dd/yy") || "Date TBD"}
+                        {formatMDYYYY(row.session.date)}
                         {" · "}
                         {row.session.startTime}
                       </TableCell>

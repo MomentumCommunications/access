@@ -1,3 +1,4 @@
+import { autopayStatus, enqueuePayerAutopay } from "./lib/autopaySync";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { fromZonedTime } from "date-fns-tz";
@@ -2827,7 +2828,13 @@ export const adminGetAccountHousehold = query({
         candidate.active &&
         candidate.isPrimary,
     );
-    return { membership, household, payer, hasOtherActivePrimaryPayer };
+    return {
+      membership,
+      household,
+      payer,
+      hasOtherActivePrimaryPayer,
+      autopaySync: await autopayStatus(ctx, userId),
+    };
   },
 });
 
@@ -2969,6 +2976,7 @@ export const adminSetHouseholdPayerAutopay = mutation({
       autopayEnabled: enabled,
       updatedAt: Date.now(),
     });
+    await enqueuePayerAutopay(ctx, payer.userId);
   },
 });
 

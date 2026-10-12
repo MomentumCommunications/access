@@ -50,4 +50,20 @@ http.route({
   handler: marketingClasses,
 });
 
+export const stripeAutopayWebhook = httpAction(async (ctx, request) => {
+  const signature = request.headers.get("stripe-signature");
+  if (!signature) return new Response("Missing signature", { status: 400 });
+  const status = await ctx.runAction(internal.stripeAutopay.receiveWebhook, {
+    body: await request.text(),
+    signature,
+  });
+  return new Response(status === 200 ? "OK" : "Webhook unavailable or invalid", { status });
+});
+
+http.route({
+  path: "/stripe/autopay-webhook",
+  method: "POST",
+  handler: stripeAutopayWebhook,
+});
+
 export default http;

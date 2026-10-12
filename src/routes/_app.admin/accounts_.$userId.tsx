@@ -1,3 +1,4 @@
+import { AutopaySyncStatus } from "~/components/autopay-sync-status";
 import { AdminAccountReferrals } from "~/components/admin-account-referrals";
 import {
   useConvexAction,
@@ -1225,6 +1226,7 @@ function HouseholdTab({ userId }: { userId: string }) {
   const setPayerPrimary = useConvexMutation(
     api.billing.adminSetHouseholdPayerPrimary,
   );
+  const retryAutopay = useConvexMutation(api.stripeAutopayData.adminRetry);
   const setPayerAutopay = useConvexMutation(
     api.billing.adminSetHouseholdPayerAutopay,
   );
@@ -1474,8 +1476,9 @@ function HouseholdTab({ userId }: { userId: string }) {
                                     Automatic payment
                                   </Label>
                                   <p className="text-muted-foreground text-xs">
-                                    Auto-charge draft invoices only when Stripe
-                                    has a default payment method.
+                                    Applies to future billing and subscription invoices when
+                                    a default payment method is available. Existing
+                                    invoices keep their payment settings.
                                   </p>
                                 </div>
                                 <Switch
@@ -1504,6 +1507,14 @@ function HouseholdTab({ userId }: { userId: string }) {
                                 active primary payer.
                               </p>
                             )}
+                            {householdData.payer.active && householdData.payer.isPrimary ? (
+                              <AutopaySyncStatus
+                                sync={householdData.autopaySync}
+                                retry={() => retryAutopay({
+                                  householdPayerId: householdData.payer!._id,
+                                })}
+                              />
+                            ) : null}
                           </div>
                         )}
                       </div>

@@ -51,7 +51,25 @@ export default defineSchema({
     .index("email", ["email"])
     .index("phone", ["phone"])
     .index("byStaffSlug", ["staffSlug"])
-    .index("byExternalId", ["externalId"]),
+    .index("byExternalId", ["externalId"])
+    .index("byStripeCustomer", ["stripeCustomerId"]),
+  stripeAutopaySync: defineTable({
+    customerId: v.string(),
+    revision: v.number(),
+    status: v.union(v.literal("pending"), v.literal("syncing"), v.literal("synced"), v.literal("failed")),
+    attempts: v.number(),
+    leaseRevision: v.optional(v.number()),
+    leaseUntil: v.optional(v.number()),
+    nextRetryAt: v.optional(v.number()),
+    lastSyncedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    terms: v.record(v.string(), v.number()),
+    updatedAt: v.number(),
+  }).index("byCustomer", ["customerId"]),
+  stripeWebhookEvents: defineTable({
+    eventId: v.string(),
+    receivedAt: v.number(),
+  }).index("byEvent", ["eventId"]).index("byReceivedAt", ["receivedAt"]),
   accountHelpThrottles: defineTable({
     key: v.string(),
     attempts: v.array(v.number()),

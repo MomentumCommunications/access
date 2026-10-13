@@ -21,6 +21,7 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
+import { AdminStudentBuddies } from "~/components/admin-student-buddies";
 import { EnrollmentTuitionTreatmentSelect } from "~/components/enrollment-tuition-treatment-select";
 import { RoleGate } from "~/components/role-gate";
 import {
@@ -111,7 +112,7 @@ type AdminStudentData = NonNullable<
   FunctionReturnType<typeof api.classes.adminGetStudent>
 >;
 type EnrollmentRow = AdminStudentData["enrollments"][number];
-type StudentTabValue = "contacts" | "enrollments" | "notes" | "logs";
+type StudentTabValue = "contacts" | "enrollments" | "notes" | "buddies" | "logs";
 
 const studentTabTriggerClass =
   "data-[state=active]:border-primary relative h-10 flex-none rounded-none border-x-0 border-b-2 border-t-0 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent";
@@ -594,6 +595,10 @@ function StudentDetailTabs({ studentData }: { studentData: AdminStudentData }) {
           <NotebookText />
           Notes
         </TabsTrigger>
+        <TabsTrigger value="buddies" className={studentTabTriggerClass}>
+          <Users />
+          Buddies
+        </TabsTrigger>
         <TabsTrigger value="logs" className={studentTabTriggerClass}>
           <History />
           Logs
@@ -607,6 +612,9 @@ function StudentDetailTabs({ studentData }: { studentData: AdminStudentData }) {
       </TabsContent>
       <TabsContent value="notes" className="space-y-4">
         <StudentNotesTab student={studentData.student} />
+      </TabsContent>
+      <TabsContent value="buddies" className="space-y-4">
+        <AdminStudentBuddies key={studentData.student._id} studentData={studentData} />
       </TabsContent>
       <TabsContent value="logs" className="space-y-4">
         <StudentLogsTab activityLog={studentData.activityLog} />

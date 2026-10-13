@@ -56,7 +56,12 @@ export default defineSchema({
   stripeAutopaySync: defineTable({
     customerId: v.string(),
     revision: v.number(),
-    status: v.union(v.literal("pending"), v.literal("syncing"), v.literal("synced"), v.literal("failed")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("syncing"),
+      v.literal("synced"),
+      v.literal("failed"),
+    ),
     attempts: v.number(),
     leaseRevision: v.optional(v.number()),
     leaseUntil: v.optional(v.number()),
@@ -69,7 +74,9 @@ export default defineSchema({
   stripeWebhookEvents: defineTable({
     eventId: v.string(),
     receivedAt: v.number(),
-  }).index("byEvent", ["eventId"]).index("byReceivedAt", ["receivedAt"]),
+  })
+    .index("byEvent", ["eventId"])
+    .index("byReceivedAt", ["receivedAt"]),
   accountHelpThrottles: defineTable({
     key: v.string(),
     attempts: v.array(v.number()),
@@ -281,6 +288,8 @@ export default defineSchema({
     recital: v.optional(v.boolean()),
     photo: v.optional(v.id("_storage")),
     notes: v.optional(v.string()),
+    buddySheet: v.optional(v.id("_storage")),
+    buddySheetFileName: v.optional(v.string()),
     status: v.union(
       v.literal("active"),
       v.literal("inactive"),
@@ -299,6 +308,15 @@ export default defineSchema({
     .index("byStudent", ["student"])
     .index("byUser", ["user"])
     .index("byInviteEmail", ["inviteEmail"]),
+  buddies: defineTable({
+    student: v.id("students"),
+    buddy: v.id("students"),
+    notes: v.optional(v.string()),
+    current: v.boolean(),
+    year: v.optional(v.string()),
+  })
+    .index("byStudent", ["student"])
+    .index("byBuddy", ["buddy"]),
   households: defineTable({
     name: v.string(),
     notes: v.optional(v.string()),

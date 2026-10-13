@@ -1,11 +1,12 @@
 import { v } from "convex/values";
-import { Doc, Id } from "./_generated/dataModel";
+import { validateBuddySheetFile } from "../shared/buddy-sheets";
+import type { Doc, Id } from "./_generated/dataModel";
 import {
   internalMutation,
   mutation,
-  MutationCtx,
+  type MutationCtx,
   query,
-  QueryCtx,
+  type QueryCtx,
 } from "./_generated/server";
 import {
   compareClassesBySchedule,
@@ -1955,6 +1956,52 @@ export const listMyStudents = query({
   },
 });
 
+async function getStudentBuddyAssignments(ctx: QueryCtx, student: Id<"students">) {
+  const [studentAssignments, buddyAssignments] = await Promise.all([
+    ctx.db
+      .query("buddies")
+      .withIndex("byStudent", (q) => q.eq("student", student))
+      .collect(),
+    ctx.db
+      .query("buddies")
+      .withIndex("byBuddy", (q) => q.eq("buddy", student))
+      .collect(),
+  ]);
+
+  return Array.from(
+    new Map(
+      [...studentAssignments, ...buddyAssignments].map((row) => [row._id, row]),
+    ).values(),
+  ).sort(
+    (a, b) => a._creationTime - b._creationTime || a._id.localeCompare(b._id),
+  );
+}
+
+export const getBuddySheetUrl = query({
+  args: { student: v.id("students"), storageId: v.id("_storage") },
+  handler: async (ctx, { student, storageId }) => {
+    const user = await getCurrentUser(ctx);
+    if (!user || !(await canManageStudent(ctx, user, student))) return null;
+    const studentDoc = await ctx.db.get(student);
+    if (!studentDoc) return null;
+    if (isAdmin(user) && studentDoc.buddySheet === storageId) {
+      return await ctx.storage.getUrl(storageId);
+    }
+
+    const assignments = await getStudentBuddyAssignments(ctx, student);
+    const buddies = await Promise.all(
+      assignments.map((assignment) =>
+        ctx.db.get(
+          assignment.student === student ? assignment.buddy : assignment.student,
+        ),
+      ),
+    );
+    if (!buddies.some((buddy) => buddy?.buddySheet === storageId)) return null;
+
+    return await ctx.storage.getUrl(storageId);
+  },
+});
+
 export const getMyStudent = query({
   args: { student: v.id("students") },
   handler: async (ctx, { student }) => {
@@ -1991,6 +2038,32 @@ export const getMyStudent = query({
         })),
     );
 
+    const buddyAssignments = await getStudentBuddyAssignments(ctx, student);
+    const buddies = await Promise.all(
+      buddyAssignments.map(async (assignment) => {
+        const buddy = await ctx.db.get(
+          assignment.student === student ? assignment.buddy : assignment.student,
+        );
+        return {
+          _id: assignment._id,
+          current: assignment.current,
+          year: assignment.year,
+          notes: assignment.notes,
+          buddy: buddy
+            ? {
+                firstName: buddy.firstName,
+                lastName: buddy.lastName,
+                preferredName: buddy.preferredName,
+                photoUrl: buddy.photo
+                  ? await ctx.storage.getUrl(buddy.photo)
+                  : null,
+                buddySheet: buddy.buddySheet,
+              }
+            : null,
+        };
+      }),
+    );
+
     return {
       student: studentDoc,
       contact: contact || null,
@@ -1999,6 +2072,8 @@ export const getMyStudent = query({
         : null,
       enrollments: enrollmentRows.sort(compareRowsByClassSchedule),
       perSessionClasses: await getStudentPerSessionClasses(ctx, student),
+      hasBuddyAssignments: buddyAssignments.length > 0,
+      buddies,
     };
   },
 });
@@ -3174,8 +3249,32 @@ export const adminGetStudent = query({
       .order("desc")
       .take(20);
 
+    const assignments = await getStudentBuddyAssignments(ctx, student);
+    const buddies = await Promise.all(
+      assignments.map(async (assignment) => {
+        const buddyId =
+          assignment.student === student ? assignment.buddy : assignment.student;
+        const buddy = await ctx.db.get(buddyId);
+        return {
+          ...assignment,
+          buddyId,
+          buddyProfile: buddy
+            ? {
+                firstName: buddy.firstName,
+                lastName: buddy.lastName,
+                preferredName: buddy.preferredName,
+                photoUrl: buddy.photo
+                  ? await ctx.storage.getUrl(buddy.photo)
+                  : null,
+              }
+            : null,
+        };
+      }),
+    );
+
     return {
       student: studentDoc,
+      buddies,
       photoUrl: studentDoc.photo
         ? await ctx.storage.getUrl(studentDoc.photo)
         : null,
@@ -3193,6 +3292,231 @@ export const adminGetStudent = query({
         })),
       ),
     };
+  },
+});
+
+export const adminListBuddyCandidates = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const students = await ctx.db.query("students").collect();
+    return students
+      .map((student) => ({
+        _id: student._id,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        preferredName: student.preferredName,
+        status: student.status,
+      }))
+      .sort(
+        (a, b) =>
+          `${a.firstName} ${a.lastName}`.localeCompare(
+            `${b.firstName} ${b.lastName}`,
+          ) || a._id.localeCompare(b._id),
+      );
+  },
+});
+
+const buddyConnectionArgs = {
+  student: v.id("students"),
+  buddy: v.id("students"),
+  current: v.boolean(),
+  year: v.optional(v.string()),
+  notes: v.optional(v.string()),
+};
+
+async function saveBuddyConnection(
+  ctx: MutationCtx,
+  args: {
+    student: Id<"students">;
+    buddy: Id<"students">;
+    current: boolean;
+    year?: string;
+    notes?: string;
+    connection?: Id<"buddies">;
+  },
+) {
+  const admin = await requireAdmin(ctx);
+  const existing = args.connection ? await ctx.db.get(args.connection) : null;
+  if (
+    args.connection &&
+    (!existing ||
+      (existing.student !== args.student && existing.buddy !== args.student))
+  ) {
+    throw new Error("This connection no longer belongs to the student.");
+  }
+  if (args.student === args.buddy)
+    throw new Error("A student cannot be their own buddy.");
+  const [student, buddy] = await Promise.all([
+    ctx.db.get(args.student),
+    ctx.db.get(args.buddy),
+  ]);
+  if (!student || !buddy)
+    throw new Error("The selected student no longer exists.");
+  const year = args.year?.trim() || undefined;
+  const notes = args.notes?.trim() || undefined;
+  if ((year?.length || 0) > 80)
+    throw new Error("Year must be 80 characters or fewer.");
+  if ((notes?.length || 0) > 5000)
+    throw new Error("Notes must be 5,000 characters or fewer.");
+  const oldBuddy = existing
+    ? existing.student === args.student
+      ? existing.buddy
+      : existing.student
+    : null;
+  // Indexed reads participate in Convex's transaction conflict detection, including
+  // simultaneous inserts with the endpoints reversed. Legacy pairs can still be edited.
+  if (oldBuddy !== args.buddy) {
+    const assignments = await getStudentBuddyAssignments(ctx, args.student);
+    if (
+      assignments.some(
+        (row) =>
+          row._id !== args.connection &&
+          (row.student === args.buddy || row.buddy === args.buddy),
+      )
+    ) {
+      throw new Error(
+        "These students already have a buddy connection. Edit the existing connection instead.",
+      );
+    }
+  }
+  const values = {
+    student: args.student,
+    buddy: args.buddy,
+    current: args.current,
+    year,
+    notes,
+  };
+  const connection = existing
+    ? existing._id
+    : await ctx.db.insert("buddies", values);
+  if (existing) await ctx.db.patch(existing._id, values);
+  const affectedStudents = new Set([
+    args.student,
+    args.buddy,
+    ...(oldBuddy ? [oldBuddy] : []),
+  ]);
+  for (const affectedStudent of affectedStudents) {
+    await recordActivityEvent(ctx, {
+      entityType: "student",
+      entityId: affectedStudent,
+      actorId: admin._id,
+      eventType: existing ? "student.buddy.updated" : "student.buddy.created",
+      summary: `${existing ? "Updated" : "Added"} buddy connection: ${studentDisplayName(student)} and ${studentDisplayName(buddy)} (${args.current ? "current" : "past"}).`,
+      metadata: { connectionId: connection },
+    });
+  }
+  return connection;
+}
+
+export const adminCreateBuddyConnection = mutation({
+  args: buddyConnectionArgs,
+  handler: async (ctx, args) => saveBuddyConnection(ctx, args),
+});
+
+export const adminUpdateBuddyConnection = mutation({
+  args: { ...buddyConnectionArgs, connection: v.id("buddies") },
+  handler: async (ctx, args) => saveBuddyConnection(ctx, args),
+});
+
+export const adminGenerateBuddySheetUploadUrl = mutation({
+  args: { student: v.id("students") },
+  handler: async (ctx, { student }) => {
+    await requireAdmin(ctx);
+    if (!(await ctx.db.get(student))) throw new Error("Student not found.");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+async function buddySheetIsReferenced(
+  ctx: MutationCtx,
+  storageId: Id<"_storage">,
+) {
+  // Cover the schema's file references, including legacy image URL fields, before
+  // deleting a replaced sheet. These reads also protect concurrent references.
+  const url = await ctx.storage.getUrl(storageId);
+  const references = await Promise.all([
+    ctx.db
+      .query("students")
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("buddySheet"), storageId),
+          q.eq(q.field("photo"), storageId),
+        ),
+      )
+      .first(),
+    ctx.db
+      .query("groups")
+      .filter((q) => q.eq(q.field("document"), storageId))
+      .first(),
+    ctx.db
+      .query("documents")
+      .filter((q) => q.eq(q.field("document"), storageId))
+      .first(),
+    ctx.db
+      .query("docuBulletins")
+      .filter((q) => q.eq(q.field("document"), storageId))
+      .first(),
+    ctx.db
+      .query("users")
+      .filter((q) =>
+        q.or(q.eq(q.field("image"), storageId), q.eq(q.field("image"), url)),
+      )
+      .first(),
+    ctx.db
+      .query("bulletin")
+      .filter((q) =>
+        q.or(q.eq(q.field("image"), storageId), q.eq(q.field("image"), url)),
+      )
+      .first(),
+  ]);
+  return references.some(Boolean);
+}
+
+export const adminSaveBuddySheet = mutation({
+  args: {
+    student: v.id("students"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    expectedStorageId: v.union(v.id("_storage"), v.null()),
+  },
+  handler: async (ctx, { student, storageId, fileName, expectedStorageId }) => {
+    const admin = await requireAdmin(ctx);
+    const existing = await ctx.db.get(student);
+    if (!existing) throw new Error("Student not found.");
+    if ((existing.buddySheet || null) !== expectedStorageId) {
+      throw new Error(
+        "The buddy sheet changed during upload. Please upload again to replace the latest sheet.",
+      );
+    }
+    const file = await ctx.db.system.get(storageId);
+    if (!file) throw new Error("The uploaded file was not found.");
+    const error = validateBuddySheetFile({
+      type: file.contentType || "",
+      size: file.size,
+    });
+    if (error) throw new Error(error);
+    const name = fileName.trim();
+    if (!name || name.length > 255)
+      throw new Error("Provide a filename of 1–255 characters.");
+    await ctx.db.patch(student, {
+      buddySheet: storageId,
+      buddySheetFileName: name,
+    });
+    if (
+      existing.buddySheet &&
+      existing.buddySheet !== storageId &&
+      !(await buddySheetIsReferenced(ctx, existing.buddySheet))
+    ) {
+      await ctx.storage.delete(existing.buddySheet);
+    }
+    await recordActivityEvent(ctx, {
+      entityType: "student",
+      entityId: student,
+      actorId: admin._id,
+      eventType: "student.buddy_sheet.updated",
+      summary: "Updated buddy sheet.",
+    });
   },
 });
 

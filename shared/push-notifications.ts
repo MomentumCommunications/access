@@ -6,6 +6,7 @@ export const PUSH_NOTIFICATION_TYPES = new Set([
   "enrollment.waitlisted",
   "enrollment.rejected",
   "attendance.incomplete",
+  "attendance.absence_streak",
   "trial.pending",
   "trial.approved",
   "trial.rejected",

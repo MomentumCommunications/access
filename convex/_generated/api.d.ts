@@ -10,6 +10,7 @@
 
 import type * as ResendOTPEmailVerification from "../ResendOTPEmailVerification.js";
 import type * as ResendOTPPasswordReset from "../ResendOTPPasswordReset.js";
+import type * as absenceAlerts from "../absenceAlerts.js";
 import type * as auth from "../auth.js";
 import type * as billing from "../billing.js";
 import type * as billingDispatch from "../billingDispatch.js";
@@ -77,6 +78,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   ResendOTPEmailVerification: typeof ResendOTPEmailVerification;
   ResendOTPPasswordReset: typeof ResendOTPPasswordReset;
+  absenceAlerts: typeof absenceAlerts;
   auth: typeof auth;
   billing: typeof billing;
   billingDispatch: typeof billingDispatch;

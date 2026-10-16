@@ -785,6 +785,20 @@ export default defineSchema({
     .index("byParticipants", ["participants"])
     .index("byParticipantsActive", ["participants", "active"])
     .index("byActive", ["active"]),
+  absenceAlertStates: defineTable({
+    student: v.id("students"),
+    weeks: v.array(
+      v.object({
+        week: v.string(),
+        result: v.union(
+          v.literal("absent"),
+          v.literal("reset"),
+          v.literal("unknown"),
+        ),
+      }),
+    ),
+    lastAlertStartWeek: v.optional(v.string()),
+  }).index("byStudent", ["student"]),
   attendanceRecords: defineTable({
     session: v.id("sessions"),
     student: v.id("students"),

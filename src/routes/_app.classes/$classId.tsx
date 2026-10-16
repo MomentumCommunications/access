@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { resolvedClassEnrollmentOpen } from "../../../shared/class-enrollment-selection";
 import { resolvedClassEnrollmentMode } from "../../../shared/per-session-signup";
 import { Button } from "~/components/ui/button";
+import { StudentActivationAlert } from "~/components/student-enrollment-action";
 import {
   Card,
   CardContent,
@@ -42,6 +43,12 @@ function ClassDetailPage() {
   const [selectedStudent, setSelectedStudent] = useState("");
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
   const [message, setMessage] = useState("");
+  const selectedStudentDoc = students?.find(
+    (row) => row.student?._id === selectedStudent,
+  )?.student;
+  const selectedStudentNeedsActivation = Boolean(
+    selectedStudentDoc && selectedStudentDoc.status !== "active",
+  );
   const classMode = resolvedClassEnrollmentMode(
     classData?.classItem.enrollmentMode,
   );
@@ -75,6 +82,7 @@ function ClassDetailPage() {
   }, [classData?.sessions, studentSignups]);
 
   async function handleSignup() {
+    if (selectedStudentNeedsActivation) return;
     if (!selectedStudent) {
       setMessage("Select a student first.");
       return;
@@ -191,7 +199,7 @@ function ClassDetailPage() {
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="select-all-sessions"
-                  disabled={!enrollmentOpen}
+                  disabled={!enrollmentOpen || selectedStudentNeedsActivation}
                   checked={
                     classData.sessions.length > 0 &&
                     selectedSessions.length === classData.sessions.length
@@ -224,14 +232,17 @@ function ClassDetailPage() {
                       {classMode === "per_session" && selectedStudent ? (
                         <Checkbox
                           checked={selected}
-                          disabled={locked || !enrollmentOpen}
+                          disabled={
+                            locked ||
+                            !enrollmentOpen ||
+                            selectedStudentNeedsActivation
+                          }
                           onCheckedChange={(checked) =>
                             setSelectedSessions((current) =>
                               checked
                                 ? [...new Set([...current, session._id])]
                                 : current.filter(
-                                    (sessionId) =>
-                                      sessionId !== session._id,
+                                    (sessionId) => sessionId !== session._id,
                                   ),
                             )
                           }
@@ -306,19 +317,23 @@ function ClassDetailPage() {
                       ))}
                   </SelectContent>
                 </Select>
-                <Button
-                  className="w-full"
-                  disabled={!enrollmentOpen}
-                  onClick={handleSignup}
-                >
-                  {!enrollmentOpen
-                    ? "Enrollment closed"
-                    : classMode === "per_session"
-                      ? `Request ${selectedSessions.length} session${
-                          selectedSessions.length === 1 ? "" : "s"
-                        }`
-                      : "Submit Signup"}
-                </Button>
+                {selectedStudentNeedsActivation && selectedStudentDoc ? (
+                  <StudentActivationAlert student={selectedStudentDoc} />
+                ) : (
+                  <Button
+                    className="w-full"
+                    disabled={!enrollmentOpen}
+                    onClick={handleSignup}
+                  >
+                    {!enrollmentOpen
+                      ? "Enrollment closed"
+                      : classMode === "per_session"
+                        ? `Request ${selectedSessions.length} session${
+                            selectedSessions.length === 1 ? "" : "s"
+                          }`
+                        : "Submit Signup"}
+                  </Button>
+                )}
               </>
             )}
             {message ? (

@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { ArrowLeft, BookOpen, Pencil, Users } from "lucide-react";
 import { PdfEmbed } from "~/components/pdf-embed";
+import { StudentEnrollmentAction } from "~/components/student-enrollment-action";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Separator } from "~/components/ui/separator";
@@ -204,12 +205,7 @@ function StudentClassesTab({ studentData }: { studentData: StudentData }) {
             Classes currently connected to this student.
           </p>
         </div>
-        <Button asChild>
-          <Link to="/classes" search={{ student: student._id }}>
-            <BookOpen />
-            Enroll this student in classes
-          </Link>
-        </Button>
+        <StudentEnrollmentAction student={student} />
       </div>
       <Card className="rounded-lg">
         <CardContent className="pt-6">

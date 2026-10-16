@@ -75,17 +75,28 @@ function initialTopic(topic?: string): ContactTopic {
 export const Route = createFileRoute("/_app/contact")({
   validateSearch: z.object({
     topic: z.string().optional(),
+    subject: z.string().trim().max(120).catch("").optional(),
   }),
   component: ContactRoute,
 });
 
 function ContactRoute() {
-  const { topic } = Route.useSearch();
+  const { topic, subject } = Route.useSearch();
+  return (
+    <ContactForm
+      key={JSON.stringify([topic, subject])}
+      topic={topic}
+      subject={subject}
+    />
+  );
+}
+
+function ContactForm({ topic, subject }: { topic?: string; subject?: string }) {
   const sendContactMessage = useConvexAction(api.contact.sendContactMessage);
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactFormSchema),
     defaultValues: {
-      subject: "",
+      subject: subject || "",
       topic: initialTopic(topic),
       message: "",
     },

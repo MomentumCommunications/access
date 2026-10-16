@@ -51,6 +51,7 @@ import {
 } from "../../../shared/class-enrollment-selection";
 import { resolvedClassEnrollmentMode } from "../../../shared/per-session-signup";
 import { resolveManagedStudentId } from "../../../shared/member-class-selection";
+import { StudentActivationAlert } from "~/components/student-enrollment-action";
 import {
   CLASS_WEEKDAYS,
   CLASS_WEEKDAY_LABELS,
@@ -153,6 +154,9 @@ function ClassesPage() {
     students?.find((row) => row.student._id === selectedStudentIdFromAccess) ||
     students?.[0];
   const selectedStudentId = selectedStudentRow?.student._id;
+  const selectedStudentNeedsActivation = Boolean(
+    selectedStudentRow && selectedStudentRow.student.status !== "active",
+  );
   const selectedStudentIsManaged =
     selectedStudentRow?.selfServiceEnrollmentAllowed === false;
   const filterByAge = ageFilter !== "off";
@@ -163,7 +167,7 @@ function ClassesPage() {
         seasons?.[0]?._id;
   const classes = useConvexQuery(
     api.classes.listPublishedClasses,
-    students === undefined
+    students === undefined || selectedStudentNeedsActivation
       ? "skip"
       : {
           seasonId: selectedSeasonId,
@@ -214,7 +218,9 @@ function ClassesPage() {
   }, [enrollmentEndDate, enrollmentStartDate, useSpecificDates]);
   const estimate = useConvexQuery(
     api.classes.estimateMyClassSelections,
-    selectedStudentId && !selectedStudentIsManaged
+    selectedStudentId &&
+      !selectedStudentIsManaged &&
+      !selectedStudentNeedsActivation
       ? {
           student: selectedStudentId,
           recurringClassIds:
@@ -273,7 +279,7 @@ function ClassesPage() {
     setUseSpecificDates(false);
     setEnrollmentStartDate(todayDateValue());
     setEnrollmentEndDate("");
-  }, [selectedSeasonId, selectedStudentId]);
+  }, [selectedSeasonId, selectedStudentId, selectedStudentNeedsActivation]);
 
   useEffect(() => {
     if (hasRecurringSelections) return;
@@ -290,12 +296,15 @@ function ClassesPage() {
     ? getStudentName(selectedStudentRow.student)
     : null;
   const loading =
-    classes === undefined || seasons === undefined || students === undefined;
+    (!selectedStudentNeedsActivation && classes === undefined) ||
+    seasons === undefined ||
+    students === undefined;
 
   async function handleSaveSelections() {
     if (
       !selectedStudentId ||
       selectedStudentIsManaged ||
+      selectedStudentNeedsActivation ||
       review.changeCount === 0 ||
       specificDateError ||
       saving
@@ -476,20 +485,22 @@ function ClassesPage() {
         </div>
       </div>
 
-      <Alert className="mb-4">
-        <Info className="size-5" />
-        <AlertTitle>Age limits can be flexible</AlertTitle>
-        <AlertDescription>
-          <p>
-            Your student may fit in a class outside of their age range. If you
-            believe this is the case send us a message with the link below and
-            we&apos;ll get back to you.
-          </p>
-          <Button asChild>
-            <a href="/contact?topic=enrollment">Contact us</a>
-          </Button>
-        </AlertDescription>
-      </Alert>
+      {!selectedStudentNeedsActivation && (
+        <Alert className="mb-4">
+          <Info className="size-5" />
+          <AlertTitle>Age limits can be flexible</AlertTitle>
+          <AlertDescription>
+            <p>
+              Your student may fit in a class outside of their age range. If you
+              believe this is the case send us a message with the link below and
+              we&apos;ll get back to you.
+            </p>
+            <Button asChild>
+              <a href="/contact?topic=enrollment">Contact us</a>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {loading ? (
         <div className="min-h-40 flex items-center justify-center">
@@ -509,6 +520,8 @@ function ClassesPage() {
             </Button>
           </CardContent>
         </Card>
+      ) : selectedStudentNeedsActivation && selectedStudentRow ? (
+        <StudentActivationAlert student={selectedStudentRow.student} />
       ) : selectedStudentIsManaged ? (
         <Card className="rounded-lg">
           <CardHeader>
@@ -533,7 +546,7 @@ function ClassesPage() {
             </p>
           </CardContent>
         </Card>
-      ) : classes.length === 0 ? (
+      ) : !classes || classes.length === 0 ? (
         <Card className="rounded-lg">
           <CardHeader>
             <CardTitle>No classes posted</CardTitle>
@@ -578,7 +591,10 @@ function ClassesPage() {
         </div>
       )}
 
-      {!loading && students.length > 0 && !selectedStudentIsManaged ? (
+      {!loading &&
+      students.length > 0 &&
+      !selectedStudentIsManaged &&
+      !selectedStudentNeedsActivation ? (
         <div className="fixed inset-x-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-40 lg:hidden">
           <Sheet>
             <SheetTrigger asChild>

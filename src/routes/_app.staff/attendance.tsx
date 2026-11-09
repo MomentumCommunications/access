@@ -1,7 +1,6 @@
 import { useConvexQuery } from "@convex-dev/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { api } from "convex/_generated/api";
-import { format } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { RoleGate } from "~/components/role-gate";
@@ -18,7 +17,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Spinner } from "~/components/ui/spinner";
 import { Switch } from "~/components/ui/switch";
-import { formatTimeRange } from "~/lib/date-utils";
+import { formatShortDate, formatTimeRange } from "~/lib/date-utils";
 
 export const Route = createFileRoute("/_app/staff/attendance")({
   component: AttendancePage,
@@ -120,7 +119,7 @@ function AttendancePage() {
                   <CardTitle>
                     {row.classItem?.title || "Untitled class"}
                     {showIncomplete &&
-                      ` · ${format(row.session.date, "EE, M/d")}`}
+                      ` · ${formatShortDate(row.session.date)}`}
                   </CardTitle>
                   <CardDescription>
                     {formatTimeRange(

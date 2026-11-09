@@ -31,6 +31,13 @@ export function formatMDYYYY(date?: string) {
   return format(parsed, "M/d/yyyy");
 }
 
+export function formatShortDate(date?: string) {
+  if (!date) return "Not set";
+
+  const parsed = parse(date, "yyyy-MM-dd", new Date());
+  return format(parsed, "EE, M/d");
+}
+
 export function formatFullDate(date?: string) {
   if (!date) return "Not set";
 

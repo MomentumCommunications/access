@@ -102,40 +102,64 @@ export function StudentBirthdaysWidget() {
                   </TableCell>
                 </TableRow>
               ) : (
-                birthdays.map((student) => (
-                  <TableRow key={student.studentId}>
-                    <TableCell className="px-4 py-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <Avatar className="size-9 shrink-0">
-                          <AvatarImage
-                            src={student.photoUrl || undefined}
-                            alt={student.name}
-                          />
-                          <AvatarFallback>
-                            {student.firstName?.[0]}
-                            {student.lastName?.[0]}
-                            {!student.firstName && !student.lastName ? (
-                              <UserRound className="size-4" />
-                            ) : null}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="truncate font-medium">
-                          {student.name}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground whitespace-nowrap px-4 py-3">
-                      {formatBirthdayDate(student.birthdayDate)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap px-4 py-3 text-right font-medium">
-                      {formatBirthdayAge({
-                        birthYear: student.birthYear,
-                        birthdayDate: student.birthdayDate,
-                        today,
-                      })}
-                    </TableCell>
-                  </TableRow>
-                ))
+                birthdays.map((student) => {
+                  const isBirthdayToday =
+                    parseDateValue(student.birthdayDate)?.getTime() ===
+                    startOfDay(today).getTime();
+
+                  return (
+                    <TableRow
+                      key={student.studentId}
+                      className={
+                        isBirthdayToday
+                          ? "bg-accent text-accent-foreground hover:bg-accent"
+                          : undefined
+                      }
+                    >
+                      <TableCell className="px-4 py-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <Avatar className="size-9 shrink-0">
+                            <AvatarImage
+                              src={student.photoUrl || undefined}
+                              alt={student.name}
+                            />
+                            <AvatarFallback>
+                              {student.firstName?.[0]}
+                              {student.lastName?.[0]}
+                              {!student.firstName && !student.lastName ? (
+                                <UserRound className="size-4" />
+                              ) : null}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <span className="truncate font-medium">
+                              {student.name}
+                            </span>
+                            {isBirthdayToday && (
+                              <span
+                                className="shrink-0"
+                                role="img"
+                                aria-label="Birthday today"
+                              >
+                                🥳
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground whitespace-nowrap px-4 py-3">
+                        {formatBirthdayDate(student.birthdayDate)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap px-4 py-3 text-right font-medium">
+                        {formatBirthdayAge({
+                          birthYear: student.birthYear,
+                          birthdayDate: student.birthdayDate,
+                          today,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

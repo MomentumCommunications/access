@@ -1,3 +1,7 @@
+import {
+  attendanceRangeError,
+  buildAttendanceReport,
+} from "../shared/attendance-report";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { hasUserRole, resolveUserRoles } from "./lib/roles";
@@ -183,5 +187,73 @@ export const adminUpdateTrialFollowUpNotes = mutation({
       updatedAt: Date.now(),
     });
     return { notes: cleanedNotes || undefined };
+  },
+});
+
+export const adminAttendanceReportOptions = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const [groups, seasons] = await Promise.all([
+      ctx.db.query("groups").collect(),
+      ctx.db.query("seasons").collect(),
+    ]);
+    return {
+      groups: groups
+        .map(({ _id, name }) => ({ _id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+      seasons: seasons
+        .map(({ _id, name, startDate, endDate }) => ({
+          _id,
+          name,
+          startDate,
+          endDate,
+        }))
+        .sort((a, b) => b.startDate.localeCompare(a.startDate)),
+    };
+  },
+});
+
+export const adminAttendanceReport = query({
+  args: { start: v.string(), end: v.string() },
+  handler: async (ctx, range) => {
+    await requireAdmin(ctx);
+    const error = attendanceRangeError(range.start, range.end);
+    if (error) throw new Error(error);
+    const [students, sessions] = await Promise.all([
+      ctx.db
+        .query("students")
+        .withIndex("byStatus", (q) => q.eq("status", "active"))
+        .collect(),
+      ctx.db
+        .query("sessions")
+        .withIndex("byDate", (q) =>
+          q.gte("date", range.start).lte("date", range.end),
+        )
+        .collect(),
+    ]);
+    if (students.length === 0) return [];
+    const sessionRows = await Promise.all(
+      sessions
+        .filter((session) => session.active && session.status !== "cancelled")
+        .map(async (session) => {
+          const [records, additions] = await Promise.all([
+            ctx.db
+              .query("attendanceRecords")
+              .withIndex("bySession", (q) => q.eq("session", session._id))
+              .collect(),
+            ctx.db
+              .query("sessionStudents")
+              .withIndex("bySession", (q) => q.eq("session", session._id))
+              .collect(),
+          ]);
+          return {
+            ...session,
+            records,
+            addedStudentIds: additions.map((addition) => addition.student),
+          };
+        }),
+    );
+    return buildAttendanceReport(students, sessionRows, range);
   },
 });

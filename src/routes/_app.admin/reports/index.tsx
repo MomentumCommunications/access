@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, BarChart3, ClipboardList } from "lucide-react";
+import { ArrowRight, BarChart3, ChartPie, ClipboardList } from "lucide-react";
 import { RoleGate } from "~/components/role-gate";
 
 export const Route = createFileRoute("/_app/admin/reports/")({
@@ -7,6 +7,13 @@ export const Route = createFileRoute("/_app/admin/reports/")({
 });
 
 const reportLinks = [
+  {
+    title: "Attendance",
+    description:
+      "Attendance rates, makeups, and absence reasons by student and group.",
+    to: "/admin/reports/attendance",
+    icon: ChartPie,
+  },
   {
     title: "Overview",
     description: "Enrollment activity, participation, and tuition estimates.",

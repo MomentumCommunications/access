@@ -486,6 +486,7 @@ const ADMIN_BILLING_ITEMS = [
 ] as const;
 
 const ADMIN_REPORT_ITEMS = [
+  ["Attendance", "/admin/reports/attendance"],
   ["Overview", "/admin/reports/overview"],
   ["Onboarding", "/admin/reports/onboarding"],
 ] as const;

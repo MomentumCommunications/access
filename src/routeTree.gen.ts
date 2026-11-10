@@ -61,6 +61,7 @@ import { Route as AppAdminPrivatesIndexRouteImport } from './routes/_app.admin/p
 import { Route as AppAdminClassesIndexRouteImport } from './routes/_app.admin/classes/index'
 import { Route as AppAdminBulletinsIndexRouteImport } from './routes/_app.admin/bulletins/index'
 import { Route as AppAdminBillingIndexRouteImport } from './routes/_app.admin/billing/index'
+import { Route as AdminReportsAttendancePrintRouteImport } from './routes/admin.reports.attendance.print'
 import { Route as AppStudentsStudentIdEditRouteImport } from './routes/_app.students/$studentId_.edit'
 import { Route as AppStaffClassesClassIdRouteImport } from './routes/_app.staff/classes_.$classId'
 import { Route as AppStaffAttendanceSessionIdRouteImport } from './routes/_app.staff/attendance_.$sessionId'
@@ -68,6 +69,7 @@ import { Route as AppAdminStudentsCreateRouteImport } from './routes/_app.admin/
 import { Route as AppAdminStudentsStudentIdRouteImport } from './routes/_app.admin/students/$studentId'
 import { Route as AppAdminReportsOverviewRouteImport } from './routes/_app.admin/reports/overview'
 import { Route as AppAdminReportsOnboardingRouteImport } from './routes/_app.admin/reports/onboarding'
+import { Route as AppAdminReportsAttendanceRouteImport } from './routes/_app.admin/reports/attendance'
 import { Route as AppAdminPrivatesDailyRouteImport } from './routes/_app.admin/privates/daily'
 import { Route as AppAdminPrivatesCreateRouteImport } from './routes/_app.admin/privates/create'
 import { Route as AppAdminPrivatesPrivateIdRouteImport } from './routes/_app.admin/privates/$privateId'
@@ -86,7 +88,6 @@ import { Route as AppAdminBillingAdjustmentsRouteImport } from './routes/_app.ad
 import { Route as AppAdminAttendanceSessionIdRouteImport } from './routes/_app.admin/attendance.$sessionId'
 import { Route as AppAdminAccountsCreateRouteImport } from './routes/_app.admin/accounts_.create'
 import { Route as AppAdminAccountsUserIdRouteImport } from './routes/_app.admin/accounts_.$userId'
-import { Route as AppAdminStudentsStudentIdReportRouteImport } from './routes/_app.admin/students/$studentId_.report'
 import { Route as AppAdminStudentsStudentIdEditRouteImport } from './routes/_app.admin/students/$studentId_.edit'
 import { Route as AppAdminPrivatesPrivateIdEditRouteImport } from './routes/_app.admin/privates/$privateId_.edit'
 import { Route as AppAdminPrivatesPrivateIdPrivateLessonIdRouteImport } from './routes/_app.admin/privates/$privateId_/$privateLessonId'
@@ -358,6 +359,12 @@ const AppAdminBillingIndexRoute = AppAdminBillingIndexRouteImport.update({
   path: '/admin/billing/',
   getParentRoute: () => AppRoute,
 } as any)
+const AdminReportsAttendancePrintRoute =
+  AdminReportsAttendancePrintRouteImport.update({
+    id: '/admin/reports/attendance/print',
+    path: '/admin/reports/attendance/print',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppStudentsStudentIdEditRoute =
   AppStudentsStudentIdEditRouteImport.update({
     id: '/students/$studentId_/edit',
@@ -395,6 +402,12 @@ const AppAdminReportsOnboardingRoute =
   AppAdminReportsOnboardingRouteImport.update({
     id: '/admin/reports/onboarding',
     path: '/admin/reports/onboarding',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppAdminReportsAttendanceRoute =
+  AppAdminReportsAttendanceRouteImport.update({
+    id: '/admin/reports/attendance',
+    path: '/admin/reports/attendance',
     getParentRoute: () => AppRoute,
   } as any)
 const AppAdminPrivatesDailyRoute = AppAdminPrivatesDailyRouteImport.update({
@@ -492,12 +505,6 @@ const AppAdminAccountsUserIdRoute = AppAdminAccountsUserIdRouteImport.update({
   path: '/admin/accounts/$userId',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAdminStudentsStudentIdReportRoute =
-  AppAdminStudentsStudentIdReportRouteImport.update({
-    id: '/admin/students/$studentId_/report',
-    path: '/admin/students/$studentId/report',
-    getParentRoute: () => AppRoute,
-  } as any)
 const AppAdminStudentsStudentIdEditRoute =
   AppAdminStudentsStudentIdEditRouteImport.update({
     id: '/admin/students/$studentId_/edit',
@@ -623,6 +630,7 @@ export interface FileRoutesByFullPath {
   '/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/admin/privates/create': typeof AppAdminPrivatesCreateRoute
   '/admin/privates/daily': typeof AppAdminPrivatesDailyRoute
+  '/admin/reports/attendance': typeof AppAdminReportsAttendanceRoute
   '/admin/reports/onboarding': typeof AppAdminReportsOnboardingRoute
   '/admin/reports/overview': typeof AppAdminReportsOverviewRoute
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
@@ -630,6 +638,7 @@ export interface FileRoutesByFullPath {
   '/staff/attendance/$sessionId': typeof AppStaffAttendanceSessionIdRoute
   '/staff/classes/$classId': typeof AppStaffClassesClassIdRoute
   '/students/$studentId/edit': typeof AppStudentsStudentIdEditRoute
+  '/admin/reports/attendance/print': typeof AdminReportsAttendancePrintRoute
   '/admin/billing/': typeof AppAdminBillingIndexRoute
   '/admin/bulletins/': typeof AppAdminBulletinsIndexRoute
   '/admin/classes/': typeof AppAdminClassesIndexRoute
@@ -645,7 +654,6 @@ export interface FileRoutesByFullPath {
   '/admin/privates/$privateId/$privateLessonId': typeof AppAdminPrivatesPrivateIdPrivateLessonIdRoute
   '/admin/privates/$privateId/edit': typeof AppAdminPrivatesPrivateIdEditRoute
   '/admin/students/$studentId/edit': typeof AppAdminStudentsStudentIdEditRoute
-  '/admin/students/$studentId/report': typeof AppAdminStudentsStudentIdReportRoute
   '/admin/accounts/$userId/students/create': typeof AppAdminAccountsUserIdStudentsCreateRoute
 }
 export interface FileRoutesByTo {
@@ -711,6 +719,7 @@ export interface FileRoutesByTo {
   '/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/admin/privates/create': typeof AppAdminPrivatesCreateRoute
   '/admin/privates/daily': typeof AppAdminPrivatesDailyRoute
+  '/admin/reports/attendance': typeof AppAdminReportsAttendanceRoute
   '/admin/reports/onboarding': typeof AppAdminReportsOnboardingRoute
   '/admin/reports/overview': typeof AppAdminReportsOverviewRoute
   '/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
@@ -718,6 +727,7 @@ export interface FileRoutesByTo {
   '/staff/attendance/$sessionId': typeof AppStaffAttendanceSessionIdRoute
   '/staff/classes/$classId': typeof AppStaffClassesClassIdRoute
   '/students/$studentId/edit': typeof AppStudentsStudentIdEditRoute
+  '/admin/reports/attendance/print': typeof AdminReportsAttendancePrintRoute
   '/admin/billing': typeof AppAdminBillingIndexRoute
   '/admin/bulletins': typeof AppAdminBulletinsIndexRoute
   '/admin/classes': typeof AppAdminClassesIndexRoute
@@ -733,7 +743,6 @@ export interface FileRoutesByTo {
   '/admin/privates/$privateId/$privateLessonId': typeof AppAdminPrivatesPrivateIdPrivateLessonIdRoute
   '/admin/privates/$privateId/edit': typeof AppAdminPrivatesPrivateIdEditRoute
   '/admin/students/$studentId/edit': typeof AppAdminStudentsStudentIdEditRoute
-  '/admin/students/$studentId/report': typeof AppAdminStudentsStudentIdReportRoute
   '/admin/accounts/$userId/students/create': typeof AppAdminAccountsUserIdStudentsCreateRoute
 }
 export interface FileRoutesById {
@@ -802,6 +811,7 @@ export interface FileRoutesById {
   '/_app/admin/privates/$privateId': typeof AppAdminPrivatesPrivateIdRoute
   '/_app/admin/privates/create': typeof AppAdminPrivatesCreateRoute
   '/_app/admin/privates/daily': typeof AppAdminPrivatesDailyRoute
+  '/_app/admin/reports/attendance': typeof AppAdminReportsAttendanceRoute
   '/_app/admin/reports/onboarding': typeof AppAdminReportsOnboardingRoute
   '/_app/admin/reports/overview': typeof AppAdminReportsOverviewRoute
   '/_app/admin/students/$studentId': typeof AppAdminStudentsStudentIdRoute
@@ -809,6 +819,7 @@ export interface FileRoutesById {
   '/_app/staff/attendance_/$sessionId': typeof AppStaffAttendanceSessionIdRoute
   '/_app/staff/classes_/$classId': typeof AppStaffClassesClassIdRoute
   '/_app/students/$studentId_/edit': typeof AppStudentsStudentIdEditRoute
+  '/admin/reports/attendance/print': typeof AdminReportsAttendancePrintRoute
   '/_app/admin/billing/': typeof AppAdminBillingIndexRoute
   '/_app/admin/bulletins/': typeof AppAdminBulletinsIndexRoute
   '/_app/admin/classes/': typeof AppAdminClassesIndexRoute
@@ -824,7 +835,6 @@ export interface FileRoutesById {
   '/_app/admin/privates/$privateId_/$privateLessonId': typeof AppAdminPrivatesPrivateIdPrivateLessonIdRoute
   '/_app/admin/privates/$privateId_/edit': typeof AppAdminPrivatesPrivateIdEditRoute
   '/_app/admin/students/$studentId_/edit': typeof AppAdminStudentsStudentIdEditRoute
-  '/_app/admin/students/$studentId_/report': typeof AppAdminStudentsStudentIdReportRoute
   '/_app/admin/accounts_/$userId_/students/create': typeof AppAdminAccountsUserIdStudentsCreateRoute
 }
 export interface FileRouteTypes {
@@ -893,6 +903,7 @@ export interface FileRouteTypes {
     | '/admin/privates/$privateId'
     | '/admin/privates/create'
     | '/admin/privates/daily'
+    | '/admin/reports/attendance'
     | '/admin/reports/onboarding'
     | '/admin/reports/overview'
     | '/admin/students/$studentId'
@@ -900,6 +911,7 @@ export interface FileRouteTypes {
     | '/staff/attendance/$sessionId'
     | '/staff/classes/$classId'
     | '/students/$studentId/edit'
+    | '/admin/reports/attendance/print'
     | '/admin/billing/'
     | '/admin/bulletins/'
     | '/admin/classes/'
@@ -915,7 +927,6 @@ export interface FileRouteTypes {
     | '/admin/privates/$privateId/$privateLessonId'
     | '/admin/privates/$privateId/edit'
     | '/admin/students/$studentId/edit'
-    | '/admin/students/$studentId/report'
     | '/admin/accounts/$userId/students/create'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -981,6 +992,7 @@ export interface FileRouteTypes {
     | '/admin/privates/$privateId'
     | '/admin/privates/create'
     | '/admin/privates/daily'
+    | '/admin/reports/attendance'
     | '/admin/reports/onboarding'
     | '/admin/reports/overview'
     | '/admin/students/$studentId'
@@ -988,6 +1000,7 @@ export interface FileRouteTypes {
     | '/staff/attendance/$sessionId'
     | '/staff/classes/$classId'
     | '/students/$studentId/edit'
+    | '/admin/reports/attendance/print'
     | '/admin/billing'
     | '/admin/bulletins'
     | '/admin/classes'
@@ -1003,7 +1016,6 @@ export interface FileRouteTypes {
     | '/admin/privates/$privateId/$privateLessonId'
     | '/admin/privates/$privateId/edit'
     | '/admin/students/$studentId/edit'
-    | '/admin/students/$studentId/report'
     | '/admin/accounts/$userId/students/create'
   id:
     | '__root__'
@@ -1071,6 +1083,7 @@ export interface FileRouteTypes {
     | '/_app/admin/privates/$privateId'
     | '/_app/admin/privates/create'
     | '/_app/admin/privates/daily'
+    | '/_app/admin/reports/attendance'
     | '/_app/admin/reports/onboarding'
     | '/_app/admin/reports/overview'
     | '/_app/admin/students/$studentId'
@@ -1078,6 +1091,7 @@ export interface FileRouteTypes {
     | '/_app/staff/attendance_/$sessionId'
     | '/_app/staff/classes_/$classId'
     | '/_app/students/$studentId_/edit'
+    | '/admin/reports/attendance/print'
     | '/_app/admin/billing/'
     | '/_app/admin/bulletins/'
     | '/_app/admin/classes/'
@@ -1093,7 +1107,6 @@ export interface FileRouteTypes {
     | '/_app/admin/privates/$privateId_/$privateLessonId'
     | '/_app/admin/privates/$privateId_/edit'
     | '/_app/admin/students/$studentId_/edit'
-    | '/_app/admin/students/$studentId_/report'
     | '/_app/admin/accounts_/$userId_/students/create'
   fileRoutesById: FileRoutesById
 }
@@ -1108,6 +1121,7 @@ export interface RootRouteChildren {
   InviteTokenRoute: typeof InviteTokenRoute
   ReferralTokenRoute: typeof ReferralTokenRoute
   AdminClassesPrintRoute: typeof AdminClassesPrintRoute
+  AdminReportsAttendancePrintRoute: typeof AdminReportsAttendancePrintRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1476,6 +1490,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminBillingIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/admin/reports/attendance/print': {
+      id: '/admin/reports/attendance/print'
+      path: '/admin/reports/attendance/print'
+      fullPath: '/admin/reports/attendance/print'
+      preLoaderRoute: typeof AdminReportsAttendancePrintRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/students/$studentId_/edit': {
       id: '/_app/students/$studentId_/edit'
       path: '/students/$studentId/edit'
@@ -1523,6 +1544,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/reports/onboarding'
       fullPath: '/admin/reports/onboarding'
       preLoaderRoute: typeof AppAdminReportsOnboardingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/reports/attendance': {
+      id: '/_app/admin/reports/attendance'
+      path: '/admin/reports/attendance'
+      fullPath: '/admin/reports/attendance'
+      preLoaderRoute: typeof AppAdminReportsAttendanceRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/privates/daily': {
@@ -1649,13 +1677,6 @@ declare module '@tanstack/react-router' {
       path: '/admin/accounts/$userId'
       fullPath: '/admin/accounts/$userId'
       preLoaderRoute: typeof AppAdminAccountsUserIdRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/admin/students/$studentId_/report': {
-      id: '/_app/admin/students/$studentId_/report'
-      path: '/admin/students/$studentId/report'
-      fullPath: '/admin/students/$studentId/report'
-      preLoaderRoute: typeof AppAdminStudentsStudentIdReportRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/students/$studentId_/edit': {
@@ -1790,6 +1811,7 @@ interface AppRouteChildren {
   AppAdminPrivatesPrivateIdRoute: typeof AppAdminPrivatesPrivateIdRoute
   AppAdminPrivatesCreateRoute: typeof AppAdminPrivatesCreateRoute
   AppAdminPrivatesDailyRoute: typeof AppAdminPrivatesDailyRoute
+  AppAdminReportsAttendanceRoute: typeof AppAdminReportsAttendanceRoute
   AppAdminReportsOnboardingRoute: typeof AppAdminReportsOnboardingRoute
   AppAdminReportsOverviewRoute: typeof AppAdminReportsOverviewRoute
   AppAdminStudentsStudentIdRoute: typeof AppAdminStudentsStudentIdRoute
@@ -1812,7 +1834,6 @@ interface AppRouteChildren {
   AppAdminPrivatesPrivateIdPrivateLessonIdRoute: typeof AppAdminPrivatesPrivateIdPrivateLessonIdRoute
   AppAdminPrivatesPrivateIdEditRoute: typeof AppAdminPrivatesPrivateIdEditRoute
   AppAdminStudentsStudentIdEditRoute: typeof AppAdminStudentsStudentIdEditRoute
-  AppAdminStudentsStudentIdReportRoute: typeof AppAdminStudentsStudentIdReportRoute
   AppAdminAccountsUserIdStudentsCreateRoute: typeof AppAdminAccountsUserIdStudentsCreateRoute
 }
 
@@ -1864,6 +1885,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminPrivatesPrivateIdRoute: AppAdminPrivatesPrivateIdRoute,
   AppAdminPrivatesCreateRoute: AppAdminPrivatesCreateRoute,
   AppAdminPrivatesDailyRoute: AppAdminPrivatesDailyRoute,
+  AppAdminReportsAttendanceRoute: AppAdminReportsAttendanceRoute,
   AppAdminReportsOnboardingRoute: AppAdminReportsOnboardingRoute,
   AppAdminReportsOverviewRoute: AppAdminReportsOverviewRoute,
   AppAdminStudentsStudentIdRoute: AppAdminStudentsStudentIdRoute,
@@ -1888,7 +1910,6 @@ const AppRouteChildren: AppRouteChildren = {
     AppAdminPrivatesPrivateIdPrivateLessonIdRoute,
   AppAdminPrivatesPrivateIdEditRoute: AppAdminPrivatesPrivateIdEditRoute,
   AppAdminStudentsStudentIdEditRoute: AppAdminStudentsStudentIdEditRoute,
-  AppAdminStudentsStudentIdReportRoute: AppAdminStudentsStudentIdReportRoute,
   AppAdminAccountsUserIdStudentsCreateRoute:
     AppAdminAccountsUserIdStudentsCreateRoute,
 }
@@ -1928,6 +1949,7 @@ const rootRouteChildren: RootRouteChildren = {
   InviteTokenRoute: InviteTokenRoute,
   ReferralTokenRoute: ReferralTokenRoute,
   AdminClassesPrintRoute: AdminClassesPrintRoute,
+  AdminReportsAttendancePrintRoute: AdminReportsAttendancePrintRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

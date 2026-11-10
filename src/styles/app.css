@@ -325,3 +325,34 @@
     page-break-inside: avoid;
   }
 }
+
+.attendance-print-sheet {
+  width: min(100%, 8.5in);
+  margin: 0 auto;
+  padding: 0.35in;
+  background: #fff;
+  color: #18181b;
+  box-shadow: 0 1px 8px rgb(0 0 0 / 12%);
+  font: 9pt/1.3 Arial, Helvetica, sans-serif;
+  --foreground: #18181b;
+  --muted-foreground: #52525b;
+  --chart-2: #16836a;
+  --destructive: #c43d3d;
+}
+.attendance-print-header { margin-bottom: 12px; }
+.attendance-print-header h1 { font-size: 20pt; font-weight: 700; }
+.attendance-print-header p { margin-top: 4px; }
+.attendance-print-sheet .attendance-report-summary { gap: 16px; padding: 8px; margin-bottom: 12px; break-inside: avoid; }
+.attendance-print-table { width: 100%; border-collapse: collapse; table-layout: fixed; font: inherit; }
+.attendance-print-table th, .attendance-print-table td { padding: 5px 4px; border-bottom: 1px solid #d4d4d8; text-align: left; overflow-wrap: anywhere; vertical-align: top; }
+.attendance-print-table th { font-weight: 700; background: #f4f4f5; }
+.attendance-print-table th:first-child { width: 22%; }
+.attendance-print-table th:last-child { width: 20%; }
+.attendance-print-table th:nth-child(4), .attendance-print-table th:nth-child(5) { width: 8%; }
+.attendance-print-preferred { display: block; font-size: 8pt; color: #52525b; }
+.attendance-print-note { margin-top: 10px; font-size: 8pt; color: #52525b; }
+@media print {
+  .attendance-print-sheet { width: auto; padding: 0; box-shadow: none; }
+  .attendance-print-table thead { display: table-header-group; }
+  .attendance-print-table tr { break-inside: avoid; page-break-inside: avoid; }
+}

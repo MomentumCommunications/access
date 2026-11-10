@@ -1,6 +1,7 @@
 import {
   ColumnDef,
   ColumnFiltersState,
+  OnChangeFn,
   SortingState,
   VisibilityState,
   flexRender,
@@ -51,6 +52,9 @@ type DataTableProps<TData, TValue> = {
   filterValue?: string;
   onFilterValueChange?: (value: string) => void;
   toolbar?: ReactNode;
+  sorting?: SortingState;
+  onSortingChange?: OnChangeFn<SortingState>;
+  manualSorting?: boolean;
 };
 
 export function DataTable<TData, TValue>({
@@ -61,6 +65,9 @@ export function DataTable<TData, TValue>({
   filterValue,
   onFilterValueChange,
   toolbar,
+  sorting: controlledSorting,
+  onSortingChange,
+  manualSorting = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -73,13 +80,14 @@ export function DataTable<TData, TValue>({
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    onSortingChange: setSorting,
+    onSortingChange: onSortingChange ?? setSorting,
+    manualSorting,
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     state: {
-      sorting,
+      sorting: controlledSorting ?? sorting,
       columnFilters,
       columnVisibility,
     },

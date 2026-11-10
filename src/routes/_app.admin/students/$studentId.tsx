@@ -21,6 +21,7 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataTable } from "~/components/data-table";
+import { StudentAttendanceTab } from "~/components/student-attendance-tab";
 import { AdminStudentBuddies } from "~/components/admin-student-buddies";
 import { EnrollmentTuitionTreatmentSelect } from "~/components/enrollment-tuition-treatment-select";
 import { RoleGate } from "~/components/role-gate";
@@ -96,6 +97,20 @@ import {
 } from "../../../../shared/student-status";
 
 export const Route = createFileRoute("/_app/admin/students/$studentId")({
+  validateSearch: (search: Record<string, unknown>): { tab?: StudentTabValue } => {
+    const tabs: StudentTabValue[] = [
+      "contacts",
+      "enrollments",
+      "attendance",
+      "notes",
+      "buddies",
+      "logs",
+    ];
+    return typeof search.tab === "string" &&
+      tabs.includes(search.tab as StudentTabValue)
+      ? { tab: search.tab as StudentTabValue }
+      : {};
+  },
   component: AdminStudentDetailPage,
 });
 
@@ -112,7 +127,13 @@ type AdminStudentData = NonNullable<
   FunctionReturnType<typeof api.classes.adminGetStudent>
 >;
 type EnrollmentRow = AdminStudentData["enrollments"][number];
-type StudentTabValue = "contacts" | "enrollments" | "notes" | "buddies" | "logs";
+type StudentTabValue =
+  | "contacts"
+  | "enrollments"
+  | "attendance"
+  | "notes"
+  | "buddies"
+  | "logs";
 
 const studentTabTriggerClass =
   "data-[state=active]:border-primary relative h-10 flex-none rounded-none border-x-0 border-b-2 border-t-0 border-transparent bg-transparent px-0 pb-3 pt-2 shadow-none data-[state=active]:bg-transparent data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent";
@@ -432,15 +453,6 @@ function AdminStudentDetailPage() {
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <Button asChild variant="outline">
-                    <Link
-                      to="/admin/students/$studentId/report"
-                      params={{ studentId: studentData.student._id }}
-                    >
-                      <ChartPie />
-                      Report
-                    </Link>
-                  </Button>
                   <Button asChild>
                     <Link
                       to="/admin/students/$studentId/edit"
@@ -574,12 +586,18 @@ function AdminStudentDetailPage() {
 }
 
 function StudentDetailTabs({ studentData }: { studentData: AdminStudentData }) {
-  const [selectedTab, setSelectedTab] = useState<StudentTabValue>("contacts");
+  const { tab } = Route.useSearch();
+  const navigate = Route.useNavigate();
 
   return (
     <Tabs
-      value={selectedTab}
-      onValueChange={(value) => setSelectedTab(value as StudentTabValue)}
+      value={tab ?? "contacts"}
+      onValueChange={(value) =>
+        void navigate({
+          search: { tab: value as StudentTabValue },
+          replace: true,
+        })
+      }
       className="gap-4"
     >
       <TabsList className="text-muted-foreground h-auto w-full justify-start gap-6 overflow-x-auto rounded-none border-b bg-transparent p-0">
@@ -590,6 +608,10 @@ function StudentDetailTabs({ studentData }: { studentData: AdminStudentData }) {
         <TabsTrigger value="enrollments" className={studentTabTriggerClass}>
           <GraduationCap />
           Enrollments
+        </TabsTrigger>
+        <TabsTrigger value="attendance" className={studentTabTriggerClass}>
+          <ChartPie />
+          Attendance
         </TabsTrigger>
         <TabsTrigger value="notes" className={studentTabTriggerClass}>
           <NotebookText />
@@ -609,6 +631,9 @@ function StudentDetailTabs({ studentData }: { studentData: AdminStudentData }) {
       </TabsContent>
       <TabsContent value="enrollments" className="space-y-4">
         <StudentEnrollmentsTab studentData={studentData} />
+      </TabsContent>
+      <TabsContent value="attendance" className="space-y-4">
+        <StudentAttendanceTab studentId={studentData.student._id} />
       </TabsContent>
       <TabsContent value="notes" className="space-y-4">
         <StudentNotesTab student={studentData.student} />
